@@ -1,4 +1,4 @@
-[submodule "linera-protocol"]
+[submodule "examples/vite-linera-counter/linera-protocol"]
 	path = examples/vite-linera-counter/linera-protocol
 	url = https://github.com/linera-io/linera-protocol.git
-	branch = testnet_conway
+  branch = testnet_conway
