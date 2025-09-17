@@ -2,9 +2,9 @@
 
 **Build seamless Web3 experiences with embedded wallets, social login, and gasless transactions.**
 
-This repository contains production-ready examples and starter templates for integrating [Dynamic](https://dynamic.xyz) - a complete wallet-as-a-service platform that enables developers to create Web3 apps without the complexity of wallet management.
+Examples and starter templates for integrating [Dynamic](https://dynamic.xyz) - a complete wallet-as-a-service platform that enables developers to create Web3 apps without the complexity of wallet management.
 
-## 🚀 **What is Dynamic?**
+## 🔧 **What is Dynamic?**
 
 Dynamic combines authentication, smart wallets, and secure key management into one flexible SDK. Get the most multi-chain coverage across chains and third-party wallets.
 
@@ -18,6 +18,7 @@ To run any example in this repository, we recommend creating a **free Dynamic En
 
 - **[Dynamic Documentation](https://docs.dynamic.xyz)** - Complete integration guides
 - **[Quickstart Guide](https://docs.dynamic.xyz/quickstart)** - Get up and running in 5 minutes
+- **[Playground](https://demo.dynamic.xyz)** - Try Dynamic in your browser without any setup
 - **[API Reference](https://www.dynamic.xyz/docs/api-reference/overview)** - Complete API documentation
 - **[Dashboard](https://app.dynamic.xyz)** - Manage your Dynamic projects
 - **[Community](https://www.dynamic.xyz/slack)** - Get help and connect with other developers
