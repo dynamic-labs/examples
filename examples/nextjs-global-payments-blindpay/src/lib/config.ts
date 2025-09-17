@@ -13,6 +13,7 @@ export const config = {
 
   // Dynamic Wallet Configuration
   dynamic: {
+    // replace with your own environment ID
     environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID!,
     apiToken: process.env.DYNAMIC_API_TOKEN!,
   },
