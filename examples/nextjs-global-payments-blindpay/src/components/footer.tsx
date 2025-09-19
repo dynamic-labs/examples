@@ -11,7 +11,7 @@ export default function Footer({
   bottomLinks = [
     {
       text: "GitHub",
-      url: "https://github.com/dynamic-labs/examples/examples/nextjs-global-payments-blindpay",
+      url: "https://github.com/dynamic-labs/examples/tree/main/examples/nextjs-global-payments-blindpay",
     },
     { text: "Docs", url: "https://docs.dynamic.xyz" },
     { text: "Dashboard", url: "https://app.dynamic.xyz" },

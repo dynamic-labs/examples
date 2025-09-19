@@ -11,7 +11,7 @@ export default function Footer({
   bottomLinks = [
     {
       text: "GitHub",
-      url: "https://github.com/dynamic-labs/examples/examples/nextjs-defi-lending-morpho",
+      url: "https://github.com/dynamic-labs/examples/tree/main/examples/nextjs-defi-lending-morpho",
     },
     { text: "Docs", url: "https://docs.dynamic.xyz" },
     { text: "Dashboard", url: "https://app.dynamic.xyz" },

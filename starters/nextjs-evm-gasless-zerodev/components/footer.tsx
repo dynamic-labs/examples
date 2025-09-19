@@ -11,7 +11,7 @@ export default function Footer({
   bottomLinks = [
     {
       text: "GitHub",
-      url: "https://github.com/dynamic-labs/examples/examples/nextjs-evm-gasless-zerodev",
+      url: "https://github.com/dynamic-labs/examples/tree/main/starters/nextjs-evm-gasless-zerodev",
     },
     {
       text: "Docs",
