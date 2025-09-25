@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@apollo/client": "^4.0.1",
-    "@dynamic-labs/ethereum": "^4.31.4",
-    "@dynamic-labs/sdk-react-core": "^4.31.4",
+    "@dynamic-labs/ethereum": "^4.32.1",
+    "@dynamic-labs/sdk-react-core": "^4.32.1",
     "@linera/client": "file:./linera-protocol/linera-web",
     "graphql": "^16.11.0",
     "graphql-ws": "^6.0.6",
