@@ -4,8 +4,8 @@
     "": {
       "name": "link-tst",
       "dependencies": {
-        "@dynamic-labs/ethereum": "^4.31.4",
-        "@dynamic-labs/sdk-react-core": "^4.31.4",
+        "@dynamic-labs/ethereum": "^4.32.1",
+        "@dynamic-labs/sdk-react-core": "^4.32.1",
         "react": "^18",
         "react-dom": "^18",
         "viem": "^2.28.0",
@@ -21,7 +21,7 @@
         "globals": "^16.3.0",
         "typescript": "^5.0.4",
         "typescript-eslint": "^8.39.1",
-        "vite": "^5.1.4",
+        "vite": "^7.1.5",
       },
     },
   },
@@ -80,107 +80,113 @@
 
     "@dynamic-labs-connectors/base-account-evm": ["@dynamic-labs-connectors/base-account-evm@4.4.2", "", { "dependencies": { "@base-org/account": "^1.1.1" }, "peerDependencies": { "@dynamic-labs/ethereum-core": "^4.11.1", "@dynamic-labs/wallet-connector-core": "^4.11.1", "viem": "^2.21.55" } }, "sha512-BNdiET8sY8biWYUohT4+tBwYuoVKlI4ZxjfKh4VxATS6z/6cQCLhJpOmq39+v5aMf/vaCFfEU+UxmYz7YXcAMg=="],
 
-    "@dynamic-labs-sdk/assert-package-version": ["@dynamic-labs-sdk/assert-package-version@0.1.0-alpha.3", "", {}, "sha512-gzaA6iO+xUFnb44IiSB+U9QdH68WpCHICZCXP7+qopb1gnh8I2k4m3FBm11uqq10uJM0IAGmvMvFkBcg39pOSA=="],
+    "@dynamic-labs-sdk/assert-package-version": ["@dynamic-labs-sdk/assert-package-version@0.1.0-alpha.8", "", {}, "sha512-3Ue+n/pV/BErnsz4v7bcw1tUcQTkkNTs5GWfHr9yAk9Xr4j1QSHctQ7djuGt0lzMLxn/9HNoPBl3FHVDGhiyqQ=="],
 
-    "@dynamic-labs-sdk/client": ["@dynamic-labs-sdk/client@0.1.0-alpha.3", "", { "dependencies": { "@dynamic-labs-sdk/assert-package-version": "0.1.0-alpha.3", "@dynamic-labs-wallet/browser-wallet-client": "0.0.144", "@dynamic-labs/sdk-api-core": "0.0.762", "@simplewebauthn/browser": "^13.1.0", "buffer": "6.0.3", "eventemitter3": "^5.0.1", "zod": "4.0.5" } }, "sha512-1IkC0+AvzYdPd5EO64o8Xd5QViM39cGyaXsYfjEv4OheVtg3cJng9hI6KIYSgBVSxv59oEvdLjKHA1iEPCyxTg=="],
+    "@dynamic-labs-sdk/client": ["@dynamic-labs-sdk/client@0.1.0-alpha.8", "", { "dependencies": { "@dynamic-labs-sdk/assert-package-version": "0.1.0-alpha.8", "@dynamic-labs-wallet/browser-wallet-client": "0.0.155", "@dynamic-labs/sdk-api-core": "0.0.762", "@simplewebauthn/browser": "^13.1.0", "buffer": "6.0.3", "eventemitter3": "^5.0.1", "zod": "4.0.5" } }, "sha512-RBdVVUCV7t2XFx1I1gxqul7Aj42MW++Wrb4njHfUXCPGzp15tCEiPhj7RAgZDEbsRabT7ZXplLDqo2j8u039og=="],
 
-    "@dynamic-labs-wallet/browser-wallet-client": ["@dynamic-labs-wallet/browser-wallet-client@0.0.144", "", { "dependencies": { "@dynamic-labs-wallet/core": "0.0.144", "@dynamic-labs/logger": "^4.25.3", "@dynamic-labs/message-transport": "^4.25.3", "uuid": "11.1.0" } }, "sha512-Ltu7KtyNQwZZSER46612nusIa4FHC7a8LRdPUAWirYHUE8WBGdDTCXHrzydKDCc+irsqG72aRUQY436uxkoNqg=="],
+    "@dynamic-labs-wallet/browser-wallet-client": ["@dynamic-labs-wallet/browser-wallet-client@0.0.155", "", { "dependencies": { "@dynamic-labs-wallet/core": "0.0.155", "@dynamic-labs/logger": "^4.25.3", "@dynamic-labs/message-transport": "^4.25.3", "uuid": "11.1.0" } }, "sha512-c53iWsBsO1yVOLWDuKJdViwRxA5qkvJF4neFHHc5wuxQxvx/w2XJyi2+rW3052OWOAbA6+wej6S7Xjl9oqATtA=="],
 
-    "@dynamic-labs-wallet/core": ["@dynamic-labs-wallet/core@0.0.144", "", { "dependencies": { "@dynamic-labs/sdk-api-core": "^0.0.764", "axios": "1.9.0", "uuid": "11.1.0" } }, "sha512-9pqt51aJI4hTy22+Hcgy6u39SwhsoX7PgaLlLP6jeQ9HBdTHHFCPKXr6W5TBmRrOknKWL+JmL2/kU8Wrq3DoTw=="],
+    "@dynamic-labs-wallet/core": ["@dynamic-labs-wallet/core@0.0.155", "", { "dependencies": { "@dynamic-labs/sdk-api-core": "^0.0.764", "axios": "1.9.0", "uuid": "11.1.0" } }, "sha512-bgFxb0sjdUkQMx0W+7eQSgxt18lS7AWdSmIr6o55RdsbYJRNe2fOZxueLrF+siTNH5jsm6Y/K0/bOLVUSt2Adg=="],
 
-    "@dynamic-labs/assert-package-version": ["@dynamic-labs/assert-package-version@4.31.4", "", { "dependencies": { "@dynamic-labs/logger": "4.31.4" } }, "sha512-co/9dxwrDLGC1WpBS11BhovnXz4UybF/EP+/OFZdF10VN4BtZHL4CRlcdFW9axzXgQAHUka8AUudZvrzalcIqw=="],
+    "@dynamic-labs/assert-package-version": ["@dynamic-labs/assert-package-version@4.32.1", "", { "dependencies": { "@dynamic-labs/logger": "4.32.1" } }, "sha512-pkTT/gyB35CJLIk9Ma4IE5Qpcg3iTdK798OhIi1fxwL7b9KRLFHDJdDbdSPQGZy6usexlWI5deg4jNHA8IUROw=="],
 
-    "@dynamic-labs/embedded-wallet": ["@dynamic-labs/embedded-wallet@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "@dynamic-labs/webauthn": "4.31.4", "@turnkey/api-key-stamper": "0.4.7", "@turnkey/http": "3.10.0", "@turnkey/iframe-stamper": "2.5.0", "@turnkey/webauthn-stamper": "0.5.1" } }, "sha512-X3Y7Up4ZDoDAkZLZe7Te1iukNvW1aTgMc5VtLZZwTo42xDGAxxXwOo/ERi4xJUo4GdW/z7bW9idseR9B3+LSaA=="],
+    "@dynamic-labs/embedded-wallet": ["@dynamic-labs/embedded-wallet@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "@dynamic-labs/webauthn": "4.32.1", "@turnkey/api-key-stamper": "0.4.7", "@turnkey/http": "3.10.0", "@turnkey/iframe-stamper": "2.5.0", "@turnkey/webauthn-stamper": "0.5.1" } }, "sha512-uEhRaMQ4AdOEPvr8fIUIBabVnPQ7Og8omB24laKYN4eB1DvsGJhIdBmtFTKzvP0nc9D4orahVCn89dISd0Nwtw=="],
 
-    "@dynamic-labs/embedded-wallet-evm": ["@dynamic-labs/embedded-wallet-evm@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/embedded-wallet": "4.31.4", "@dynamic-labs/ethereum-core": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "@dynamic-labs/webauthn": "4.31.4", "@turnkey/api-key-stamper": "0.4.7", "@turnkey/iframe-stamper": "2.5.0", "@turnkey/viem": "0.13.0", "@turnkey/webauthn-stamper": "0.5.1" }, "peerDependencies": { "viem": "^2.28.4" } }, "sha512-dOxejjT8EQc2GrZzGkSj0Ae2aYQ//RH/Xs1mgIdsol4pDHF+Lp3q1ibWHnBYo76kG5NOZ7gpv1CUUNVwIbo8nw=="],
+    "@dynamic-labs/embedded-wallet-evm": ["@dynamic-labs/embedded-wallet-evm@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/embedded-wallet": "4.32.1", "@dynamic-labs/ethereum-core": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "@dynamic-labs/webauthn": "4.32.1", "@turnkey/api-key-stamper": "0.4.7", "@turnkey/iframe-stamper": "2.5.0", "@turnkey/viem": "0.13.0", "@turnkey/webauthn-stamper": "0.5.1" }, "peerDependencies": { "viem": "^2.28.4" } }, "sha512-dOuIhOiPP81+RNd5Oi/3VXC7qE34ONqzgd4wWakzhwtrJ0FodZt7wtGD1HTvxus0mWzj1+s2ujxjSIRJ9Y4Rtw=="],
 
-    "@dynamic-labs/ethereum": ["@dynamic-labs/ethereum@4.31.4", "", { "dependencies": { "@coinbase/wallet-sdk": "4.3.7", "@dynamic-labs-connectors/base-account-evm": "4.4.2", "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/embedded-wallet-evm": "4.31.4", "@dynamic-labs/ethereum-core": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/waas-evm": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "@metamask/sdk": "0.33.0", "@walletconnect/ethereum-provider": "2.21.5", "buffer": "6.0.3", "eventemitter3": "5.0.1" }, "peerDependencies": { "viem": "^2.28.4" } }, "sha512-dVwReS3TdtwucnRONIdvU81fEluifwTI9Sh+V2o2u8tI7p87E6mFgoxC7kd2qFhTg1zpUHllGw303O7aWeNUNg=="],
+    "@dynamic-labs/ethereum": ["@dynamic-labs/ethereum@4.32.1", "", { "dependencies": { "@coinbase/wallet-sdk": "4.3.7", "@dynamic-labs-connectors/base-account-evm": "4.4.2", "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/embedded-wallet-evm": "4.32.1", "@dynamic-labs/ethereum-core": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/waas-evm": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "@metamask/sdk": "0.33.0", "@walletconnect/ethereum-provider": "2.21.5", "buffer": "6.0.3", "eventemitter3": "5.0.1" }, "peerDependencies": { "viem": "^2.28.4" } }, "sha512-M2WDLEm4XbEOdk/ay6k96v/BVu5JOphvcM1fnpED/zoB07EiQjbDcG2HUhcfHZUSoMzCnhTsFmm1vg8ckmd2jg=="],
 
-    "@dynamic-labs/ethereum-core": ["@dynamic-labs/ethereum-core@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4" }, "peerDependencies": { "viem": "^2.28.4" } }, "sha512-mM2iJguaC4xbRp/rpfBL6gQdocOYz9OHebb/lq9mfTWtAubG3HJKnGIeyNs+cQP3F69cLW5J6QMTMU2mO/XSPw=="],
+    "@dynamic-labs/ethereum-core": ["@dynamic-labs/ethereum-core@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1" }, "peerDependencies": { "viem": "^2.28.4" } }, "sha512-n64e1mdfIrzzvvb4CYGU9UeCOi/tgamhy4oS6jCeq3kbIIuX7tbuhrJbxcb3U0/gNzIEEwNRnAtPwUawUqbfAA=="],
 
-    "@dynamic-labs/iconic": ["@dynamic-labs/iconic@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "sharp": "0.33.5" }, "peerDependencies": { "react": ">=18.0.0 <20.0.0", "react-dom": ">=18.0.0 <20.0.0" } }, "sha512-zoi0KSpHrdpVr+qC1KSirZ7EbEd5v2Q2B22ptDzTvrA0mLP0tVikk6JIhhvSiZNgUSTpv88HF9eqgliRdehleg=="],
+    "@dynamic-labs/iconic": ["@dynamic-labs/iconic@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "sharp": "0.33.5" }, "peerDependencies": { "react": ">=18.0.0 <20.0.0", "react-dom": ">=18.0.0 <20.0.0" } }, "sha512-7DjGx4D7HaR7jp6n+UFBt2TcqRXcx7eXW9lX7Ig0cgtnrsKgiqGcRxPeylanotwn0mlICs4G6YgYUHU71I8I/g=="],
 
-    "@dynamic-labs/logger": ["@dynamic-labs/logger@4.31.4", "", { "dependencies": { "eventemitter3": "5.0.1" } }, "sha512-7hhMA1MvTxepvpCUEwswdXYU7gVwA3BHXYoDoBXSl0W45Akm8wSOjLsLd8g8p2fa517MeyMyK62ygNVI7Txv5A=="],
+    "@dynamic-labs/logger": ["@dynamic-labs/logger@4.32.1", "", { "dependencies": { "eventemitter3": "5.0.1" } }, "sha512-6A1xrzQiE5yMOt/3HAzLlzNhMKBfpDEgy/gqfxWOKe+ZfqOwMboC+R6QNd0SWo75agUBfipRCiflPioH4ELVcA=="],
 
     "@dynamic-labs/message-transport": ["@dynamic-labs/message-transport@4.25.10", "", { "dependencies": { "@dynamic-labs-sdk/client": "0.0.1-alpha.19", "@dynamic-labs/assert-package-version": "4.25.10", "@dynamic-labs/logger": "4.25.10", "@dynamic-labs/sdk-api-core": "0.0.741", "@dynamic-labs/types": "4.25.10", "@dynamic-labs/utils": "4.25.10", "@dynamic-labs/webauthn": "4.25.10", "@vue/reactivity": "^3.4.21", "eventemitter3": "5.0.1" } }, "sha512-9EtKJtH58eOPryfrN9fzu7d7xqj0JmXRPE4B4uzJEHHySblyWmqeGvBdbFVtbLVUJ44Y5Iie7iLyDB4M9iPKtA=="],
 
-    "@dynamic-labs/multi-wallet": ["@dynamic-labs/multi-wallet@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "tslib": "2.4.1" } }, "sha512-io6oEhiGmSr3s3aTGawj55Kv/Lh5DWhsgaHO2jhOeejGzMGaE1A5eVM/0C45DpVh61oAEITMiizEqPkQqnaLRg=="],
+    "@dynamic-labs/multi-wallet": ["@dynamic-labs/multi-wallet@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "tslib": "2.4.1" } }, "sha512-JCXd2IePLhZH84bCA0tgEQWK8mkqThPjhLdaeukR3AD2d7TYsH3UpG+ErMLjOxM0UI8JI4FMesRgBl6x/L3exQ=="],
 
-    "@dynamic-labs/rpc-providers": ["@dynamic-labs/rpc-providers@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/types": "4.31.4" } }, "sha512-ADzQek3rIAIAWYM1ynfDE605EI66pk2MJP/h4QClB2DyuUnKR6eZlhEQD3hUk/NRxSevx1LLzpXY3THAEp+llQ=="],
+    "@dynamic-labs/rpc-providers": ["@dynamic-labs/rpc-providers@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/types": "4.32.1" } }, "sha512-wBfuZurhbWfdrpmYV28xiYy8Cn0CQLpu2CXPtClSDOI8BUf+zl8vw23bcMYuXaRtXjpUeiP5WqTYHIdftoM2OA=="],
 
     "@dynamic-labs/sdk-api-core": ["@dynamic-labs/sdk-api-core@0.0.762", "", {}, "sha512-Qzgu/UlZQfFCZ+JgSXTQ3OTRmzaf3b37EvdH/bUy1iphkZ7TbIQvnA7fP8RE2ioUG4yuVDUHRvJ61fUvS2v5TA=="],
 
-    "@dynamic-labs/sdk-react-core": ["@dynamic-labs/sdk-react-core@4.31.4", "", { "dependencies": { "@dynamic-labs-sdk/client": "0.1.0-alpha.3", "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/iconic": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/multi-wallet": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/store": "4.31.4", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "@hcaptcha/react-hcaptcha": "1.4.4", "@thumbmarkjs/thumbmarkjs": "0.16.0", "bs58": "5.0.0", "country-list": "2.3.0", "eventemitter3": "5.0.1", "formik": "2.2.9", "i18next": "23.4.6", "qrcode": "1.5.1", "react-focus-lock": "2.13.6", "react-i18next": "13.5.0", "react-international-phone": "4.5.0", "yup": "0.32.11" }, "peerDependencies": { "react": ">=18.0.0 <20.0.0", "react-dom": ">=18.0.0 <20.0.0" } }, "sha512-YGET9+uTW2UOm3g5r4TVYWBsDhEtuKZKiIR2Kg1DN+Kr+S7DBUatPE6vUOVnmhB2ppjnlitA5cgLYHv4HnGGQw=="],
+    "@dynamic-labs/sdk-react-core": ["@dynamic-labs/sdk-react-core@4.32.1", "", { "dependencies": { "@dynamic-labs-sdk/client": "0.1.0-alpha.8", "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/iconic": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/multi-wallet": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/store": "4.32.1", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "@hcaptcha/react-hcaptcha": "1.4.4", "@thumbmarkjs/thumbmarkjs": "0.16.0", "bs58": "5.0.0", "country-list": "2.3.0", "eventemitter3": "5.0.1", "formik": "2.2.9", "i18next": "23.4.6", "qrcode": "1.5.1", "react-focus-lock": "2.13.6", "react-i18next": "13.5.0", "react-international-phone": "4.5.0", "yup": "0.32.11" }, "peerDependencies": { "react": ">=18.0.0 <20.0.0", "react-dom": ">=18.0.0 <20.0.0" } }, "sha512-Zg9Rz4NKi4PZEtdbMsvjQisxmtlorW9zm4KkQylcUXTxdvT7BJ+gmEkQKWR3HgCZLrGf/1aXILK7aAHd340yVQ=="],
 
-    "@dynamic-labs/solana-core": ["@dynamic-labs/solana-core@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "@solana/spl-token": "0.4.12", "@solana/web3.js": "1.98.1", "eventemitter3": "5.0.1" } }, "sha512-ZC1BXpZdZ4iPNLGJdyfapIqhJt41peaQrJ30km5BZLr6dGeKJO51w/lVgsxrVpP4Cxp7xbc4HCdhhlU5WUUpXw=="],
+    "@dynamic-labs/solana-core": ["@dynamic-labs/solana-core@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "@solana/spl-token": "0.4.12", "@solana/web3.js": "1.98.1", "eventemitter3": "5.0.1" } }, "sha512-zFPLKTiTkjLPlYiSlo1BcGyBzFIE+Q3FE1twyloyN5VE1n0xqaymifVcPNg1WWhOQzVTCzqkyM4J09M1iBd9Kg=="],
 
-    "@dynamic-labs/store": ["@dynamic-labs/store@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4" } }, "sha512-pTuAiDBXMUcAyUmhx+8S/GYuWBLjtCA1g4mpuVYbawAq9K8O1J9zx4vKzKw/CxLZKVh+RatJQ3sdk7nkmGc2wg=="],
+    "@dynamic-labs/store": ["@dynamic-labs/store@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1" } }, "sha512-5pzlFODm4tLCwn/TDIwEYCbvAsovA90ujCt0K1nRzqP9hMUR28VFUKQ5XBFbL4kxfuAkdZi4uM2xC86y18LsiQ=="],
 
-    "@dynamic-labs/sui-core": ["@dynamic-labs/sui-core@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "@mysten/sui": "1.24.0", "@mysten/wallet-standard": "0.13.29", "text-encoding": "0.7.0" } }, "sha512-soMmdep33OLtM+HEYwvhJEwV630knJ01RsTDunkYUKQ/hf9YTfBRgPlkK3MpDfirZKsIgLdeTpTqOb1KRIq6iQ=="],
+    "@dynamic-labs/sui-core": ["@dynamic-labs/sui-core@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "@mysten/sui": "1.24.0", "@mysten/wallet-standard": "0.13.29", "text-encoding": "0.7.0" } }, "sha512-PQqzTLbRdXklgk9ZZ7KClw5NOFmNT8LQlc/xGXAAEU+7Yb49dx9PssVCslkzgMlzuSovzyjsyobQCcqqQo6g0Q=="],
 
-    "@dynamic-labs/types": ["@dynamic-labs/types@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762" } }, "sha512-Y0C0qf7VfQN1GUyVID7dLvKKDHwoctEbo7jr60FEphMMvvrV5eBtCPOuwPBZXktjZLGXLpEsGGpuDQC/Syx9LQ=="],
+    "@dynamic-labs/types": ["@dynamic-labs/types@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762" } }, "sha512-QuCKEQcdvQ79f3RjR51/uzDW1lOHs/DIM8/Dabp4xZsyIcxhORW2rOqSJBlZZbUNJrCblTVLotsatQ2Pllsy6A=="],
 
-    "@dynamic-labs/utils": ["@dynamic-labs/utils@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "buffer": "6.0.3", "eventemitter3": "5.0.1", "tldts": "6.0.16" } }, "sha512-+68crw18KbDMr5ExYHsXmNTIEWcspVBFRZzday/c5AVwzaVaVOuNsXVKXd1rBcZduRi1nvpMMEa82NPsQk3mFA=="],
+    "@dynamic-labs/utils": ["@dynamic-labs/utils@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "buffer": "6.0.3", "eventemitter3": "5.0.1", "tldts": "6.0.16" } }, "sha512-a5nElTc5JVimX2IA8JFMNh7i1r5LWqQU5seP+ocp0hTQzvSnfj16LDAmByUY5N+iNI8hfXV0WyXrF71uPM/JaA=="],
 
-    "@dynamic-labs/waas": ["@dynamic-labs/waas@4.31.4", "", { "dependencies": { "@dynamic-labs-wallet/browser-wallet-client": "0.0.144", "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/ethereum-core": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/solana-core": "4.31.4", "@dynamic-labs/sui-core": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4" } }, "sha512-ReCEkQXXzKm1Bnn/YqXzl2pkIDaTXxc+ItwP8h9Y8CeEHX3Yk/TmlzEMeKJ0kZBekKZayfDqWz720Hw6ruL5Ew=="],
+    "@dynamic-labs/waas": ["@dynamic-labs/waas@4.32.1", "", { "dependencies": { "@dynamic-labs-wallet/browser-wallet-client": "0.0.155", "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/ethereum-core": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/solana-core": "4.32.1", "@dynamic-labs/sui-core": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1" } }, "sha512-tPprbd/rXGLToA1MAZmRKxykAft0rBl9uC8mmtMN7D8KLcspnPPmfZd9JC5o5jq74nCkL80l3rbSmYdvQd/pMA=="],
 
-    "@dynamic-labs/waas-evm": ["@dynamic-labs/waas-evm@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/ethereum-core": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/waas": "4.31.4", "@dynamic-labs/wallet-connector-core": "4.31.4", "viem": "^2.28.4" } }, "sha512-mDvYRzdqCMpkDoBwMfUP2TSxid0z9UIpeVn1io1AV50J5IrPIJ0dWQo55b/q/U6Tt/JCjfpg8qv2VRGNVS12Mw=="],
+    "@dynamic-labs/waas-evm": ["@dynamic-labs/waas-evm@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/ethereum-core": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/waas": "4.32.1", "@dynamic-labs/wallet-connector-core": "4.32.1", "viem": "^2.28.4" } }, "sha512-J/5s4K1Al89FfeV11sGel9RlbhLwTUVdC2IaPGQgnqQOy5DCIkVg3HtJfwkfLSmuNIt+ecisjSjVzWt+DXWnRQ=="],
 
-    "@dynamic-labs/wallet-book": ["@dynamic-labs/wallet-book@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/iconic": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/utils": "4.31.4", "eventemitter3": "5.0.1", "util": "0.12.5", "zod": "4.0.5" }, "peerDependencies": { "react": ">=18.0.0 <20.0.0", "react-dom": ">=18.0.0 <20.0.0" } }, "sha512-I49edwpiGsNwRBiPEBduI8MscXzHRb9MJlfHIoXn5h2XXHOZSoF9BIU3jWKFTkuwxFcxE/szVVPZuGky8OS5mw=="],
+    "@dynamic-labs/wallet-book": ["@dynamic-labs/wallet-book@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/iconic": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/utils": "4.32.1", "eventemitter3": "5.0.1", "util": "0.12.5", "zod": "4.0.5" }, "peerDependencies": { "react": ">=18.0.0 <20.0.0", "react-dom": ">=18.0.0 <20.0.0" } }, "sha512-JRIRgltu8m23r5/7DkQfuo3fOusSPORkrAey3fR93bLI39BWuAHTlw4Iohc79sMM0rFCrJdAazjV8UKw572A4Q=="],
 
-    "@dynamic-labs/wallet-connector-core": ["@dynamic-labs/wallet-connector-core@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@dynamic-labs/rpc-providers": "4.31.4", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.31.4", "@dynamic-labs/utils": "4.31.4", "@dynamic-labs/wallet-book": "4.31.4", "eventemitter3": "5.0.1" } }, "sha512-jTeKm5XkPbbu0MFz5Q1mHfKW+WJPx45ZmBhSCYe7WDqVZ2B7BQfpARifxREFaJZAcQMnNdOosrpWYfOeN0pTVw=="],
+    "@dynamic-labs/wallet-connector-core": ["@dynamic-labs/wallet-connector-core@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@dynamic-labs/rpc-providers": "4.32.1", "@dynamic-labs/sdk-api-core": "0.0.762", "@dynamic-labs/types": "4.32.1", "@dynamic-labs/utils": "4.32.1", "@dynamic-labs/wallet-book": "4.32.1", "eventemitter3": "5.0.1" } }, "sha512-bNeH7Ib6E8XWqEViOq9aTcku2Ld2qQ0F178a6QM7zk9Gqyts5b677L9Z8qzyvoZ3qwMuOS5baoHqfR2quySZwQ=="],
 
-    "@dynamic-labs/webauthn": ["@dynamic-labs/webauthn@4.31.4", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.31.4", "@dynamic-labs/logger": "4.31.4", "@simplewebauthn/browser": "13.1.0", "@simplewebauthn/types": "12.0.0" } }, "sha512-2uWOf2N4ZtVAD3LJ7KX5md6yCPtMYTrnHtrUp+gzgb9Di/8WypWZFkCHSgNdL7tbqAJsG5hC3/rqnuTOoxYM8Q=="],
+    "@dynamic-labs/webauthn": ["@dynamic-labs/webauthn@4.32.1", "", { "dependencies": { "@dynamic-labs/assert-package-version": "4.32.1", "@dynamic-labs/logger": "4.32.1", "@simplewebauthn/browser": "13.1.0", "@simplewebauthn/types": "12.0.0" } }, "sha512-IyyIBPy8RiaCY+/4zRLeSBVQDxy0Hbdxd0O8zIDu6PFdbXyVicp6rHzVHs5KxXGjWQ/GvAiD5o6r/uaUM3C95Q=="],
 
     "@ecies/ciphers": ["@ecies/ciphers@0.2.4", "", { "peerDependencies": { "@noble/ciphers": "^1.0.0" } }, "sha512-t+iX+Wf5nRKyNzk8dviW3Ikb/280+aEJAnw9YXvCp2tYGPSkMki+NRY+8aNLmVFv3eNtMdvViPNOPxS8SZNP+w=="],
 
     "@emnapi/runtime": ["@emnapi/runtime@1.4.5", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-++LApOtY0pEEz1zrd9vy1/zXVaVJJ/EbAF3u0fXIzPJEDtnITsBGbbK0EkM72amhl/R5b+5xx0Y/QhcVOpuulg=="],
 
-    "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.21.5", "", { "os": "aix", "cpu": "ppc64" }, "sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ=="],
+    "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.10", "", { "os": "aix", "cpu": "ppc64" }, "sha512-0NFWnA+7l41irNuaSVlLfgNT12caWJVLzp5eAVhZ0z1qpxbockccEt3s+149rE64VUI3Ml2zt8Nv5JVc4QXTsw=="],
 
-    "@esbuild/android-arm": ["@esbuild/android-arm@0.21.5", "", { "os": "android", "cpu": "arm" }, "sha512-vCPvzSjpPHEi1siZdlvAlsPxXl7WbOVUBBAowWug4rJHb68Ox8KualB+1ocNvT5fjv6wpkX6o/iEpbDrf68zcg=="],
+    "@esbuild/android-arm": ["@esbuild/android-arm@0.25.10", "", { "os": "android", "cpu": "arm" }, "sha512-dQAxF1dW1C3zpeCDc5KqIYuZ1tgAdRXNoZP7vkBIRtKZPYe2xVr/d3SkirklCHudW1B45tGiUlz2pUWDfbDD4w=="],
 
-    "@esbuild/android-arm64": ["@esbuild/android-arm64@0.21.5", "", { "os": "android", "cpu": "arm64" }, "sha512-c0uX9VAUBQ7dTDCjq+wdyGLowMdtR/GoC2U5IYk/7D1H1JYC0qseD7+11iMP2mRLN9RcCMRcjC4YMclCzGwS/A=="],
+    "@esbuild/android-arm64": ["@esbuild/android-arm64@0.25.10", "", { "os": "android", "cpu": "arm64" }, "sha512-LSQa7eDahypv/VO6WKohZGPSJDq5OVOo3UoFR1E4t4Gj1W7zEQMUhI+lo81H+DtB+kP+tDgBp+M4oNCwp6kffg=="],
 
-    "@esbuild/android-x64": ["@esbuild/android-x64@0.21.5", "", { "os": "android", "cpu": "x64" }, "sha512-D7aPRUUNHRBwHxzxRvp856rjUHRFW1SdQATKXH2hqA0kAZb1hKmi02OpYRacl0TxIGz/ZmXWlbZgjwWYaCakTA=="],
+    "@esbuild/android-x64": ["@esbuild/android-x64@0.25.10", "", { "os": "android", "cpu": "x64" }, "sha512-MiC9CWdPrfhibcXwr39p9ha1x0lZJ9KaVfvzA0Wxwz9ETX4v5CHfF09bx935nHlhi+MxhA63dKRRQLiVgSUtEg=="],
 
-    "@esbuild/darwin-arm64": ["@esbuild/darwin-arm64@0.21.5", "", { "os": "darwin", "cpu": "arm64" }, "sha512-DwqXqZyuk5AiWWf3UfLiRDJ5EDd49zg6O9wclZ7kUMv2WRFr4HKjXp/5t8JZ11QbQfUS6/cRCKGwYhtNAY88kQ=="],
+    "@esbuild/darwin-arm64": ["@esbuild/darwin-arm64@0.25.10", "", { "os": "darwin", "cpu": "arm64" }, "sha512-JC74bdXcQEpW9KkV326WpZZjLguSZ3DfS8wrrvPMHgQOIEIG/sPXEN/V8IssoJhbefLRcRqw6RQH2NnpdprtMA=="],
 
-    "@esbuild/darwin-x64": ["@esbuild/darwin-x64@0.21.5", "", { "os": "darwin", "cpu": "x64" }, "sha512-se/JjF8NlmKVG4kNIuyWMV/22ZaerB+qaSi5MdrXtd6R08kvs2qCN4C09miupktDitvh8jRFflwGFBQcxZRjbw=="],
+    "@esbuild/darwin-x64": ["@esbuild/darwin-x64@0.25.10", "", { "os": "darwin", "cpu": "x64" }, "sha512-tguWg1olF6DGqzws97pKZ8G2L7Ig1vjDmGTwcTuYHbuU6TTjJe5FXbgs5C1BBzHbJ2bo1m3WkQDbWO2PvamRcg=="],
 
-    "@esbuild/freebsd-arm64": ["@esbuild/freebsd-arm64@0.21.5", "", { "os": "freebsd", "cpu": "arm64" }, "sha512-5JcRxxRDUJLX8JXp/wcBCy3pENnCgBR9bN6JsY4OmhfUtIHe3ZW0mawA7+RDAcMLrMIZaf03NlQiX9DGyB8h4g=="],
+    "@esbuild/freebsd-arm64": ["@esbuild/freebsd-arm64@0.25.10", "", { "os": "freebsd", "cpu": "arm64" }, "sha512-3ZioSQSg1HT2N05YxeJWYR+Libe3bREVSdWhEEgExWaDtyFbbXWb49QgPvFH8u03vUPX10JhJPcz7s9t9+boWg=="],
 
-    "@esbuild/freebsd-x64": ["@esbuild/freebsd-x64@0.21.5", "", { "os": "freebsd", "cpu": "x64" }, "sha512-J95kNBj1zkbMXtHVH29bBriQygMXqoVQOQYA+ISs0/2l3T9/kj42ow2mpqerRBxDJnmkUDCaQT/dfNXWX/ZZCQ=="],
+    "@esbuild/freebsd-x64": ["@esbuild/freebsd-x64@0.25.10", "", { "os": "freebsd", "cpu": "x64" }, "sha512-LLgJfHJk014Aa4anGDbh8bmI5Lk+QidDmGzuC2D+vP7mv/GeSN+H39zOf7pN5N8p059FcOfs2bVlrRr4SK9WxA=="],
 
-    "@esbuild/linux-arm": ["@esbuild/linux-arm@0.21.5", "", { "os": "linux", "cpu": "arm" }, "sha512-bPb5AHZtbeNGjCKVZ9UGqGwo8EUu4cLq68E95A53KlxAPRmUyYv2D6F0uUI65XisGOL1hBP5mTronbgo+0bFcA=="],
+    "@esbuild/linux-arm": ["@esbuild/linux-arm@0.25.10", "", { "os": "linux", "cpu": "arm" }, "sha512-oR31GtBTFYCqEBALI9r6WxoU/ZofZl962pouZRTEYECvNF/dtXKku8YXcJkhgK/beU+zedXfIzHijSRapJY3vg=="],
 
-    "@esbuild/linux-arm64": ["@esbuild/linux-arm64@0.21.5", "", { "os": "linux", "cpu": "arm64" }, "sha512-ibKvmyYzKsBeX8d8I7MH/TMfWDXBF3db4qM6sy+7re0YXya+K1cem3on9XgdT2EQGMu4hQyZhan7TeQ8XkGp4Q=="],
+    "@esbuild/linux-arm64": ["@esbuild/linux-arm64@0.25.10", "", { "os": "linux", "cpu": "arm64" }, "sha512-5luJWN6YKBsawd5f9i4+c+geYiVEw20FVW5x0v1kEMWNq8UctFjDiMATBxLvmmHA4bf7F6hTRaJgtghFr9iziQ=="],
 
-    "@esbuild/linux-ia32": ["@esbuild/linux-ia32@0.21.5", "", { "os": "linux", "cpu": "ia32" }, "sha512-YvjXDqLRqPDl2dvRODYmmhz4rPeVKYvppfGYKSNGdyZkA01046pLWyRKKI3ax8fbJoK5QbxblURkwK/MWY18Tg=="],
+    "@esbuild/linux-ia32": ["@esbuild/linux-ia32@0.25.10", "", { "os": "linux", "cpu": "ia32" }, "sha512-NrSCx2Kim3EnnWgS4Txn0QGt0Xipoumb6z6sUtl5bOEZIVKhzfyp/Lyw4C1DIYvzeW/5mWYPBFJU3a/8Yr75DQ=="],
 
-    "@esbuild/linux-loong64": ["@esbuild/linux-loong64@0.21.5", "", { "os": "linux", "cpu": "none" }, "sha512-uHf1BmMG8qEvzdrzAqg2SIG/02+4/DHB6a9Kbya0XDvwDEKCoC8ZRWI5JJvNdUjtciBGFQ5PuBlpEOXQj+JQSg=="],
+    "@esbuild/linux-loong64": ["@esbuild/linux-loong64@0.25.10", "", { "os": "linux", "cpu": "none" }, "sha512-xoSphrd4AZda8+rUDDfD9J6FUMjrkTz8itpTITM4/xgerAZZcFW7Dv+sun7333IfKxGG8gAq+3NbfEMJfiY+Eg=="],
 
-    "@esbuild/linux-mips64el": ["@esbuild/linux-mips64el@0.21.5", "", { "os": "linux", "cpu": "none" }, "sha512-IajOmO+KJK23bj52dFSNCMsz1QP1DqM6cwLUv3W1QwyxkyIWecfafnI555fvSGqEKwjMXVLokcV5ygHW5b3Jbg=="],
+    "@esbuild/linux-mips64el": ["@esbuild/linux-mips64el@0.25.10", "", { "os": "linux", "cpu": "none" }, "sha512-ab6eiuCwoMmYDyTnyptoKkVS3k8fy/1Uvq7Dj5czXI6DF2GqD2ToInBI0SHOp5/X1BdZ26RKc5+qjQNGRBelRA=="],
 
-    "@esbuild/linux-ppc64": ["@esbuild/linux-ppc64@0.21.5", "", { "os": "linux", "cpu": "ppc64" }, "sha512-1hHV/Z4OEfMwpLO8rp7CvlhBDnjsC3CttJXIhBi+5Aj5r+MBvy4egg7wCbe//hSsT+RvDAG7s81tAvpL2XAE4w=="],
+    "@esbuild/linux-ppc64": ["@esbuild/linux-ppc64@0.25.10", "", { "os": "linux", "cpu": "ppc64" }, "sha512-NLinzzOgZQsGpsTkEbdJTCanwA5/wozN9dSgEl12haXJBzMTpssebuXR42bthOF3z7zXFWH1AmvWunUCkBE4EA=="],
 
-    "@esbuild/linux-riscv64": ["@esbuild/linux-riscv64@0.21.5", "", { "os": "linux", "cpu": "none" }, "sha512-2HdXDMd9GMgTGrPWnJzP2ALSokE/0O5HhTUvWIbD3YdjME8JwvSCnNGBnTThKGEB91OZhzrJ4qIIxk/SBmyDDA=="],
+    "@esbuild/linux-riscv64": ["@esbuild/linux-riscv64@0.25.10", "", { "os": "linux", "cpu": "none" }, "sha512-FE557XdZDrtX8NMIeA8LBJX3dC2M8VGXwfrQWU7LB5SLOajfJIxmSdyL/gU1m64Zs9CBKvm4UAuBp5aJ8OgnrA=="],
 
-    "@esbuild/linux-s390x": ["@esbuild/linux-s390x@0.21.5", "", { "os": "linux", "cpu": "s390x" }, "sha512-zus5sxzqBJD3eXxwvjN1yQkRepANgxE9lgOW2qLnmr8ikMTphkjgXu1HR01K4FJg8h1kEEDAqDcZQtbrRnB41A=="],
+    "@esbuild/linux-s390x": ["@esbuild/linux-s390x@0.25.10", "", { "os": "linux", "cpu": "s390x" }, "sha512-3BBSbgzuB9ajLoVZk0mGu+EHlBwkusRmeNYdqmznmMc9zGASFjSsxgkNsqmXugpPk00gJ0JNKh/97nxmjctdew=="],
 
-    "@esbuild/linux-x64": ["@esbuild/linux-x64@0.21.5", "", { "os": "linux", "cpu": "x64" }, "sha512-1rYdTpyv03iycF1+BhzrzQJCdOuAOtaqHTWJZCWvijKD2N5Xu0TtVC8/+1faWqcP9iBCWOmjmhoH94dH82BxPQ=="],
+    "@esbuild/linux-x64": ["@esbuild/linux-x64@0.25.10", "", { "os": "linux", "cpu": "x64" }, "sha512-QSX81KhFoZGwenVyPoberggdW1nrQZSvfVDAIUXr3WqLRZGZqWk/P4T8p2SP+de2Sr5HPcvjhcJzEiulKgnxtA=="],
 
-    "@esbuild/netbsd-x64": ["@esbuild/netbsd-x64@0.21.5", "", { "os": "none", "cpu": "x64" }, "sha512-Woi2MXzXjMULccIwMnLciyZH4nCIMpWQAs049KEeMvOcNADVxo0UBIQPfSmxB3CWKedngg7sWZdLvLczpe0tLg=="],
+    "@esbuild/netbsd-arm64": ["@esbuild/netbsd-arm64@0.25.10", "", { "os": "none", "cpu": "arm64" }, "sha512-AKQM3gfYfSW8XRk8DdMCzaLUFB15dTrZfnX8WXQoOUpUBQ+NaAFCP1kPS/ykbbGYz7rxn0WS48/81l9hFl3u4A=="],
 
-    "@esbuild/openbsd-x64": ["@esbuild/openbsd-x64@0.21.5", "", { "os": "openbsd", "cpu": "x64" }, "sha512-HLNNw99xsvx12lFBUwoT8EVCsSvRNDVxNpjZ7bPn947b8gJPzeHWyNVhFsaerc0n3TsbOINvRP2byTZ5LKezow=="],
+    "@esbuild/netbsd-x64": ["@esbuild/netbsd-x64@0.25.10", "", { "os": "none", "cpu": "x64" }, "sha512-7RTytDPGU6fek/hWuN9qQpeGPBZFfB4zZgcz2VK2Z5VpdUxEI8JKYsg3JfO0n/Z1E/6l05n0unDCNc4HnhQGig=="],
 
-    "@esbuild/sunos-x64": ["@esbuild/sunos-x64@0.21.5", "", { "os": "sunos", "cpu": "x64" }, "sha512-6+gjmFpfy0BHU5Tpptkuh8+uw3mnrvgs+dSPQXQOv3ekbordwnzTVEb4qnIvQcYXq6gzkyTnoZ9dZG+D4garKg=="],
+    "@esbuild/openbsd-arm64": ["@esbuild/openbsd-arm64@0.25.10", "", { "os": "openbsd", "cpu": "arm64" }, "sha512-5Se0VM9Wtq797YFn+dLimf2Zx6McttsH2olUBsDml+lm0GOCRVebRWUvDtkY4BWYv/3NgzS8b/UM3jQNh5hYyw=="],
 
-    "@esbuild/win32-arm64": ["@esbuild/win32-arm64@0.21.5", "", { "os": "win32", "cpu": "arm64" }, "sha512-Z0gOTd75VvXqyq7nsl93zwahcTROgqvuAcYDUr+vOv8uHhNSKROyU961kgtCD1e95IqPKSQKH7tBTslnS3tA8A=="],
+    "@esbuild/openbsd-x64": ["@esbuild/openbsd-x64@0.25.10", "", { "os": "openbsd", "cpu": "x64" }, "sha512-XkA4frq1TLj4bEMB+2HnI0+4RnjbuGZfet2gs/LNs5Hc7D89ZQBHQ0gL2ND6Lzu1+QVkjp3x1gIcPKzRNP8bXw=="],
 
-    "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.21.5", "", { "os": "win32", "cpu": "ia32" }, "sha512-SWXFF1CL2RVNMaVs+BBClwtfZSvDgtL//G/smwAc5oVK/UPu2Gu9tIaRgFmYFFKrmg3SyAjSrElf0TiJ1v8fYA=="],
+    "@esbuild/openharmony-arm64": ["@esbuild/openharmony-arm64@0.25.10", "", { "os": "none", "cpu": "arm64" }, "sha512-AVTSBhTX8Y/Fz6OmIVBip9tJzZEUcY8WLh7I59+upa5/GPhh2/aM6bvOMQySspnCCHvFi79kMtdJS1w0DXAeag=="],
 
-    "@esbuild/win32-x64": ["@esbuild/win32-x64@0.21.5", "", { "os": "win32", "cpu": "x64" }, "sha512-tQd/1efJuzPC6rCFwEvLtci/xNFcTZknmXs98FYDfGE4wP9ClFV98nyKrzJKVPMhdDnjzLhdUyMX4PsQAPjwIw=="],
+    "@esbuild/sunos-x64": ["@esbuild/sunos-x64@0.25.10", "", { "os": "sunos", "cpu": "x64" }, "sha512-fswk3XT0Uf2pGJmOpDB7yknqhVkJQkAQOcW/ccVOtfx05LkbWOaRAtn5SaqXypeKQra1QaEa841PgrSL9ubSPQ=="],
+
+    "@esbuild/win32-arm64": ["@esbuild/win32-arm64@0.25.10", "", { "os": "win32", "cpu": "arm64" }, "sha512-ah+9b59KDTSfpaCg6VdJoOQvKjI33nTaQr4UluQwW7aEwZQsbMCfTmfEO4VyewOxx4RaDT/xCy9ra2GPWmO7Kw=="],
+
+    "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.25.10", "", { "os": "win32", "cpu": "ia32" }, "sha512-QHPDbKkrGO8/cz9LKVnJU22HOi4pxZnZhhA2HYHez5Pz4JeffhDjf85E57Oyco163GnzNCVkZK0b/n4Y0UHcSw=="],
+
+    "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.10", "", { "os": "win32", "cpu": "x64" }, "sha512-9KpxSVFCu0iK1owoez6aC/s/EdUQLDN3adTxGCqxMVhrPDj6bt5dbrHDXUuq+Bs2vATFBBrQS5vdQ/Ed2P+nbw=="],
 
     "@eslint-community/eslint-utils": ["@eslint-community/eslint-utils@4.7.0", "", { "dependencies": { "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "eslint": "^6.0.0 || ^7.0.0 || >=8.0.0" } }, "sha512-dyybb3AcajC7uha6CvhdVRJqaKyn7w2YKqKyAN37NKYgZT36w+iRb0Dymmc5qEJ549c/S31cMMSFd75bteCpCw=="],
 
@@ -275,8 +281,6 @@
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 
     "@jridgewell/resolve-uri": ["@jridgewell/resolve-uri@3.1.2", "", {}, "sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw=="],
-
-    "@jridgewell/source-map": ["@jridgewell/source-map@0.3.11", "", { "dependencies": { "@jridgewell/gen-mapping": "^0.3.5", "@jridgewell/trace-mapping": "^0.3.25" } }, "sha512-ZMp1V8ZFcPG5dIWnQLr3NSI1MiCU7UETdS/A0G8V/XWHvJv3ZsFqutJn1Y5RPmAPX6F3BiE397OqveU/9NCuIA=="],
 
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
@@ -642,8 +646,6 @@
 
     "buffer": ["buffer@6.0.3", "", { "dependencies": { "base64-js": "^1.3.1", "ieee754": "^1.2.1" } }, "sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA=="],
 
-    "buffer-from": ["buffer-from@1.1.2", "", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
-
     "bufferutil": ["bufferutil@4.0.9", "", { "dependencies": { "node-gyp-build": "^4.3.0" } }, "sha512-WDtdLmJvAuNNPzByAYpRo2rF1Mmradw6gvWsQKf63476DDXmomT9zUiGypLcG4ibIM67vhAj8jJRdbmEws2Aqw=="],
 
     "call-bind": ["call-bind@1.0.8", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.0", "es-define-property": "^1.0.0", "get-intrinsic": "^1.2.4", "set-function-length": "^1.2.2" } }, "sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww=="],
@@ -764,7 +766,7 @@
 
     "es6-promisify": ["es6-promisify@5.0.0", "", { "dependencies": { "es6-promise": "^4.0.3" } }, "sha512-C+d6UdsYDk0lMebHNR4S2NybQMMngAOnOwYBQjTOiv0MkoJMP0Myw2mgpDLBcpfCmRLxyFqYhS/CfOENq4SJhQ=="],
 
-    "esbuild": ["esbuild@0.21.5", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.21.5", "@esbuild/android-arm": "0.21.5", "@esbuild/android-arm64": "0.21.5", "@esbuild/android-x64": "0.21.5", "@esbuild/darwin-arm64": "0.21.5", "@esbuild/darwin-x64": "0.21.5", "@esbuild/freebsd-arm64": "0.21.5", "@esbuild/freebsd-x64": "0.21.5", "@esbuild/linux-arm": "0.21.5", "@esbuild/linux-arm64": "0.21.5", "@esbuild/linux-ia32": "0.21.5", "@esbuild/linux-loong64": "0.21.5", "@esbuild/linux-mips64el": "0.21.5", "@esbuild/linux-ppc64": "0.21.5", "@esbuild/linux-riscv64": "0.21.5", "@esbuild/linux-s390x": "0.21.5", "@esbuild/linux-x64": "0.21.5", "@esbuild/netbsd-x64": "0.21.5", "@esbuild/openbsd-x64": "0.21.5", "@esbuild/sunos-x64": "0.21.5", "@esbuild/win32-arm64": "0.21.5", "@esbuild/win32-ia32": "0.21.5", "@esbuild/win32-x64": "0.21.5" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-mg3OPMV4hXywwpoDxu3Qda5xCKQi+vCTZq8S9J/EpkhB2HzKXq4SNFZE3+NK93JYxc8VMSep+lOUSC/RVKaBqw=="],
+    "esbuild": ["esbuild@0.25.10", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.25.10", "@esbuild/android-arm": "0.25.10", "@esbuild/android-arm64": "0.25.10", "@esbuild/android-x64": "0.25.10", "@esbuild/darwin-arm64": "0.25.10", "@esbuild/darwin-x64": "0.25.10", "@esbuild/freebsd-arm64": "0.25.10", "@esbuild/freebsd-x64": "0.25.10", "@esbuild/linux-arm": "0.25.10", "@esbuild/linux-arm64": "0.25.10", "@esbuild/linux-ia32": "0.25.10", "@esbuild/linux-loong64": "0.25.10", "@esbuild/linux-mips64el": "0.25.10", "@esbuild/linux-ppc64": "0.25.10", "@esbuild/linux-riscv64": "0.25.10", "@esbuild/linux-s390x": "0.25.10", "@esbuild/linux-x64": "0.25.10", "@esbuild/netbsd-arm64": "0.25.10", "@esbuild/netbsd-x64": "0.25.10", "@esbuild/openbsd-arm64": "0.25.10", "@esbuild/openbsd-x64": "0.25.10", "@esbuild/openharmony-arm64": "0.25.10", "@esbuild/sunos-x64": "0.25.10", "@esbuild/win32-arm64": "0.25.10", "@esbuild/win32-ia32": "0.25.10", "@esbuild/win32-x64": "0.25.10" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-9RiGKvCwaqxO2owP61uQ4BgNborAQskMR6QusfWzQqv7AZOg5oGehdY2pRJMTKuwxd1IDBP4rSbI5lHzU7SMsQ=="],
 
     "escalade": ["escalade@3.2.0", "", {}, "sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA=="],
 
@@ -821,6 +823,8 @@
     "fastestsmallesttextencoderdecoder": ["fastestsmallesttextencoderdecoder@1.0.22", "", {}, "sha512-Pb8d48e+oIuY4MaM64Cd7OW1gt4nxCHs7/ddPPZ/Ic3sg8yVGM7O9wDvZ7us6ScaUupzM+pfBolwtYhN1IxBIw=="],
 
     "fastq": ["fastq@1.19.1", "", { "dependencies": { "reusify": "^1.0.4" } }, "sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ=="],
+
+    "fdir": ["fdir@6.5.0", "", { "peerDependencies": { "picomatch": "^3 || ^4" }, "optionalPeers": ["picomatch"] }, "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg=="],
 
     "file-entry-cache": ["file-entry-cache@8.0.0", "", { "dependencies": { "flat-cache": "^4.0.0" } }, "sha512-XXTUwCvisa5oacNGRP9SfNtYBNAMi+RPwBFmblZEF7N7swHYQS6/Zfk7SRwx4D5j3CH211YNRco1DEMNVfZCnQ=="],
 
@@ -1046,7 +1050,7 @@
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
-    "picomatch": ["picomatch@2.3.1", "", {}, "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA=="],
+    "picomatch": ["picomatch@4.0.3", "", {}, "sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q=="],
 
     "pino": ["pino@7.11.0", "", { "dependencies": { "atomic-sleep": "^1.0.0", "fast-redact": "^3.0.0", "on-exit-leak-free": "^0.2.0", "pino-abstract-transport": "v0.5.0", "pino-std-serializers": "^4.0.0", "process-warning": "^1.0.0", "quick-format-unescaped": "^4.0.3", "real-require": "^0.1.0", "safe-stable-stringify": "^2.1.0", "sonic-boom": "^2.2.1", "thread-stream": "^0.15.1" }, "bin": { "pino": "bin.js" } }, "sha512-dMACeu63HtRLmCG8VKdy4cShCPKaYDR4youZqoSWLxl5Gu99HUw8bw75thbPv9Nip+H+QYX8o3ZJbTdVZZ2TVg=="],
 
@@ -1162,11 +1166,7 @@
 
     "sonic-boom": ["sonic-boom@2.8.0", "", { "dependencies": { "atomic-sleep": "^1.0.0" } }, "sha512-kuonw1YOYYNOve5iHdSahXPOK49GqwA+LZhI6Wz/l0rP57iKyXXIHaRagOBHAPmGwJC6od2Z9zgvZ5loSgMlVg=="],
 
-    "source-map": ["source-map@0.6.1", "", {}, "sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g=="],
-
     "source-map-js": ["source-map-js@1.2.1", "", {}, "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="],
-
-    "source-map-support": ["source-map-support@0.5.21", "", { "dependencies": { "buffer-from": "^1.0.0", "source-map": "^0.6.0" } }, "sha512-uBHU3L3czsIyYXKX88fdrGovxdSCoTGDRZ6SYXtSRxLZUzHg5P/66Ht6uoUlHu9EZod+inXhKo3qQgwXUT/y1w=="],
 
     "split-on-first": ["split-on-first@1.1.0", "", {}, "sha512-43ZssAJaMusuKWL8sKUBQXHWOpq8d6CfN/u1p4gUzfJkM05C8rxTmYrkIPTXapZpORA6LkkzcUulJ8FqA7Uudw=="],
 
@@ -1192,8 +1192,6 @@
 
     "supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
 
-    "terser": ["terser@5.43.1", "", { "dependencies": { "@jridgewell/source-map": "^0.3.3", "acorn": "^8.14.0", "commander": "^2.20.0", "source-map-support": "~0.5.20" }, "bin": { "terser": "bin/terser" } }, "sha512-+6erLbBm0+LROX2sPXlUYx/ux5PyE9K/a92Wrt6oA+WDAoFTdpHE5tCYCI5PNzq2y8df4rA+QgHLJuR4jNymsg=="],
-
     "text-encoding": ["text-encoding@0.7.0", "", {}, "sha512-oJQ3f1hrOnbRLOcwKz0Liq2IcrvDeZRHXhd9RgLrsT+DjWY/nty1Hi7v3dtkaEYbPYe0mUoOfzRrMwfXXwgPUA=="],
 
     "text-encoding-utf-8": ["text-encoding-utf-8@1.0.2", "", {}, "sha512-8bw4MY9WjdsD2aMtO0OzOCY3pXGYNx2d2FfHRVUKkiCPDWjKuOlhLVASS+pD7VkLTVjW268LYJHwsnPFlBpbAg=="],
@@ -1201,6 +1199,8 @@
     "thread-stream": ["thread-stream@0.15.2", "", { "dependencies": { "real-require": "^0.1.0" } }, "sha512-UkEhKIg2pD+fjkHQKyJO3yoIvAP3N6RlNFt2dUhcS1FGvCD1cQa1M/PGknCLFIyZdtJOWQjejp7bdNqmN7zwdA=="],
 
     "tiny-warning": ["tiny-warning@1.0.3", "", {}, "sha512-lBN9zLN/oAf68o3zNXYrdCt1kP8WsiGW8Oo2ka41b2IM5JL/S1CTyX1rW0mb/zSuJun0ZUrDxx4sqvYS2FWzPA=="],
+
+    "tinyglobby": ["tinyglobby@0.2.15", "", { "dependencies": { "fdir": "^6.5.0", "picomatch": "^4.0.3" } }, "sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ=="],
 
     "tldts": ["tldts@6.0.16", "", { "dependencies": { "tldts-core": "^6.0.16" }, "bin": { "tldts": "bin/cli.js" } }, "sha512-TkEq38COU640mzOKPk4D1oH3FFVvwEtMaKIfw/+F/umVsy7ONWu8PPQH0c11qJ/Jq/zbcQGprXGsT8GcaDSmJg=="],
 
@@ -1256,7 +1256,7 @@
 
     "viem": ["viem@2.33.3", "", { "dependencies": { "@noble/curves": "1.9.2", "@noble/hashes": "1.8.0", "@scure/bip32": "1.7.0", "@scure/bip39": "1.6.0", "abitype": "1.0.8", "isows": "1.0.7", "ox": "0.8.6", "ws": "8.18.2" }, "peerDependencies": { "typescript": ">=5.0.4" }, "optionalPeers": ["typescript"] }, "sha512-aWDr6i6r3OfNCs0h9IieHFhn7xQJJ8YsuA49+9T5JRyGGAkWhLgcbLq2YMecgwM7HdUZpx1vPugZjsShqNi7Gw=="],
 
-    "vite": ["vite@5.4.19", "", { "dependencies": { "esbuild": "^0.21.3", "postcss": "^8.4.43", "rollup": "^4.20.0" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^18.0.0 || >=20.0.0", "less": "*", "lightningcss": "^1.21.0", "sass": "*", "sass-embedded": "*", "stylus": "*", "sugarss": "*", "terser": "^5.4.0" }, "optionalPeers": ["@types/node", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser"], "bin": { "vite": "bin/vite.js" } }, "sha512-qO3aKv3HoQC8QKiNSTuUM1l9o/XX3+c+VTgLHbJWHZGeTPVAg2XwazI9UWzoxjIJCGCV2zU60uqMzjeLZuULqA=="],
+    "vite": ["vite@7.1.7", "", { "dependencies": { "esbuild": "^0.25.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-VbA8ScMvAISJNJVbRDTJdCwqQoAareR/wutevKanhR2/1EkoXVZVkkORaYm/tNVCjP/UDTKtcw3bAkwOUdedmA=="],
 
     "void-elements": ["void-elements@3.1.0", "", {}, "sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w=="],
 
@@ -1436,6 +1436,8 @@
 
     "@walletconnect/window-metadata/tslib": ["tslib@1.14.1", "", {}, "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg=="],
 
+    "anymatch/picomatch": ["picomatch@2.3.1", "", {}, "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA=="],
+
     "borsh/bs58": ["bs58@4.0.1", "", { "dependencies": { "base-x": "^3.0.2" } }, "sha512-Ok3Wdf5vOIlBrgCvTq96gBkJw+JUEzdBgyaza5HLtPm7yTHkjRy8+JzNyHF7BHa0bNWOQIp3m5YF0nnFcOIKLw=="],
 
     "bs58check/bs58": ["bs58@6.0.0", "", { "dependencies": { "base-x": "^5.0.0" } }, "sha512-PD0wEnEYg6ijszw/u8s+iI3H17cTymlrwkKhDhPZq+Sokl3AU4htyBFTjAeNAlCCmg0f53g6ih3jATyCKftTfw=="],
@@ -1457,6 +1459,8 @@
     "formik/tslib": ["tslib@1.14.1", "", {}, "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg=="],
 
     "jayson/ws": ["ws@7.5.10", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": "^5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ=="],
+
+    "micromatch/picomatch": ["picomatch@2.3.1", "", {}, "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA=="],
 
     "obj-multiplex/readable-stream": ["readable-stream@2.3.8", "", { "dependencies": { "core-util-is": "~1.0.0", "inherits": "~2.0.3", "isarray": "~1.0.0", "process-nextick-args": "~2.0.0", "safe-buffer": "~5.1.1", "string_decoder": "~1.1.1", "util-deprecate": "~1.0.1" } }, "sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA=="],
 

@@ -40,7 +40,7 @@ list_all_projects () {
 }
 
 list_dynamic_deps () {
-    for dep in $(jq -r '(.dependencies // {})|keys[]' package.json | grep -Ee '^@dynamic-labs/'); do
+    for dep in $(jq -r '(.dependencies // {})|keys[]' package.json | grep -Ee '^@dynamic-labs/|^@dynamic-labs-sdk/'); do
         # Skip dependencies that are explicitly pinned to "*"
         if [ "$(jq -r ".dependencies.\"$dep\"" package.json)" != "*" ]; then
             # Skip sdk-api-core as it has a different versioning scheme
@@ -69,12 +69,19 @@ detect_package_manager() {
 
 for proj in $(list_all_projects); do
     echo "==> Upgrade $proj to $VERSION"
-    ( cd "$proj" && case "$(detect_package_manager)" in
-        bun)
-            bun add $(list_install_args) ;;
-        pnpm)
-            pnpm add --ignore-workspace $(list_install_args) ;;
-        npm)
-            npm install $(list_install_args) ;;
-    esac )
+    ( cd "$proj" && 
+        install_args=$(list_install_args)
+        if [ -n "$install_args" ]; then
+            case "$(detect_package_manager)" in
+                bun)
+                    bun add $install_args ;;
+                pnpm)
+                    pnpm add --ignore-workspace $install_args ;;
+                npm)
+                    npm install $install_args ;;
+            esac
+        else
+            echo "No Dynamic Labs packages found, skipping..."
+        fi
+    )
 done

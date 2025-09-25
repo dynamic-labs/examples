@@ -13,11 +13,11 @@
     "build:analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@dynamic-labs/ethereum": "^4.31.4",
-    "@dynamic-labs/ethereum-aa": "^4.31.4",
-    "@dynamic-labs/sdk-react-core": "^4.31.4",
-    "@dynamic-labs/solana": "^4.31.4",
-    "@dynamic-labs/wagmi-connector": "^4.31.4",
+    "@dynamic-labs/ethereum": "^4.32.1",
+    "@dynamic-labs/ethereum-aa": "^4.32.1",
+    "@dynamic-labs/sdk-react-core": "^4.32.1",
+    "@dynamic-labs/solana": "^4.32.1",
+    "@dynamic-labs/wagmi-connector": "^4.32.1",
     "@lifi/sdk": "^3.8.11",
     "@lifi/wallet-management": "^3.14.1",
     "@radix-ui/react-dropdown-menu": "^2.1.16",

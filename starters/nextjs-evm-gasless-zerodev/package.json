@@ -8,9 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@dynamic-labs/ethereum": "^4.31.4",
-    "@dynamic-labs/ethereum-aa": "^4.31.4",
-    "@dynamic-labs/sdk-react-core": "^4.31.4",
+    "@dynamic-labs/ethereum": "^4.32.1",
+    "@dynamic-labs/ethereum-aa": "^4.32.1",
+    "@dynamic-labs/sdk-react-core": "^4.32.1",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
