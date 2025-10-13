@@ -11,7 +11,7 @@ export default function Footer({
   bottomLinks = [
     {
       text: "GitHub",
-      url: "https://github.com/dynamic-labs/stablecoin-cards-demo",
+      url: "https://github.com/dynamic-labs/examples/tree/main/examples/nextjs-stablecoin-card-rain",
     },
     { text: "Docs", url: "https://docs.dynamic.xyz" },
     { text: "Dashboard", url: "https://app.dynamic.xyz" },
