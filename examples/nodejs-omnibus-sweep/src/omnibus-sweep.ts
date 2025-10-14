@@ -20,9 +20,6 @@
  * Example: tsx omnibus-sweep.ts 10
  */
 
-import { config } from "dotenv";
-config();
-
 import { ThresholdSignatureScheme } from "@dynamic-labs-wallet/node";
 import { encodeFunctionData, Hex, LocalAccount } from "viem";
 import { baseSepolia } from "viem/chains";

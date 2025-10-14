@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-config();
+config({ quiet: true });
 
 export const DYNAMIC_API_TOKEN = process.env.DYNAMIC_API_TOKEN!;
 export const DYNAMIC_ENVIRONMENT_ID = process.env.DYNAMIC_ENVIRONMENT_ID!;
