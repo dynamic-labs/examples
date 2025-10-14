@@ -74,6 +74,18 @@ This workflow demonstrates:
 
 ## 🎯 Running the Demo
 
+### Basic Wallet Creation Demo
+
+For a simpler introduction to Dynamic wallet creation and gasless transactions, run the basic wallet demo:
+
+```bash
+pnpm create-wallet
+```
+
+This creates a single wallet with 2-of-2 threshold signatures and executes a basic gasless transaction, serving as a foundation for understanding the omnibus sweep pattern.
+
+### Omnibus Sweep Demo
+
 The omnibus sweep demo creates multiple customer wallets, funds each one, and then transfers all funds to a centralized omnibus account.
 
 **Run with default settings (10 wallets):**
