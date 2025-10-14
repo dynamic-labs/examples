@@ -17,8 +17,8 @@
  * gas-efficient manner where individual customer wallets hold funds
  * that can be swept to centralized omnibus accounts for settlement.
  *
- * Usage: tsx omnibus-sweep.ts [number_of_wallets]
- * Example: tsx omnibus-sweep.ts 10
+ * Usage: pnpm omnibus [number_of_wallets]
+ * Example: pnpm omnibus 20
  */
 
 import { ThresholdSignatureScheme } from "@dynamic-labs-wallet/node";
@@ -57,14 +57,14 @@ interface CustomerWallet {
 const USDC_ADDRESS = CONTRACTS[baseSepolia.id].USDC;
 
 // Concurrency limits for API rate limiting
-const WALLET_CREATION_LIMIT = pLimit(1);
-const TRANSACTION_LIMIT = pLimit(10);
+const WALLET_CREATION_LIMIT = pLimit(5);
+const TRANSACTION_LIMIT = pLimit(25);
 
 // Parse command line arguments
 const numWalletsArg = process.argv[2];
 
 // Demo configuration constants
-const DEFAULT_NUM_WALLETS = 5;
+const DEFAULT_NUM_WALLETS = 10;
 const MAX_USDC_AMOUNT = 1000; // Maximum USDC amount per wallet
 const USDC_DECIMALS = 6; // USDC has 6 decimals
 const TRANSACTION_CONFIRMATIONS = 2;

@@ -76,7 +76,7 @@ This workflow demonstrates:
 
 The omnibus sweep demo creates multiple customer wallets, funds each one, and then transfers all funds to a centralized omnibus account.
 
-**Run with default settings (5 wallets):**
+**Run with default settings (10 wallets):**
 
 ```bash
 pnpm omnibus
@@ -85,7 +85,7 @@ pnpm omnibus
 **Run with custom number of wallets:**
 
 ```bash
-pnpm omnibus 10
+pnpm omnibus 20
 ```
 
 ## 📊 Sample Output
