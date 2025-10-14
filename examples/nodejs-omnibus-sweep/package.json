@@ -1,0 +1,23 @@
+{
+  "name": "nodejs-omnibus-sweep",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "omnibus": "tsx src/omnibus-sweep.ts",
+    "create-wallet": "tsx src/create-wallet.ts"
+  },
+  "dependencies": {
+    "@dynamic-labs-wallet/node": "0.0.183",
+    "@dynamic-labs-wallet/node-evm": "0.0.183",
+    "@dynamic-labs-wallet/node-svm": "0.0.183",
+    "@dynamic-labs/sdk-api": "^0.0.805",
+    "dotenv": "^17.2.3",
+    "p-limit": "^7.1.1",
+    "permissionless": "^0.2.57",
+    "viem": "^2.38.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "tsx": "^4.20.6"
+  }
+}
