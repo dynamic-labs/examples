@@ -6,10 +6,11 @@
  * This demo showcases Dynamic's server-side wallet management capabilities
  * for financial institutions. It demonstrates:
  *
- * 1. Programmatic creation of customer wallets using Dynamic's API
- * 2. Gasless USDC token operations
- * 3. Omnibus account structure for fund aggregation
- * 4. Scalable concurrent transaction processing
+ * 1. Creation of omnibus account using Dynamic's API
+ * 2. Creation of multiple customer wallets using Dynamic's API
+ * 3. Gasless USDC token operations
+ * 4. Aggregation of funds from customer wallets to omnibus account
+ * 5. Scalable concurrent transaction processing
  *
  * Business Use Case:
  * You can use this pattern to manage customer funds in a compliant,
@@ -34,6 +35,7 @@ import {
   dollarsToTokenUnits,
 } from "./utils";
 import pLimit from "p-limit";
+import { DynamicEvmWalletClient } from "@dynamic-labs-wallet/node-evm";
 
 interface SendTransactionParams {
   walletClient: LocalAccount;
@@ -41,12 +43,21 @@ interface SendTransactionParams {
   data: Hex;
 }
 
+interface DynamicWalletAccount {
+  accountAddress: string;
+  externalServerKeyShares: string[];
+}
+
+interface CustomerWallet {
+  index: number;
+  wallet: DynamicWalletAccount;
+  usdcAmount: bigint;
+}
+
 const USDC_ADDRESS = CONTRACTS[baseSepolia.id].USDC;
 
-// Concurrency limits to manage API rate limits and demo performance
-// Dynamic wallet creation is rate-limited, so we use sequential processing
+// Concurrency limits for API rate limiting
 const WALLET_CREATION_LIMIT = pLimit(1);
-// Transaction processing can be more concurrent for better performance
 const TRANSACTION_LIMIT = pLimit(10);
 
 // Parse command line arguments
@@ -72,18 +83,61 @@ if (isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
   process.exit(1);
 }
 
+let dynamicEvmClient: DynamicEvmWalletClient;
+
 /**
  * Creates a new Dynamic wallet account with 2-of-2 threshold signatures.
  * This ensures that transactions require both server-side and client-side approval,
  * providing enhanced security for financial applications.
  */
-async function createWalletAccount(): Promise<DynamicWalletAccount> {
-  const dynamicEvmClient = await authenticatedEvmClient();
+async function createWalletAccount(
+  walletNumber: number
+): Promise<DynamicWalletAccount | null> {
+  if (!dynamicEvmClient) dynamicEvmClient = await authenticatedEvmClient();
 
-  return await dynamicEvmClient.createWalletAccount({
-    thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-    backUpToClientShareService: false,
-  });
+  // Create timeout promise to prevent hanging
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(
+      () =>
+        reject(new Error(`Wallet creation timeout for wallet ${walletNumber}`)),
+      60000 // 60 second timeout
+    )
+  );
+
+  // Create wallet with retry logic and exponential backoff
+  const createWallet = async (): Promise<DynamicWalletAccount | null> => {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        return await dynamicEvmClient!.createWalletAccount({
+          thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
+          backUpToClientShareService: false,
+        });
+      } catch (error) {
+        if (attempt === 5) break; // Don't delay after last attempt
+
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.error(
+          `Retrying to create wallet account ${walletNumber}. Attempt ${attempt}/5 in ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+
+    console.info(
+      `Failed to create wallet account ${walletNumber} after 5 retries. Skipping...`
+    );
+    return null;
+  };
+
+  try {
+    return await Promise.race([createWallet(), timeoutPromise]);
+  } catch (error) {
+    console.error(
+      `Wallet creation timed out for wallet ${walletNumber}:`,
+      error
+    );
+    return null;
+  }
 }
 
 /**
@@ -93,7 +147,8 @@ async function createWalletAccount(): Promise<DynamicWalletAccount> {
 async function createWalletClientForCustomer(
   customerWallet: CustomerWallet
 ): Promise<LocalAccount> {
-  const dynamicEvmClient = await authenticatedEvmClient();
+  if (!dynamicEvmClient) dynamicEvmClient = await authenticatedEvmClient();
+
   return getWalletClient({
     dynamicEvmClient,
     address: customerWallet.wallet.accountAddress,
@@ -123,29 +178,20 @@ async function sendTransactionAndWait({
   return hash;
 }
 
-/** Represents a Dynamic wallet account returned from createWalletAccount */
-interface DynamicWalletAccount {
-  accountAddress: string;
-  externalServerKeyShares: string[];
-}
-
-/** Represents a customer wallet with its associated metadata for the demo */
-interface CustomerWallet {
-  index: number;
-  wallet: DynamicWalletAccount;
-  address: string;
-  usdcAmount: bigint;
-}
-
 /**
  * Creates a customer wallet account and assigns it a random USDC amount for the demo.
  * This encapsulates the wallet creation logic and amount assignment in a single function.
  */
-async function createCustomerWallet(index: number): Promise<CustomerWallet> {
+async function createCustomerWallet(
+  index: number
+): Promise<CustomerWallet | null> {
   const walletNumber = index + 1;
-  const customerWallet = await createWalletAccount();
-  const walletAddress = formatAddress(customerWallet.accountAddress);
-  console.info(`Customer wallet ${walletNumber} created: ${walletAddress}`);
+  const customerWallet = await createWalletAccount(index);
+  if (!customerWallet) return null;
+
+  console.info(
+    `Customer wallet ${walletNumber} created: ${customerWallet.accountAddress}`
+  );
 
   // Generate random USDC amount up to MAX_USDC_AMOUNT
   const usdcAmount = BigInt(Math.floor(Math.random() * MAX_USDC_AMOUNT) + 1);
@@ -153,7 +199,6 @@ async function createCustomerWallet(index: number): Promise<CustomerWallet> {
   return {
     index: walletNumber,
     wallet: customerWallet,
-    address: customerWallet.accountAddress,
     usdcAmount,
   };
 }
@@ -179,7 +224,7 @@ async function fundCustomerWallet(
   });
   console.info(
     `Funded customer wallet ${customerWallet.index} (${formatAddress(
-      customerWallet.address
+      customerWallet.wallet.accountAddress
     )}): ${customerWallet.usdcAmount} USDC - ${getTransactionLink(txHash)}`
   );
 }
@@ -210,7 +255,7 @@ async function sweepToOmnibus(
   });
   console.info(
     `Swept customer wallet ${customerWallet.index} (${formatAddress(
-      customerWallet.address
+      customerWallet.wallet.accountAddress
     )}): ${customerWallet.usdcAmount} USDC to omnibus - ${getTransactionLink(
       txHash
     )}`
@@ -238,8 +283,13 @@ async function main() {
   );
   console.info("=".repeat(60));
 
+  // Initialize the DynamicEvmWalletClient
+  dynamicEvmClient = await authenticatedEvmClient();
+
   console.info("Creating omnibus wallet for fund aggregation...");
-  const omnibusWallet = await createWalletAccount();
+  const omnibusWallet = await createWalletAccount(0);
+  if (!omnibusWallet) process.exit(1);
+
   const omnibusAddress = omnibusWallet.accountAddress;
   const omnibusAddressFormatted = formatAddress(omnibusAddress);
   console.info(`Omnibus wallet created: ${omnibusAddressFormatted}`);
@@ -250,34 +300,46 @@ async function main() {
     { length: NUM_WALLETS },
     (_, index) => WALLET_CREATION_LIMIT(() => createCustomerWallet(index))
   );
+
   const customerWallets = await Promise.all(walletCreationPromises);
+  const createdWallets = customerWallets.filter(
+    (wallet): wallet is CustomerWallet => wallet !== null
+  );
+  const failedWallets = customerWallets.filter(
+    (wallet) => wallet === null
+  ).length;
+
+  console.info(
+    `Successfully created ${createdWallets.length} out of ${NUM_WALLETS} wallets (${failedWallets} failed)`
+  );
   console.info("");
 
-  console.info(`Funding ${NUM_WALLETS} customer wallets with USDC tokens...`);
-  const fundingPromises = customerWallets.map((customerWallet) =>
+  console.info(
+    `Funding ${createdWallets.length} customer wallets with USDC tokens...`
+  );
+  const fundingPromises = createdWallets.map((customerWallet) =>
     TRANSACTION_LIMIT(() => fundCustomerWallet(customerWallet))
   );
   await Promise.all(fundingPromises);
   console.info("");
 
   console.info(
-    `Sweeping funds from ${NUM_WALLETS} customer wallets to omnibus account...`
+    `Sweeping funds from ${createdWallets.length} customer wallets to omnibus account...`
   );
-  const sweepPromises = customerWallets.map((customerWallet) =>
+  const sweepPromises = createdWallets.map((customerWallet) =>
     TRANSACTION_LIMIT(() =>
       sweepToOmnibus(customerWallet, omnibusAddress as `0x${string}`)
     )
   );
+
   const usdcAmounts = await Promise.all(sweepPromises);
 
-  const totalTransferred = usdcAmounts.reduce(
-    (sum: bigint, amount: bigint) => sum + amount,
-    0n
-  );
+  const totalSwept = usdcAmounts.reduce((sum, amount) => sum + amount, 0n);
+
   console.info("");
   console.info("=".repeat(60));
   console.info(`Demo completed successfully.`);
-  console.info(`Total USDC transferred: ${totalTransferred} USDC`);
+  console.info(`Total USDC transferred: ${totalSwept} USDC`);
   console.info(
     `Omnibus wallet address: ${omnibusAddressFormatted} - ${getAddressLink(
       omnibusAddress

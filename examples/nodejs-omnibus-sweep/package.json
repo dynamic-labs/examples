@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "@dynamic-labs-wallet/node": "^0.0.182",
-    "@dynamic-labs-wallet/node-evm": "0.0.0-beta.323",
+    "@dynamic-labs-wallet/node-evm": "0.0.0-beta.324",
     "@dynamic-labs-wallet/node-svm": "^0.0.182",
     "@dynamic-labs/sdk-api": "^0.0.805",
     "dotenv": "^17.2.3",
