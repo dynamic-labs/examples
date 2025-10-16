@@ -22,7 +22,7 @@ export const authenticatedSvmClient = async (args?: ClientProps) => {
   const environmentId = args?.environmentId ?? DYNAMIC_ENVIRONMENT_ID;
   const authToken = args?.authToken ?? DYNAMIC_API_TOKEN;
 
-  const client = new DynamicSvmWalletClient({ environmentId, authToken });
+  const client = new DynamicSvmWalletClient({ environmentId });
   await client.authenticateApiToken(authToken);
   return client;
 };

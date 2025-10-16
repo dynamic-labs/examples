@@ -22,20 +22,20 @@
  */
 
 import { ThresholdSignatureScheme } from "@dynamic-labs-wallet/node";
-import { encodeFunctionData, Hex, LocalAccount } from "viem";
+import type { DynamicEvmWalletClient } from "@dynamic-labs-wallet/node-evm";
+import pLimit from "p-limit";
+import { encodeFunctionData, type Hex, type LocalAccount } from "viem";
 import { baseSepolia } from "viem/chains";
 import { CONTRACTS, TOKEN_ABI } from "../constants";
 import { authenticatedEvmClient } from "./libs/dynamic";
 import { getAuthorization, getSmartAccountClient } from "./libs/pimlico";
-import { getWalletClient, getPublicClient } from "./libs/viem";
+import { getPublicClient, getWalletClient } from "./libs/viem";
 import {
-  formatAddress,
-  getTransactionLink,
-  getAddressLink,
   dollarsToTokenUnits,
+  formatAddress,
+  getAddressLink,
+  getTransactionLink,
 } from "./utils";
-import pLimit from "p-limit";
-import { DynamicEvmWalletClient } from "@dynamic-labs-wallet/node-evm";
 
 interface SendTransactionParams {
   walletClient: LocalAccount;
@@ -71,10 +71,10 @@ const TRANSACTION_CONFIRMATIONS = 2;
 
 // Configuration with defaults
 const NUM_WALLETS = numWalletsArg
-  ? parseInt(numWalletsArg)
+  ? parseInt(numWalletsArg, 10)
   : DEFAULT_NUM_WALLETS;
 // Validate inputs
-if (isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
+if (Number.isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
   console.error(
     "Error: Please provide a positive integer for the number of customer wallets to create"
   );
@@ -108,14 +108,14 @@ async function createWalletAccount(
   const createWallet = async (): Promise<DynamicWalletAccount | null> => {
     for (let attempt = 1; attempt <= 5; attempt++) {
       try {
-        return await dynamicEvmClient!.createWalletAccount({
+        return await dynamicEvmClient?.createWalletAccount({
           thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
           backUpToClientShareService: false,
         });
-      } catch (error) {
+      } catch (_error) {
         if (attempt === 5) break; // Don't delay after last attempt
 
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
         console.error(
           `Retrying to create wallet account ${walletNumber}. Attempt ${attempt}/5 in ${delay}ms...`
         );
@@ -153,7 +153,6 @@ async function createWalletClientForCustomer(
     dynamicEvmClient,
     address: customerWallet.wallet.accountAddress,
     externalServerKeyShares: customerWallet.wallet.externalServerKeyShares,
-    chain: baseSepolia,
   });
 }
 
