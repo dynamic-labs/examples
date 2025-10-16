@@ -1,0 +1,53 @@
+{
+  "description": "Morpho Lite monorepo with Dynamic wallet integration - embedded wallets, social login, and account abstraction",
+  "author": "Morpho Association <contact@morpho.org>",
+  "contributors": [
+    "Hayden Shively <hayden@morpho.xyz>",
+    "Eric Tesenair <et@dynamic.xyz>"
+  ],
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "uikit:build": "pnpm --filter '@morpho-org/uikit' build",
+    "uikit:example": "pnpm uikit:build && pnpm --filter '@morpho-org/uikit' '/^(dev|example)$/'",
+    "lite-app:build": "pnpm uikit:build && pnpm --filter '@morpho-org/lite-app' build-this",
+    "lite-app:dev": "pnpm uikit:build && pnpm --parallel --filter '@morpho-org/lite-app'... dev",
+    "lint": "pnpm --filter './**' lint",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "**/*": [
+      "eslint",
+      "prettier --write --ignore-unknown"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@morpho-org/test": "^2.1.1",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.13.1",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-import-resolver-next": "^0.4.3",
+    "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "husky": "^9.1.7",
+    "jsdom": "^26.0.0",
+    "lint-staged": "^15.4.3",
+    "postcss": "^8.5.1",
+    "prettier": "3.5.0",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vitest": "^3.1.1"
+  }
+}
