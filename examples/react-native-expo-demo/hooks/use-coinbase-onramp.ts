@@ -1,6 +1,6 @@
 import { useApiClient } from "../lib/apiClient";
 
-import { CreateOnrampOrderParams, OnrampOrderResponse } from "../types";
+import type { CreateOnrampOrderParams, OnrampOrderResponse } from "../types";
 
 /**
  * Coinbase Onramp Hook

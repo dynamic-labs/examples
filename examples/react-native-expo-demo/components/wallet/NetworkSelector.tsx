@@ -1,8 +1,8 @@
+import { useReactiveClient } from "@dynamic-labs/react-hooks";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity } from "react-native";
-import { Image } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
-import { useReactiveClient } from "@dynamic-labs/react-hooks";
 
 import { dynamicClient } from "@/lib/dynamic";
 import NetworkModal from "./NetworkModal";

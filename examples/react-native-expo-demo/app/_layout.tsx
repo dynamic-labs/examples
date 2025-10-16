@@ -1,19 +1,19 @@
 import "../polyfills";
 
-import { useEffect, useState } from "react";
-import { Stack, useRouter, useSegments } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useReactiveClient } from "@dynamic-labs/react-hooks";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 
-import { dynamicClient } from "@/lib/dynamic";
 import LoadingScreen from "@/components/login/LoadingScreen";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { dynamicClient } from "@/lib/dynamic";
 
 export const unstable_settings = {
   initialRouteName: "login",
@@ -65,11 +65,7 @@ export default function RootLayout() {
 
   // Show loading screen while checking authentication
   if (isLoading) {
-    return (
-      <>
-        <LoadingScreen text="Loading..." />
-      </>
-    );
+    return <LoadingScreen text="Loading..." />;
   }
 
   return (

@@ -5,7 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  TextInput,
+  type TextInput,
   TouchableWithoutFeedback,
   View,
 } from "react-native";

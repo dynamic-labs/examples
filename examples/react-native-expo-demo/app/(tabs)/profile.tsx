@@ -1,6 +1,7 @@
-import { useState } from "react";
-import * as Clipboard from "expo-clipboard";
+import { useReactiveClient } from "@dynamic-labs/react-hooks";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import { useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -10,7 +11,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useReactiveClient } from "@dynamic-labs/react-hooks";
 
 import { dynamicClient } from "@/lib/dynamic";
 

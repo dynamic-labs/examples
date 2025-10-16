@@ -1,3 +1,4 @@
+import { useReactiveClient } from "@dynamic-labs/react-hooks";
 import {
   forwardRef,
   useCallback,
@@ -6,7 +7,6 @@ import {
   useState,
 } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useReactiveClient } from "@dynamic-labs/react-hooks";
 
 import { dynamicClient } from "@/lib/dynamic";
 
@@ -35,6 +35,7 @@ const BalanceSection = forwardRef<
   }, [client.wallets]);
 
   useEffect(() => {
+    if (!selectedNetworkId) return;
     fetchBalance();
   }, [fetchBalance, selectedNetworkId]);
 

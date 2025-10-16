@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
 import { useReactiveClient } from "@dynamic-labs/react-hooks";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,

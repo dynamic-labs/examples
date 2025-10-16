@@ -4,8 +4,8 @@ import { Alert } from "react-native";
 import { dynamicClient } from "@/lib/dynamic";
 import {
   CoinbaseErrorCodes,
-  OnrampEvent,
   type CoinbaseOrder,
+  type OnrampEvent,
   type TransactionStatus,
   type WebViewMessageEvent,
 } from "../types";

@@ -58,7 +58,7 @@ export default function OTPVerificationScreen({
         <View style={styles.otpContainer}>
           {otpArray.map((digit, index) => (
             <View
-              key={index}
+              key={digit}
               style={[
                 styles.otpBox,
                 digit && styles.otpBoxFilled,

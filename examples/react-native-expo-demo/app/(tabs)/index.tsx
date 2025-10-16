@@ -1,3 +1,4 @@
+import { useReactiveClient } from "@dynamic-labs/react-hooks";
 import { useRef, useState } from "react";
 import {
   Alert,
@@ -7,7 +8,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useReactiveClient } from "@dynamic-labs/react-hooks";
 
 import ActionButtons from "@/components/wallet/ActionButtons";
 import BalanceSection from "@/components/wallet/BalanceSection";

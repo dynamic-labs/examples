@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import {
   Modal,
   ScrollView,
@@ -6,8 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 
 interface NetworkOption {
   name: string;

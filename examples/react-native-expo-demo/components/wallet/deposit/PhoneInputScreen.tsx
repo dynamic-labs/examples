@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import {
   Image,
   InputAccessoryView,
@@ -12,7 +13,7 @@ interface PhoneInputScreenProps {
   phone: string;
   onPhoneChange: (text: string) => void;
   onSubmit: () => void;
-  phoneInputRef: React.RefObject<TextInput>;
+  phoneInputRef: RefObject<TextInput>;
 }
 
 export default function PhoneInputScreen({
@@ -43,9 +44,7 @@ export default function PhoneInputScreen({
     // Extract only digits
     const digits = text.replace(/\D/g, "");
     // Limit to 10 digits
-    if (digits.length <= 10) {
-      onPhoneChange(digits);
-    }
+    if (digits.length <= 10) onPhoneChange(digits);
   };
 
   const isPhoneValid = phone.length === 10;

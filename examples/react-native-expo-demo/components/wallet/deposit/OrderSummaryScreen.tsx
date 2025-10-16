@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { CoinbaseOrder } from "@/hooks/types";
+import type { CoinbaseOrder } from "../../../types";
 
 interface OrderSummaryScreenProps {
   amount: string;

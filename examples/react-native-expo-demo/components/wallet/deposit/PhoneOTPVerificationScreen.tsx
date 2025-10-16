@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import {
   Image,
   InputAccessoryView,
@@ -15,7 +16,7 @@ interface PhoneOTPVerificationScreenProps {
   phone: string;
   onOtpChange: (text: string) => void;
   onBack: () => void;
-  hiddenInputRef: React.RefObject<TextInput>;
+  hiddenInputRef: RefObject<TextInput>;
 }
 
 export default function PhoneOTPVerificationScreen({
@@ -74,7 +75,7 @@ export default function PhoneOTPVerificationScreen({
           <View style={styles.otpContainer}>
             {otpArray.map((digit, index) => (
               <View
-                key={index}
+                key={digit}
                 style={[
                   styles.otpBox,
                   digit && styles.otpBoxFilled,

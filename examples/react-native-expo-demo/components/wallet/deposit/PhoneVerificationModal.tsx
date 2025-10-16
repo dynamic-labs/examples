@@ -1,3 +1,5 @@
+import { useReactiveClient } from "@dynamic-labs/react-hooks";
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -6,13 +8,11 @@ import {
   Modal,
   Platform,
   StyleSheet,
-  TextInput,
+  type TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { useReactiveClient } from "@dynamic-labs/react-hooks";
-import { Ionicons } from "@expo/vector-icons";
 
 import { dynamicClient } from "@/lib/dynamic";
 import LoadingScreen from "../../login/LoadingScreen";
@@ -172,18 +172,16 @@ export default function PhoneVerificationModal({
           style={styles.modalContent}
           keyboardVerticalOffset={0}
         >
-          <>
-            {/* Close Button */}
-            {!isVerifying && (
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Ionicons name="close" size={28} color="#fff" />
-              </TouchableOpacity>
-            )}
+          {/* Close Button */}
+          {!isVerifying && (
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
 
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.content}>{renderContent()}</View>
-            </TouchableWithoutFeedback>
-          </>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.content}>{renderContent()}</View>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </TouchableOpacity>
     </Modal>

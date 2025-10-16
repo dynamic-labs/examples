@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import {
   Image,
   StyleSheet,
@@ -11,7 +12,7 @@ interface EmailInputScreenProps {
   email: string;
   onEmailChange: (email: string) => void;
   onSubmit: () => void;
-  emailInputRef: React.RefObject<TextInput>;
+  emailInputRef: RefObject<TextInput>;
 }
 
 export default function EmailInputScreen({

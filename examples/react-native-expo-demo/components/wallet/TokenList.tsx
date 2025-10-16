@@ -1,3 +1,5 @@
+import { useReactiveClient } from "@dynamic-labs/react-hooks";
+import { ChainEnum } from "@dynamic-labs/sdk-api-core";
 import {
   forwardRef,
   useCallback,
@@ -7,11 +9,8 @@ import {
   useState,
 } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
-import { ChainEnum } from "@dynamic-labs/sdk-api-core";
-
 import { dynamicClient } from "@/lib/dynamic";
 import TokenItem from "./TokenItem";
-import { useReactiveClient } from "@dynamic-labs/react-hooks";
 
 interface Token {
   symbol: string;
@@ -84,7 +83,7 @@ const TokenList = forwardRef<{ refresh: () => Promise<void> }, TokenListProps>(
 
     useEffect(() => {
       fetchBalances();
-    }, [fetchBalances, selectedNetworkId]);
+    }, [fetchBalances]);
 
     // Expose refresh method to parent via ref
     useImperativeHandle(ref, () => ({
