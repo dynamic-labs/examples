@@ -1,24 +1,27 @@
 import {
   createSmartAccountClient,
-  SmartAccountClient as PermissionlessSmartAccountClient,
+  type SmartAccountClient as PermissionlessSmartAccountClient,
 } from "permissionless";
 import { to7702SimpleSmartAccount } from "permissionless/accounts";
 import { createPimlicoClient } from "permissionless/clients/pimlico";
 import {
-  Chain,
-  Client,
+  type Chain,
+  type Client,
   http,
-  RpcSchema,
-  SignAuthorizationReturnType,
-  Transport,
-  LocalAccount,
+  type LocalAccount,
+  type RpcSchema,
+  type SignAuthorizationReturnType,
+  type Transport,
 } from "viem";
-import { entryPoint07Address, SmartAccount } from "viem/account-abstraction";
-import { getPublicClient } from "./viem";
+import {
+  entryPoint07Address,
+  type SmartAccount,
+} from "viem/account-abstraction";
 import {
   ACCOUNT_IMPLEMENTATION_ADDRESS,
   PIMLICO_API_KEY,
 } from "../../constants";
+import { getPublicClient } from "./viem";
 
 export type SmartAccountClient = PermissionlessSmartAccountClient<
   Transport,
@@ -76,6 +79,7 @@ export async function getSmartAccountClient(
   const client = getPublicClient({ chain });
 
   const account = await to7702SimpleSmartAccount({ client, owner });
+  console.info(`Smart account created...`);
 
   return createSmartAccountClient({
     client,
@@ -100,9 +104,10 @@ export async function getAuthorization(
   }
 
   const nonce = await client.getTransactionCount({ address });
-  return await owner.signAuthorization({
+  const authorization = await owner.signAuthorization({
     address: ACCOUNT_IMPLEMENTATION_ADDRESS,
     chainId: chain.id,
     nonce,
   });
+  return authorization;
 }

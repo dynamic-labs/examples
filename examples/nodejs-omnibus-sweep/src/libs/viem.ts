@@ -1,11 +1,11 @@
+import type { DynamicEvmWalletClient } from "@dynamic-labs-wallet/node-evm";
 import {
-  Chain,
-  type Hex,
-  type LocalAccount,
+  type Chain,
   createPublicClient,
+  type Hex,
   http,
+  type LocalAccount,
 } from "viem";
-import { type DynamicEvmWalletClient } from "@dynamic-labs-wallet/node-evm";
 
 interface GetPublicClientParams {
   chain: Chain;
@@ -18,7 +18,6 @@ interface CreateWalletAccountParams {
   externalServerKeyShares?: Awaited<
     ReturnType<DynamicEvmWalletClient["createWalletAccount"]>
   >["externalServerKeyShares"];
-  chain: Chain;
 }
 
 export function getPublicClient({ chain, rpcUrl }: GetPublicClientParams) {
@@ -33,7 +32,6 @@ export function getWalletClient({
   dynamicEvmClient,
   address,
   externalServerKeyShares,
-  chain,
 }: CreateWalletAccountParams) {
   const account = {
     address: address as `0x${string}`,

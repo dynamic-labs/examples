@@ -46,14 +46,12 @@ async function main() {
     dynamicEvmClient,
     address: wallet.accountAddress,
     externalServerKeyShares: wallet.externalServerKeyShares,
-    chain: baseSepolia,
   });
 
-  const smartAccount = await getSmartAccountClient(baseSepolia, walletClient);
-  console.info(`Smart account created...`);
-
-  const authorization = await getAuthorization(baseSepolia, walletClient);
-  console.info(`Authorization created...`);
+  const [smartAccount, authorization] = await Promise.all([
+    getSmartAccountClient(baseSepolia, walletClient),
+    getAuthorization(baseSepolia, walletClient),
+  ]);
 
   const hash = await smartAccount.sendTransaction({
     to: zeroAddress,
