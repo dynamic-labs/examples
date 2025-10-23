@@ -77,9 +77,7 @@ export async function getSmartAccountClient(
   const { bundlerTransport } = getPimlicoClientsForChain(chain.id, opts);
   const paymaster = createPimlicoPaymasterClient(chain.id, opts);
   const client = getPublicClient({ chain });
-
   const account = await to7702SimpleSmartAccount({ client, owner });
-  console.info(`Smart account created...`);
 
   return createSmartAccountClient({
     client,

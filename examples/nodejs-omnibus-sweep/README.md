@@ -1,40 +1,33 @@
-# Dynamic Omnibus Sweep
+# Dynamic Server-Side Wallet Management
 
-This demo shows a complete server-side wallet management workflow. It uses Dynamic's SDK to create wallets, execute gasless transactions, and aggregate funds through an omnibus account structure.
+This collection of demos shows comprehensive server-side wallet management workflows using Dynamic's SDK. From basic wallet operations to complex fund aggregation patterns, these examples demonstrate how to build secure, scalable financial infrastructure.
 
-## 🎯 Demo Overview
+## 🎯 What You'll Learn
 
-The omnibus sweep pattern performs three main steps:
+These demos cover the complete spectrum of server-side wallet operations:
 
-1. **Create wallets**: Generate multiple customer wallets and one omnibus account
-2. **Fund wallets**: Add random USDC amounts to each customer wallet
-3. **Sweep funds**: Transfer all funds from customer wallets to the omnibus account
+### 1. Wallet Management
 
-This workflow demonstrates:
+- Create ephemeral or persistent server-side wallets
+- Password protection for enhanced security
+- List and manage saved wallets with local storage
+- Complete wallet lifecycle (create, save, list, delete)
 
-### 1. Programmatic Wallet Creation
+### 2. Transaction Signing & Sending
 
-- Server-side creation of customer wallets with 2-of-2 threshold signatures
-- Automatic generation of omnibus accounts for fund collection
-- Complete wallet lifecycle management handled server-side
-
-### 2. Gasless USDC Operations
-
-- Mint USDC tokens to customer wallets without paying gas fees
-- Transfer USDC from customer wallets to omnibus without gas fees
-- Zero-friction token operations for seamless user experience
+- Sign messages for authentication and verification
+- Send transactions with multiple gas providers:
+  - Standard (user pays gas)
+  - ZeroDev (gasless sponsorship)
+  - Pimlico (gasless sponsorship)
+- Support for both new and saved wallets
 
 ### 3. Omnibus Fund Aggregation
 
-- Centralized collection of customer funds into omnibus accounts
-- Streamlined settlement processing for financial institutions
-- Clear separation and tracking of customer funds
-
-### 4. Scalable Concurrent Processing
-
-- Rate-limited wallet creation (1 wallet per second) to respect API limits
-- Parallel transaction processing (up to 10 concurrent operations)
-- Optimized performance for handling multiple customer wallets
+- Create multiple customer wallets and centralized omnibus accounts
+- Fund customer wallets with USDC tokens
+- Sweep all funds to omnibus account in parallel
+- Rate-limited wallet creation and concurrent transaction processing
 
 ## 🛡️ Security Features
 
@@ -45,10 +38,10 @@ This workflow demonstrates:
 
 ## 🏗️ Technical Stack
 
-- **Dynamic SDK**: Handles server-side wallet creation and signature management
-- **Pimlico**: Provides gasless transaction sponsorship on Base Sepolia testnet
-- **Viem**: Manages Ethereum transaction encoding and blockchain interaction
-- **Base Sepolia testnet**: Test environment for USDC token operations
+- **Dynamic SDK**: Server-side wallet creation, signature management, and transaction signing
+- **Pimlico & ZeroDev**: Gasless transaction sponsorship providers
+- **Viem**: Ethereum transaction encoding and blockchain interaction
+- **Base Sepolia testnet**: Test environment for demonstrations
 
 ## 📋 Prerequisites
 
@@ -72,37 +65,113 @@ This workflow demonstrates:
    PIMLICO_API_KEY=your_pimlico_api_key
    ```
 
-## 🎯 Running the Demo
+## 🎯 Running the Demos
 
-### Basic Wallet Creation Demo
+### 1. Wallet Management (`pnpm wallet`)
 
-For a simpler introduction to Dynamic wallet creation and gasless transactions, run the basic wallet demo:
+Create and manage server-side wallets with various options:
 
 ```bash
-pnpm create-wallet
+# Create ephemeral wallet (not saved)
+pnpm wallet --create
+
+# Create and save wallet for reuse
+pnpm wallet --create --save
+
+# Create wallet with password protection
+pnpm wallet --create --save --password mySecretPassword
+
+# List all saved wallets
+pnpm wallet --list
+
+# Delete a saved wallet
+pnpm wallet --delete 0x123...
 ```
 
-This creates a single wallet with 2-of-2 threshold signatures and executes a basic gasless transaction, serving as a foundation for understanding the omnibus sweep pattern.
+### 2. Message Signing (`pnpm sign-msg`)
 
-### Omnibus Sweep Demo
-
-The omnibus sweep demo creates multiple customer wallets, funds each one, and then transfers all funds to a centralized omnibus account.
-
-**Run with default settings (10 wallets):**
+Sign messages for authentication and verification:
 
 ```bash
+# Sign with new ephemeral wallet
+pnpm sign-msg "Hello, World!"
+
+# Sign with saved wallet
+pnpm sign-msg "Hello, World!" --address 0x123...
+
+# Sign with password-protected wallet
+pnpm sign-msg "Hello, World!" --address 0x123... --password myPassword
+```
+
+### 3. Send Transactions (`pnpm send-txn`)
+
+Send transactions with different gas sponsorship options:
+
+```bash
+# Standard transaction (user pays gas)
+pnpm send-txn standard
+
+# Gasless with ZeroDev
+pnpm send-txn zerodev
+
+# Gasless with Pimlico
+pnpm send-txn pimlico
+
+# Use saved wallet
+pnpm send-txn zerodev --address 0x123...
+
+# Use password-protected wallet
+pnpm send-txn pimlico --address 0x123... --password myPassword
+```
+
+### 4. Omnibus Sweep (`pnpm omnibus`)
+
+Create multiple customer wallets, fund them, and sweep all funds to an omnibus account:
+
+```bash
+# Run with default settings (10 wallets)
 pnpm omnibus
-```
 
-**Run with custom number of wallets:**
-
-```bash
+# Run with custom number of wallets
 pnpm omnibus 20
 ```
 
 ## 📊 Sample Output
 
-Here's what you'll see when running the demo with 10 wallets:
+### Wallet Creation
+
+```
+Creating server wallet...
+✅ Server wallet created in 2.34s
+📍 Address: 0x7E3629...5A02f0
+💡 Tip: Add '--save' flag to persist wallet for reuse
+```
+
+### Message Signing
+
+```
+Signing message...
+
+✅ Message signed in 1.45s
+📝 Message: "Hello, World!"
+✍️ Signature: 0xabc123...def456
+👛 Signer: 0x7E3629...5A02f0
+```
+
+### Send Transaction
+
+```
+Creating Pimlico smart account...
+Sending gasless transaction (Pimlico)...
+
+✅ Transaction sent in 3.21s
+📝 Hash: 0x789...012
+🔗 Explorer: https://sepolia.basescan.org/tx/0x789...012
+💳 Provider: pimlico
+👛 Wallet: 0x7E3629...5A02f0
+```
+
+### Omnibus Sweep
 
 ```
 Dynamic Gasless Transaction Demo - Omnibus Sweep
