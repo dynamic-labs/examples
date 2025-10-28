@@ -21,13 +21,11 @@ export function useTransactionOperations(
     setOperationError(null);
 
     try {
-      // Convert amount to smallest unit (with decimals)
       const decimals = strategy.assetDecimals;
       const amountInSmallestUnit = BigInt(
         Math.floor(parseFloat(amount) * 10 ** decimals)
       ).toString();
 
-      // Get bytecode from Pods API
       const { bytecode } = await podsClient.getDepositBytecode({
         strategyId: strategy.id,
         chainId: selectedChainId,
@@ -36,11 +34,10 @@ export function useTransactionOperations(
         wallet: walletClient.account.address,
       });
 
-      // Execute all transactions in the bytecode array
       let lastHash: string | undefined;
       for (const tx of bytecode) {
         const hash = await walletClient.sendTransaction({
-          chain: undefined,
+          chain: walletClient.chain,
           account: walletClient.account,
           to: tx.to as `0x${string}`,
           value: BigInt(tx.value),
