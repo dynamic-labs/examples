@@ -4,13 +4,15 @@
   "description": "",
   "scripts": {
     "omnibus": "tsx src/omnibus-sweep.ts",
-    "create-wallet": "tsx src/create-wallet.ts"
+    "wallet": "tsx src/wallet.ts",
+    "send-txn": "tsx src/send-transaction.ts",
+    "sign-msg": "tsx src/sign-message.ts"
   },
   "dependencies": {
-    "@dynamic-labs-wallet/node": "0.0.183",
-    "@dynamic-labs-wallet/node-evm": "0.0.183",
-    "@dynamic-labs-wallet/node-svm": "0.0.183",
-    "@dynamic-labs/sdk-api": "^0.0.805",
+    "@dynamic-labs-wallet/node": "0.0.188",
+    "@dynamic-labs-wallet/node-evm": "0.0.188",
+    "@dynamic-labs-wallet/node-svm": "0.0.188",
+    "@dynamic-labs/sdk-api": "0.0.814",
     "dotenv": "^17.2.3",
     "p-limit": "^7.1.1",
     "permissionless": "^0.2.57",

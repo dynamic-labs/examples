@@ -18,6 +18,7 @@ interface CreateWalletAccountParams {
   externalServerKeyShares?: Awaited<
     ReturnType<DynamicEvmWalletClient["createWalletAccount"]>
   >["externalServerKeyShares"];
+  password?: string;
 }
 
 export function getPublicClient({ chain, rpcUrl }: GetPublicClientParams) {
@@ -32,6 +33,7 @@ export function getWalletClient({
   dynamicEvmClient,
   address,
   externalServerKeyShares,
+  password,
 }: CreateWalletAccountParams) {
   const account = {
     address: address as `0x${string}`,
@@ -43,6 +45,7 @@ export function getWalletClient({
         accountAddress: address,
         externalServerKeyShares,
         message,
+        ...(password && { password }),
       });
       return signature as Hex;
     },
@@ -51,6 +54,7 @@ export function getWalletClient({
         accountAddress: address,
         externalServerKeyShares,
         typedData: parameters,
+        ...(password && { password }),
       })) as Hex;
     },
     signTransaction: async (transaction: any) => {
@@ -58,6 +62,7 @@ export function getWalletClient({
         senderAddress: address,
         externalServerKeyShares,
         transaction,
+        ...(password && { password }),
       })) as Hex;
     },
     signAuthorization: async (parameters: any) => {
@@ -65,6 +70,7 @@ export function getWalletClient({
         accountAddress: address,
         externalServerKeyShares,
         authorization: parameters,
+        ...(password && { password }),
       });
       // Return the complete signed authorization (original data + signature)
       return { ...parameters, ...signature };
