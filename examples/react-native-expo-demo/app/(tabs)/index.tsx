@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const tokenListRef = useRef<{ refresh: () => Promise<void> }>(null);
 
   // Get user information from Dynamic client
-  const primaryWallet = client.auth.authenticatedUser?.verifiedCredentials?.[0];
+  const primaryWallet = client.wallets.primary;
   const walletAddress = primaryWallet?.address || "";
 
   const onRefresh = async () => {

@@ -3,22 +3,32 @@
 /**
  * Dynamic Gasless Transaction Demo - Omnibus Sweep
  *
- * This demo showcases Dynamic's server-side wallet management capabilities
- * for financial institutions. It demonstrates:
+ * Demonstrates how to create and manage multiple server-side wallets
+ * with gasless transactions for financial applications.
  *
- * 1. Creation of omnibus account using Dynamic's API
- * 2. Creation of multiple customer wallets using Dynamic's API
- * 3. Gasless USDC token operations
- * 4. Aggregation of funds from customer wallets to omnibus account
- * 5. Scalable concurrent transaction processing
+ * ## What This Demo Does
  *
- * Business Use Case:
- * You can use this pattern to manage customer funds in a compliant,
- * gas-efficient manner where individual customer wallets hold funds
- * that can be swept to centralized omnibus accounts for settlement.
+ * 1. Creates an omnibus wallet for fund aggregation
+ * 2. Creates multiple customer wallets (default: 10)
+ * 3. Funds each customer wallet with random USDC amounts
+ * 4. Sweeps all funds to the omnibus wallet using gasless transactions
+ * 5. Processes transactions concurrently for scalability
  *
- * Usage: pnpm omnibus [number_of_wallets]
- * Example: pnpm omnibus 20
+ * ## Usage
+ *
+ * Run with default settings (10 wallets):
+ *   pnpm omnibus
+ *
+ * Run with custom number of wallets:
+ *   pnpm omnibus 20
+ *
+ * ## Use Case
+ *
+ * This pattern is ideal for financial institutions that need to:
+ * - Manage individual customer wallets
+ * - Aggregate funds to centralized omnibus accounts
+ * - Execute transactions without customers holding ETH for gas
+ * - Process operations at scale with concurrent transactions
  */
 
 import { ThresholdSignatureScheme } from "@dynamic-labs-wallet/node";
@@ -29,13 +39,13 @@ import { baseSepolia } from "viem/chains";
 import { CONTRACTS, TOKEN_ABI } from "../constants";
 import { authenticatedEvmClient } from "./libs/dynamic";
 import { getAuthorization, getSmartAccountClient } from "./libs/pimlico";
-import { getPublicClient, getWalletClient } from "./libs/viem";
 import {
   dollarsToTokenUnits,
   formatAddress,
   getAddressLink,
   getTransactionLink,
-} from "./utils";
+} from "./libs/utils";
+import { getPublicClient, getWalletClient } from "./libs/viem";
 
 interface SendTransactionParams {
   walletClient: LocalAccount;
@@ -86,9 +96,11 @@ if (Number.isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
 let dynamicEvmClient: DynamicEvmWalletClient;
 
 /**
- * Creates a new Dynamic wallet account with 2-of-2 threshold signatures.
- * This ensures that transactions require both server-side and client-side approval,
- * providing enhanced security for financial applications.
+ * Creates a new Dynamic wallet account with retry logic and timeout handling.
+ * Uses 2-of-2 threshold signatures for enhanced security.
+ *
+ * Note: This function includes retry logic specific to the omnibus demo.
+ * For simpler wallet creation, see wallet.ts or wallet-helpers.ts
  */
 async function createWalletAccount(
   walletNumber: number
@@ -141,8 +153,8 @@ async function createWalletAccount(
 }
 
 /**
- * Creates a wallet client for a customer wallet with the necessary Dynamic configuration.
- * This encapsulates the common wallet client setup logic used across multiple functions.
+ * Creates a wallet client for signing transactions from a customer wallet.
+ * Uses the shared getWalletClient helper from libs/viem.ts
  */
 async function createWalletClientForCustomer(
   customerWallet: CustomerWallet
@@ -157,8 +169,8 @@ async function createWalletClientForCustomer(
 }
 
 /**
- * Sends a gasless transaction using Pimlico's paymaster service and waits for confirmation.
- * This demonstrates how to execute transactions without requiring customers to hold ETH.
+ * Sends a gasless transaction using Pimlico and waits for confirmation.
+ * The paymaster sponsors gas so customers don't need ETH.
  */
 async function sendTransactionAndWait({
   walletClient,
@@ -178,8 +190,7 @@ async function sendTransactionAndWait({
 }
 
 /**
- * Creates a customer wallet account and assigns it a random USDC amount for the demo.
- * This encapsulates the wallet creation logic and amount assignment in a single function.
+ * Creates a customer wallet and assigns it a random USDC amount (1-1000).
  */
 async function createCustomerWallet(
   index: number
@@ -203,8 +214,8 @@ async function createCustomerWallet(
 }
 
 /**
- * Funds a customer wallet by minting the specified amount of USDC tokens.
- * This simulates depositing funds into a customer account.
+ * Funds a customer wallet by minting USDC tokens.
+ * In production, this would be replaced with actual token transfers.
  */
 async function fundCustomerWallet(
   customerWallet: CustomerWallet
@@ -229,8 +240,8 @@ async function fundCustomerWallet(
 }
 
 /**
- * Transfers all USDC tokens from a customer wallet to the omnibus account.
- * This demonstrates the fund aggregation pattern used in financial institutions.
+ * Transfers USDC from a customer wallet to the omnibus account.
+ * This is the core "sweep" operation that aggregates funds.
  */
 async function sweepToOmnibus(
   customerWallet: CustomerWallet,
@@ -263,14 +274,6 @@ async function sweepToOmnibus(
   return customerWallet.usdcAmount;
 }
 
-/**
- * Main demo execution flow:
- * 1. Create omnibus wallet for fund aggregation
- * 2. Create multiple customer wallets with random USDC amounts
- * 3. Fund each customer wallet with USDC tokens
- * 4. Sweep all funds from customer wallets to omnibus account
- * 5. Report total aggregated amount
- */
 async function main() {
   console.info("Dynamic Gasless Transaction Demo - Omnibus Sweep");
   console.info(
