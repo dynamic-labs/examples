@@ -82,6 +82,7 @@ export interface Position {
   balanceUSD: string;
   apy: string;
   rewards: Reward[];
+  strategyId?: string;
 }
 
 export interface WalletPositions {
@@ -160,7 +161,6 @@ export class PodsClient {
       queryParams.toString() ? `?${queryParams.toString()}` : ""
     }`;
     const response = await this.fetch<StrategiesResponse>(endpoint);
-    console.log("response pods", response);
 
     // Filter by chainId if provided
     if (chainId) {
@@ -265,7 +265,54 @@ export class PodsClient {
   // Get open positions for a wallet
   async getWalletPositions(address: string): Promise<WalletPositions> {
     const endpoint = `/wallets/${address}`;
-    return this.fetch<WalletPositions>(endpoint);
+    // The Deframe API returns a different shape than our UI expects.
+    // Normalize it here to the internal WalletPositions/Position types.
+    const raw = await this.fetch<any>(endpoint);
+
+    const mapped: WalletPositions = {
+      address,
+      positions:
+        (raw?.positions || []).map((p: any) => {
+          const spot = p?.spotPosition ?? {};
+          const current = spot?.currentPosition ?? {};
+          const strat = p?.strategy ?? {};
+
+          const assetDecimals =
+            typeof strat?.assetDecimals === "number"
+              ? String(strat.assetDecimals)
+              : String(current?.decimals ?? "0");
+
+          const balanceHumanized =
+            typeof current?.humanized === "number"
+              ? current.humanized
+              : parseFloat(String(current?.humanized ?? 0));
+
+          const position: Position = {
+            protocol: String(strat?.protocol ?? ""),
+            asset: {
+              address: String(strat?.asset ?? strat?.underlyingAsset ?? ""),
+              decimals: assetDecimals,
+              symbol: String(strat?.assetName ?? current?.asset ?? ""),
+              name: String(strat?.assetName ?? current?.asset ?? ""),
+            },
+            balance: {
+              raw: String(current?.value ?? "0"),
+              humanized: isFinite(balanceHumanized)
+                ? balanceHumanized
+                : 0,
+              decimals: assetDecimals,
+            },
+            balanceUSD: String(spot?.underlyingBalanceUSD ?? "0"),
+            apy: String(spot?.apy ?? "0"),
+            rewards: Array.isArray(p?.rewards) ? p.rewards : [],
+            strategyId: String(strat?.id ?? ""),
+          };
+
+          return position;
+        }) ?? [],
+    };
+
+    return mapped;
   }
 }
 

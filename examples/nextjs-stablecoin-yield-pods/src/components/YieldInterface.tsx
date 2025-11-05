@@ -3,7 +3,6 @@
 import { isEthereumWallet } from "@dynamic-labs/ethereum";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { useEffect, useState, useCallback } from "react";
-import { WalletClient } from "viem";
 import { useChainId } from "wagmi";
 import { mainnet, base, polygon } from "viem/chains";
 
@@ -21,7 +20,6 @@ import {
 export function YieldInterface() {
   const { primaryWallet } = useDynamicContext();
   const chainId = useChainId();
-  const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
   const [isSwitching, setIsSwitching] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -35,25 +33,15 @@ export function YieldInterface() {
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState<WalletPositions | null>(null);
 
-  console.log("strategies", strategies);
-
-  useEffect(() => {
-    if (primaryWallet && isEthereumWallet(primaryWallet)) {
-      primaryWallet.getWalletClient().then(setWalletClient);
-    }
-  }, [primaryWallet]);
-
   const fetchStrategies = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       // Fetch up to 100 strategies at once
       const response = await podsClient.getStrategies(chainId, 100);
-      console.log("response", response);
       const activeStrategies = response.data.filter(
         (s) => s.isActive !== false
       );
-      console.log("activeStrategies", activeStrategies);
       setStrategies(activeStrategies);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
@@ -118,8 +106,9 @@ export function YieldInterface() {
     }
   }, [lastTransaction]);
 
+  // Use original hook name (internals support smart wallet bundling)
   const { isOperating, executeDeposit, executeWithdraw } =
-    useTransactionOperations(walletClient, chainId);
+    useTransactionOperations(null, chainId);
 
   const handleDeposit = async (strategy: Strategy, amount: string) => {
     try {
@@ -131,10 +120,11 @@ export function YieldInterface() {
           timestamp: Date.now(),
         });
         // Refresh strategies after successful deposit
-        fetchStrategies();
+        await fetchStrategies();
       }
     } catch (error) {
       console.error("Deposit failed:", error);
+      setError(error instanceof Error ? error.message : "Deposit failed");
     }
   };
 
@@ -148,7 +138,7 @@ export function YieldInterface() {
           timestamp: Date.now(),
         });
         // Refresh strategies and positions after successful withdraw
-        fetchStrategies();
+        await fetchStrategies();
         if (primaryWallet?.address) {
           const data = await podsClient.getWalletPositions(
             primaryWallet.address
@@ -158,27 +148,41 @@ export function YieldInterface() {
       }
     } catch (error) {
       console.error("Withdraw failed:", error);
+      setError(error instanceof Error ? error.message : "Withdraw failed");
     }
   };
 
   const handlePositionWithdraw = async (position: Position, amount: string) => {
-    // Create a strategy-like object from the position for the withdraw operation
-    const strategy: Strategy = {
-      asset: position.asset.address,
-      protocol: position.protocol,
-      assetName: position.asset.symbol,
-      network: "", // We don't have this info from positions
-      networkId: position.asset.decimals, // Reusing decimals field temporarily
-      implementationSelector: position.protocol,
-      startDate: "",
-      underlyingAsset: position.asset.address,
-      assetDecimals: parseInt(position.asset.decimals),
-      underlyingDecimals: parseInt(position.asset.decimals),
-      id: `${position.protocol}-${position.asset.symbol}-unknown`,
-      fee: "0",
-    };
+    // Prefer using the real strategy from the API when we have the ID
+    try {
+      let strategy: Strategy | null = null;
+      if (position.strategyId) {
+        strategy = await podsClient.getStrategy(position.strategyId);
+      }
 
-    await handleWithdraw(strategy, amount);
+      // Fallback: synthesize minimal strategy if no id present
+      if (!strategy) {
+        strategy = {
+          asset: position.asset.address,
+          protocol: position.protocol,
+          assetName: position.asset.symbol,
+          network: "",
+          networkId: "",
+          implementationSelector: position.protocol,
+          startDate: "",
+          underlyingAsset: position.asset.address,
+          assetDecimals: parseInt(position.asset.decimals),
+          underlyingDecimals: parseInt(position.asset.decimals),
+          id: `${position.protocol}-${position.asset.symbol}`,
+          fee: "0",
+        };
+      }
+
+      await handleWithdraw(strategy, amount);
+    } catch (e) {
+      console.error("Failed to resolve strategy for withdraw", e);
+      throw e;
+    }
   };
 
   // Show error state if there's a chain error
@@ -230,6 +234,26 @@ export function YieldInterface() {
               ✅ {lastTransaction.type} transaction sent! Hash:{" "}
               {lastTransaction.hash.slice(0, 10)}...
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {error && (
+        <Card className="max-w-5xl mx-auto bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <p className="text-center text-red-600 dark:text-red-400">
+                ❌ {error}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setError(null)}
+                className="text-red-600 dark:text-red-400"
+              >
+                Dismiss
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -442,9 +466,6 @@ function StrategyCard({
   const [amount, setAmount] = useState("");
   const [isDeposit, setIsDeposit] = useState(true);
 
-  const apy = strategy.spotPosition?.apy ?? 0;
-  const apyPercent = (apy * 100).toFixed(2);
-
   const handleAction = () => {
     if (!amount || parseFloat(amount) <= 0) return;
 
@@ -468,12 +489,7 @@ function StrategyCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">APY</span>
-          <span className="text-2xl font-bold text-green-600">
-            {apyPercent}%
-          </span>
-        </div>
+        <div className="flex items-center justify-between"></div>
 
         <div className="flex gap-2">
           <Button

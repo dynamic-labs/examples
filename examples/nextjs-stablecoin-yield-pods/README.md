@@ -1,41 +1,67 @@
-# Yield integration with Dynamic wallets
+# Smart Wallet Implementation
 
-A Next.js app that shows how to build DeFi yield interfaces using Dynamic's MPC wallets and Pods/Deframe. Users can deposit assets to earn yield, withdraw their positions, and manage their strategies with a smooth, embedded wallet experience.
+This project demonstrates smart wallet functionality with transaction bundling using Dynamic's ZeroDev integration.
 
-## What You Can Do
+## Features
 
-- **Deposit assets** to earn yield on your assets
-- **Withdraw** from your yield positions
-- **View APY rates** and protocol information
-- **Monitor your positions** across multiple protocols
+- **Gas Sponsorship**: Users don't pay gas fees for transactions
+- **Transaction Bundling**: Multiple operations bundled into single user operations
+- **Smart Wallet Detection**: Automatic detection and fallback handling
+- **Yield Strategy Integration**: Seamless deposit/withdraw operations with bundling
 
-## Getting Started
+## Implementation
 
-1. **Install dependencies**
+### Core Files
 
-   ```bash
-   bun install
-   ```
+- `src/lib/useSmartWalletOperations.ts` - Smart wallet operations hook
+- `src/components/YieldInterface.tsx` - Yield strategy interface with smart wallet integration
+- `src/lib/providers.tsx` - Dynamic + ZeroDev configuration
 
-2. **Set up your environment**
+### Key Features
 
-   ```bash
-   cp .env.example .env.local
-   # Add your Pods API key to .env.local
-   ```
+#### Transaction Bundling for Yield Operations
 
-3. **Start the dev server**
+All deposit and withdraw operations are automatically bundled:
 
-   ```bash
-   bun dev
-   ```
+```typescript
+const {
+  isOperating,
+  executeDeposit,
+  executeWithdraw,
+  executeTransactionBundle,
+  isSmartWallet,
+} = useSmartWalletOperations(chainId);
+```
 
-4. **Open your browser** to [http://localhost:3000](http://localhost:3000)
+#### Your Specific Transaction Bundle
 
-## Learn More
+The hook includes your exact transaction bundle:
 
-For a detailed walkthrough of the integration, including code explanations, configuration tips, and troubleshooting:
+```typescript
+const transactions = [
+  {
+    to: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+    value: "0",
+    data: "0xa9059cbb0000000000000000000000005900efdd79bc1541cf1f9fd0f56c0a86919443030000000000000000000000000000000000000000000000000000000000000001",
+    chainId: "8453",
+  },
+  // ... more transactions
+];
+```
 
-📖 **[Pods/Deframe Documentation →](https://docs.deframe.io)**
+## Usage
 
-📖 **[Dynamic Wallet Documentation →](https://docs.dynamic.xyz)**
+1. **Connect Smart Wallet**: Use Dynamic's embedded wallet
+2. **Use Yield Strategies**: Deposit/withdraw operations are automatically bundled
+3. **Execute Transaction Bundle**: Use `executeTransactionBundle()` for your specific transactions
+
+## Configuration
+
+The implementation uses Dynamic's ZeroDev integration with automatic gas sponsorship. No additional paymaster setup required.
+
+## Benefits
+
+- **No Gas Fees**: Transactions are automatically sponsored
+- **Better UX**: Simplified transaction flow
+- **Transaction Bundling**: Multiple operations in one transaction
+- **Seamless Integration**: Works with existing yield strategy UI

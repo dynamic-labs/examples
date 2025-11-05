@@ -30,54 +30,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <DynamicContextProvider
         theme="light"
         settings={{
-          environmentId:
-            // replace with your own environment ID
-            process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID ||
-            "9405948e-3dc1-4402-86c1-7b8e7f88542d",
+          environmentId: "ff23194d-87cb-4bc5-b021-5dee4b31256b",
           walletConnectors: [
             EthereumWalletConnectors,
             ZeroDevSmartWalletConnectors,
           ],
-          overrides: {
-            evmNetworks: [
-              {
-                chainId: 8453,
-                chainName: "Base",
-                name: "Base",
-                blockExplorerUrls: ["https://basescan.org/"],
-                iconUrls: ["https://app.dynamic.xyz/assets/networks/base.svg"],
-                nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
-                networkId: 8453,
-                rpcUrls: ["https://mainnet.base.org"],
-              },
-              {
-                chainId: 1,
-                chainName: "Ethereum Mainnet",
-                name: "Ethereum",
-                blockExplorerUrls: ["https://etherscan.io/"],
-                iconUrls: ["https://app.dynamic.xyz/assets/networks/eth.svg"],
-                nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
-                networkId: 1,
-                rpcUrls: ["https://mainnet.infura.io/v3/"],
-              },
-              {
-                chainId: 137,
-                chainName: "Polygon",
-                name: "Polygon",
-                blockExplorerUrls: ["https://polygonscan.com/"],
-                iconUrls: [
-                  "https://app.dynamic.xyz/assets/networks/polygon.svg",
-                ],
-                nativeCurrency: {
-                  decimals: 18,
-                  name: "MATIC",
-                  symbol: "MATIC",
-                },
-                networkId: 137,
-                rpcUrls: ["https://polygon-rpc.com/"],
-              },
-            ],
-          },
         }}
       >
         <WagmiProvider config={config}>
