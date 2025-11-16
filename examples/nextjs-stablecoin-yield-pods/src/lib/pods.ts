@@ -1,319 +1,207 @@
-// Pods/Deframe API client
+import type {
+  Strategy,
+  Position,
+  WalletPositions,
+  StrategyDetailResponse,
+  BytecodeResponse,
+  StrategiesResponse,
+  RawPosition,
+  RawWalletPositions,
+} from "./pods-types";
 
 const PODS_API_BASE =
   process.env.NEXT_PUBLIC_PODS_API_URL || "https://api.deframe.io";
 const PODS_API_KEY = process.env.NEXT_PUBLIC_PODS_API_KEY;
 
-export interface Strategy {
-  asset: string;
-  protocol: string;
-  assetName: string;
-  network: string;
-  networkId: string;
-  implementationSelector: string;
-  startDate: string;
-  underlyingAsset: string;
-  assetDecimals: number;
-  underlyingDecimals: number;
-  isActive?: boolean;
-  id: string;
-  fee: string;
-  metadata?: {
-    PT?: {
-      risk: string;
-      volatility: string;
-      description: string;
-    };
-    EN?: {
-      risk: string;
-      volatility: string;
-      description: string;
-    };
-    category?: string;
-    [key: string]: unknown;
-  };
-  logourl?: string;
-  // Optional APY fields that may be returned by the API
-  spotPosition?: {
-    apy: number;
-    inceptionApy: number;
-    avgApy: number;
-  };
+if (!PODS_API_KEY) {
+  throw new Error(
+    "NEXT_PUBLIC_PODS_API_KEY is not set in environment variables"
+  );
 }
 
-// Response structure for GET /strategies/:id
-export interface StrategyDetailResponse {
-  spotPosition: {
-    apy: number;
-    inceptionApy: number;
-    avgApy: number;
-  };
-  strategy: Strategy;
-}
+async function fetchFromPodsAPI<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${PODS_API_BASE}${endpoint}`;
 
-// Interfaces for wallet positions
-export interface TokenInfo {
-  address: string;
-  decimals: string;
-  symbol: string;
-  name: string;
-}
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": PODS_API_KEY,
+      ...options.headers,
+    },
+  });
 
-export interface Balance {
-  raw: string;
-  humanized: number;
-  decimals: string;
-}
-
-export interface Reward {
-  token: {
-    address: string;
-    symbol: string;
-    decimals: string;
-  };
-  amount: string;
-  amountUSD: string;
-}
-
-export interface Position {
-  protocol: string;
-  asset: TokenInfo;
-  balance: Balance;
-  balanceUSD: string;
-  apy: string;
-  rewards: Reward[];
-  strategyId?: string;
-}
-
-export interface WalletPositions {
-  address: string;
-  positions: Position[];
-}
-
-export interface BytecodeResponse {
-  bytecode: Array<{
-    to: string;
-    value: string;
-    data: string;
-  }>;
-}
-
-export interface StrategiesResponse {
-  data: Strategy[];
-  pagination: {
-    totalRecords: number;
-    limit: number;
-    totalPages: number;
-    page: number;
-    hasPrevPage: boolean;
-    hasNextPage: boolean;
-    prevPage: number | null;
-    nextPage: number | null;
-  };
-}
-
-export class PodsClient {
-  private apiKey: string;
-  private baseUrl: string;
-
-  constructor() {
-    if (!PODS_API_KEY) {
-      throw new Error(
-        "NEXT_PUBLIC_PODS_API_KEY is not set in environment variables"
-      );
-    }
-    this.apiKey = PODS_API_KEY;
-    this.baseUrl = PODS_API_BASE;
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Pods API error: ${error}`);
   }
 
-  private async fetch<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+  return response.json();
+}
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.apiKey,
-        ...options.headers,
-      },
-    });
+export async function getStrategies(
+  chainId?: number,
+  limit?: number
+): Promise<StrategiesResponse> {
+  const queryParams = new URLSearchParams();
+  if (limit) queryParams.set("limit", limit.toString());
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Pods API error: ${error}`);
-    }
+  const endpoint = `/strategies${
+    queryParams.toString() ? `?${queryParams.toString()}` : ""
+  }`;
+  const response = await fetchFromPodsAPI<StrategiesResponse>(endpoint);
 
-    return response.json();
-  }
-
-  // Get all available strategies
-  async getStrategies(
-    chainId?: number,
-    limit?: number
-  ): Promise<StrategiesResponse> {
-    const queryParams = new URLSearchParams();
-    if (limit) queryParams.set("limit", limit.toString());
-
-    const endpoint = `/strategies${
-      queryParams.toString() ? `?${queryParams.toString()}` : ""
-    }`;
-    const response = await this.fetch<StrategiesResponse>(endpoint);
-
-    // Filter by chainId if provided
-    if (chainId) {
-      return {
-        ...response,
-        data: response.data.filter(
-          (strategy) => parseInt(strategy.networkId) === chainId
-        ),
-      };
-    }
-
-    return response;
-  }
-
-  // Get a specific strategy by ID
-  async getStrategy(strategyId: string): Promise<Strategy> {
-    const endpoint = `/strategies/${strategyId}`;
-    const response = await this.fetch<StrategyDetailResponse>(endpoint);
-    // Merge spotPosition into the strategy object for convenience
+  if (chainId) {
     return {
-      ...response.strategy,
-      spotPosition: response.spotPosition,
+      ...response,
+      data: response.data.filter(
+        (strategy) => parseInt(strategy.networkId) === chainId
+      ),
     };
   }
 
-  // Get bytecode for a deposit transaction
-  async getDepositBytecode(params: {
-    strategyId: string;
-    chainId: number;
-    amount: string; // Amount in smallest unit (with decimals)
-    asset: string;
-    wallet: string;
-  }): Promise<BytecodeResponse> {
-    const { strategyId, chainId, amount, asset, wallet } = params;
+  return response;
+}
 
-    const queryParams = new URLSearchParams({
-      action: "lend",
-      chainId: chainId.toString(),
-      amount,
-      asset,
-      wallet,
-    });
+export async function getStrategy(strategyId: string): Promise<Strategy> {
+  const endpoint = `/strategies/${strategyId}`;
+  const response = await fetchFromPodsAPI<StrategyDetailResponse>(endpoint);
+  return {
+    ...response.strategy,
+    spotPosition: response.spotPosition,
+  };
+}
 
-    const endpoint = `/strategies/${strategyId}/bytecode?${queryParams.toString()}`;
-    return this.fetch<BytecodeResponse>(endpoint);
-  }
+export async function getDepositBytecode(params: {
+  strategyId: string;
+  chainId: number;
+  amount: string;
+  asset: string;
+  wallet: string;
+}): Promise<BytecodeResponse> {
+  const { strategyId, chainId, amount, asset, wallet } = params;
 
-  // Get bytecode for a withdraw transaction
-  async getWithdrawBytecode(params: {
-    strategyId: string;
-    chainId: number;
-    amount: string; // Amount in smallest unit (with decimals)
-    asset: string;
-    wallet: string;
-  }): Promise<BytecodeResponse> {
-    const { strategyId, chainId, amount, asset, wallet } = params;
+  const queryParams = new URLSearchParams({
+    action: "lend",
+    chainId: chainId.toString(),
+    amount,
+    asset,
+    wallet,
+  });
 
-    const queryParams = new URLSearchParams({
-      action: "withdraw",
-      chainId: chainId.toString(),
-      amount,
-      asset,
-      wallet,
-    });
+  const endpoint = `/strategies/${strategyId}/bytecode?${queryParams.toString()}`;
+  return fetchFromPodsAPI<BytecodeResponse>(endpoint);
+}
 
-    const endpoint = `/strategies/${strategyId}/bytecode?${queryParams.toString()}`;
-    return this.fetch<BytecodeResponse>(endpoint);
-  }
+export async function getWithdrawBytecode(params: {
+  strategyId: string;
+  chainId: number;
+  amount: string;
+  asset: string;
+  wallet: string;
+}): Promise<BytecodeResponse> {
+  const { strategyId, chainId, amount, asset, wallet } = params;
 
-  // Get yield strategies for a specific currency (protocol-agnostic)
-  async getYieldStrategies(params: {
-    currency: string;
-    chainId: number;
-    action?: "lend" | "withdraw";
-    amount?: string;
-    asset?: string;
-    wallet?: string;
-  }): Promise<Strategy | BytecodeResponse> {
-    const { currency, chainId, action, amount, asset, wallet } = params;
+  const queryParams = new URLSearchParams({
+    action: "withdraw",
+    chainId: chainId.toString(),
+    amount,
+    asset,
+    wallet,
+  });
 
-    const queryParams = new URLSearchParams({
-      chainId: chainId.toString(),
-    });
+  const endpoint = `/strategies/${strategyId}/bytecode?${queryParams.toString()}`;
+  return fetchFromPodsAPI<BytecodeResponse>(endpoint);
+}
 
-    if (action) queryParams.set("action", action);
-    if (amount) queryParams.set("amount", amount);
-    if (asset) queryParams.set("asset", asset);
-    if (wallet) queryParams.set("wallet", wallet);
+export async function getYieldStrategies(params: {
+  currency: string;
+  chainId: number;
+  action?: "lend" | "withdraw";
+  amount?: string;
+  asset?: string;
+  wallet?: string;
+}): Promise<Strategy | BytecodeResponse> {
+  const { currency, chainId, action, amount, asset, wallet } = params;
 
-    const endpoint = `/yield/${currency}?${queryParams.toString()}`;
+  const queryParams = new URLSearchParams({
+    chainId: chainId.toString(),
+  });
 
-    // Return type depends on whether action is specified
-    if (action === "lend" || action === "withdraw") {
-      return this.fetch<BytecodeResponse>(
-        endpoint
-      ) as Promise<BytecodeResponse>;
-    } else {
-      return this.fetch<Strategy>(endpoint) as Promise<Strategy>;
-    }
-  }
+  if (action) queryParams.set("action", action);
+  if (amount) queryParams.set("amount", amount);
+  if (asset) queryParams.set("asset", asset);
+  if (wallet) queryParams.set("wallet", wallet);
 
-  // Get open positions for a wallet
-  async getWalletPositions(address: string): Promise<WalletPositions> {
-    const endpoint = `/wallets/${address}`;
-    // The Deframe API returns a different shape than our UI expects.
-    // Normalize it here to the internal WalletPositions/Position types.
-    const raw = await this.fetch<any>(endpoint);
+  const endpoint = `/yield/${currency}?${queryParams.toString()}`;
 
-    const mapped: WalletPositions = {
-      address,
-      positions:
-        (raw?.positions || []).map((p: any) => {
-          const spot = p?.spotPosition ?? {};
-          const current = spot?.currentPosition ?? {};
-          const strat = p?.strategy ?? {};
-
-          const assetDecimals =
-            typeof strat?.assetDecimals === "number"
-              ? String(strat.assetDecimals)
-              : String(current?.decimals ?? "0");
-
-          const balanceHumanized =
-            typeof current?.humanized === "number"
-              ? current.humanized
-              : parseFloat(String(current?.humanized ?? 0));
-
-          const position: Position = {
-            protocol: String(strat?.protocol ?? ""),
-            asset: {
-              address: String(strat?.asset ?? strat?.underlyingAsset ?? ""),
-              decimals: assetDecimals,
-              symbol: String(strat?.assetName ?? current?.asset ?? ""),
-              name: String(strat?.assetName ?? current?.asset ?? ""),
-            },
-            balance: {
-              raw: String(current?.value ?? "0"),
-              humanized: isFinite(balanceHumanized)
-                ? balanceHumanized
-                : 0,
-              decimals: assetDecimals,
-            },
-            balanceUSD: String(spot?.underlyingBalanceUSD ?? "0"),
-            apy: String(spot?.apy ?? "0"),
-            rewards: Array.isArray(p?.rewards) ? p.rewards : [],
-            strategyId: String(strat?.id ?? ""),
-          };
-
-          return position;
-        }) ?? [],
-    };
-
-    return mapped;
+  if (action === "lend" || action === "withdraw") {
+    return fetchFromPodsAPI<BytecodeResponse>(
+      endpoint
+    ) as Promise<BytecodeResponse>;
+  } else {
+    return fetchFromPodsAPI<Strategy>(endpoint) as Promise<Strategy>;
   }
 }
 
-export const client = new PodsClient();
+export async function getWalletPositions(
+  address: string
+): Promise<WalletPositions> {
+  const endpoint = `/wallets/${address}`;
+  const raw = await fetchFromPodsAPI<RawWalletPositions>(endpoint);
+
+  const mapped: WalletPositions = {
+    address,
+    positions:
+      (raw?.positions || []).map((p: RawPosition) => {
+        const spot = p?.spotPosition ?? {};
+        const current = spot?.currentPosition ?? {};
+        const strat = p?.strategy ?? {};
+
+        const assetDecimals =
+          typeof strat?.assetDecimals === "number"
+            ? String(strat.assetDecimals)
+            : String(current?.decimals ?? "0");
+
+        const balanceHumanized =
+          typeof current?.humanized === "number"
+            ? current.humanized
+            : parseFloat(String(current?.humanized ?? 0));
+
+        const position: Position = {
+          protocol: String(strat?.protocol ?? ""),
+          asset: {
+            address: String(strat?.asset ?? strat?.underlyingAsset ?? ""),
+            decimals: assetDecimals,
+            symbol: String(strat?.assetName ?? current?.asset ?? ""),
+            name: String(strat?.assetName ?? current?.asset ?? ""),
+          },
+          balance: {
+            raw: String(current?.value ?? "0"),
+            humanized: isFinite(balanceHumanized) ? balanceHumanized : 0,
+            decimals: assetDecimals,
+          },
+          balanceUSD: String(spot?.underlyingBalanceUSD ?? "0"),
+          apy: String(spot?.apy ?? "0"),
+          rewards: Array.isArray(p?.rewards) ? p.rewards : [],
+          strategyId: String(strat?.id ?? ""),
+        };
+
+        return position;
+      }) ?? [],
+  };
+
+  return mapped;
+}
+
+export const client = {
+  getStrategies,
+  getStrategy,
+  getDepositBytecode,
+  getWithdrawBytecode,
+  getYieldStrategies,
+  getWalletPositions,
+};

@@ -1,17 +1,10 @@
 import { useState, useCallback } from "react";
 import { WalletClient } from "viem";
-import { client as podsClient, Strategy } from "./pods";
+import { client as podsClient } from "./pods";
+import type { Strategy, TransactionCall } from "./pods-types";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { isEthereumWallet } from "@dynamic-labs/ethereum";
 import { isZeroDevConnector } from "@dynamic-labs/ethereum-aa";
-
-type Hash = string;
-
-interface TransactionCall {
-  to: `0x${string}`;
-  value: bigint;
-  data: `0x${string}`;
-}
 
 export function useTransactionOperations(
   walletClient: WalletClient | null,
@@ -21,7 +14,6 @@ export function useTransactionOperations(
   const [isOperating, setIsOperating] = useState(false);
   const [operationError, setOperationError] = useState<Error | null>(null);
 
-  // When connected via Dynamic ZeroDev smart wallet, bundle and sponsor txs
   const getKernelClient = useCallback(async () => {
     if (!primaryWallet || !isEthereumWallet(primaryWallet)) return null;
     const { connector } = primaryWallet;
@@ -31,7 +23,7 @@ export function useTransactionOperations(
   }, [primaryWallet]);
 
   const executeBundledTransaction = useCallback(
-    async (calls: TransactionCall[]): Promise<Hash> => {
+    async (calls: TransactionCall[]): Promise<string> => {
       setIsOperating(true);
       setOperationError(null);
       try {
@@ -43,7 +35,7 @@ export function useTransactionOperations(
         const receipt = await kernelClient.waitForUserOperationReceipt({
           hash: userOpHash,
         });
-        return receipt.receipt.transactionHash as Hash;
+        return receipt.receipt.transactionHash as string;
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         setOperationError(err);
@@ -55,10 +47,7 @@ export function useTransactionOperations(
     [getKernelClient]
   );
 
-  const executeDeposit = async (
-    strategy: Strategy,
-    amount: string // Amount in human-readable format (e.g., "1.5")
-  ) => {
+  const executeDeposit = async (strategy: Strategy, amount: string) => {
     const walletAddress =
       primaryWallet?.address || walletClient?.account?.address;
     if (!walletAddress) {
@@ -82,7 +71,6 @@ export function useTransactionOperations(
         wallet: walletAddress,
       });
 
-      // Prefer smart wallet bundling when available
       const kernelClient = await getKernelClient();
       if (kernelClient) {
         const calls: TransactionCall[] = bytecode.map((tx) => ({
@@ -93,7 +81,6 @@ export function useTransactionOperations(
         return await executeBundledTransaction(calls);
       }
 
-      // Fallback: EOA flow with sequential transactions
       if (!walletClient?.account) throw new Error("Wallet client unavailable");
       let lastHash: string | undefined;
       for (const tx of bytecode) {
@@ -106,7 +93,7 @@ export function useTransactionOperations(
         });
         lastHash = hash;
       }
-      return lastHash as Hash;
+      return lastHash!;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       setOperationError(err);
@@ -116,10 +103,7 @@ export function useTransactionOperations(
     }
   };
 
-  const executeWithdraw = async (
-    strategy: Strategy,
-    amount: string // Amount in human-readable format (e.g., "1.5")
-  ) => {
+  const executeWithdraw = async (strategy: Strategy, amount: string) => {
     const walletAddress =
       primaryWallet?.address || walletClient?.account?.address;
     if (!walletAddress) {
@@ -143,7 +127,6 @@ export function useTransactionOperations(
         wallet: walletAddress,
       });
 
-      // Prefer smart wallet bundling when available
       const kernelClient = await getKernelClient();
       if (kernelClient) {
         const calls: TransactionCall[] = bytecode.map((tx) => ({
@@ -154,7 +137,6 @@ export function useTransactionOperations(
         return await executeBundledTransaction(calls);
       }
 
-      // Fallback: EOA flow with sequential transactions
       if (!walletClient?.account) throw new Error("Wallet client unavailable");
       let lastHash: string | undefined;
       for (const tx of bytecode) {
@@ -166,7 +148,7 @@ export function useTransactionOperations(
         } as Parameters<typeof walletClient.sendTransaction>[0]);
         lastHash = hash;
       }
-      return lastHash as Hash;
+      return lastHash!;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       setOperationError(err);

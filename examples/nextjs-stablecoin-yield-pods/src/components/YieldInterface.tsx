@@ -3,23 +3,27 @@
 import { isEthereumWallet } from "@dynamic-labs/ethereum";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { useEffect, useState, useCallback } from "react";
-import { useChainId } from "wagmi";
+import { useChainId, useSwitchChain } from "wagmi";
 import { mainnet, base, polygon } from "viem/chains";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTransactionOperations } from "../lib/useTransactionOperations";
 import { getChainName } from "../lib/utils";
-import {
-  client as podsClient,
+import { client as podsClient } from "../lib/pods";
+import type {
   Strategy,
   WalletPositions,
   Position,
-} from "../lib/pods";
+  PositionCardProps,
+  StrategyCardProps,
+} from "../lib/pods-types";
 
 export function YieldInterface() {
   const { primaryWallet } = useDynamicContext();
-  const chainId = useChainId();
+  const wagmiChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const [selectedChainId, setSelectedChainId] = useState<number>(base.id);
   const [isSwitching, setIsSwitching] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -32,6 +36,9 @@ export function YieldInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState<WalletPositions | null>(null);
+
+  // Use selectedChainId if wallet is connected and synced, otherwise use local state
+  const chainId = primaryWallet ? wagmiChainId : selectedChainId;
 
   const fetchStrategies = useCallback(async () => {
     setIsLoading(true);
@@ -76,24 +83,30 @@ export function YieldInterface() {
   }, [primaryWallet?.address]);
 
   const handleSwitchChain = async (targetChainId: number) => {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
-      setChainError("Wallet not connected");
-      return;
-    }
+    // If wallet is connected, try to switch the actual network
+    if (primaryWallet && isEthereumWallet(primaryWallet)) {
+      setIsSwitching(true);
+      setChainError(null);
 
-    setIsSwitching(true);
-    setChainError(null);
-
-    try {
-      if (primaryWallet.connector.supportsNetworkSwitching()) {
-        await primaryWallet.switchNetwork(targetChainId);
-      } else {
-        setChainError("Your wallet doesn't support network switching");
+      try {
+        if (primaryWallet.connector.supportsNetworkSwitching()) {
+          await primaryWallet.switchNetwork(targetChainId);
+        } else if (switchChain) {
+          // Fallback to wagmi's switchChain
+          await switchChain({ chainId: targetChainId as 1 | 8453 | 137 });
+        } else {
+          setChainError("Your wallet doesn't support network switching");
+        }
+      } catch (err) {
+        console.error("Failed to switch chain:", err);
+        setChainError("Failed to switch chain. Please try again.");
+      } finally {
+        setIsSwitching(false);
       }
-    } catch {
-      setChainError("Failed to switch chain. Please try again.");
-    } finally {
-      setIsSwitching(false);
+    } else {
+      // If no wallet, just update local state to show strategies for that chain
+      setSelectedChainId(targetChainId);
+      setChainError(null);
     }
   };
 
@@ -105,6 +118,13 @@ export function YieldInterface() {
       return () => clearTimeout(timer);
     }
   }, [lastTransaction]);
+
+  // Sync selectedChainId with wagmi chainId only when wallet is connected
+  useEffect(() => {
+    if (primaryWallet && wagmiChainId) {
+      setSelectedChainId(wagmiChainId);
+    }
+  }, [primaryWallet, wagmiChainId]);
 
   // Use original hook name (internals support smart wallet bundling)
   const { isOperating, executeDeposit, executeWithdraw } =
@@ -185,26 +205,7 @@ export function YieldInterface() {
     }
   };
 
-  // Show error state if there's a chain error
-  if (chainError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center mt-24">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-center text-destructive">
-              Connection Error
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-center text-muted-foreground">{chainError}</p>
-            <Button onClick={() => window.location.reload()} className="w-full">
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Don't block the UI with chain errors - just show them as a banner
 
   // Show loading state when chain is changing
   if (isSwitching) {
@@ -234,6 +235,26 @@ export function YieldInterface() {
               ✅ {lastTransaction.type} transaction sent! Hash:{" "}
               {lastTransaction.hash.slice(0, 10)}...
             </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {chainError && (
+        <Card className="max-w-5xl mx-auto bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <p className="text-center text-yellow-600 dark:text-yellow-400">
+                ⚠️ {chainError}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setChainError(null)}
+                className="text-yellow-600 dark:text-yellow-400"
+              >
+                Dismiss
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -349,12 +370,6 @@ export function YieldInterface() {
 }
 
 // Position Card Component
-interface PositionCardProps {
-  position: Position;
-  isOperating: boolean;
-  onWithdraw: (position: Position, amount: string) => void;
-}
-
 function PositionCard({
   position,
   isOperating,
@@ -448,14 +463,6 @@ function PositionCard({
 }
 
 // Simple Strategy Card Component
-interface StrategyCardProps {
-  strategy: Strategy;
-  isOperating: boolean;
-  primaryWallet: { address: string } | null;
-  onDeposit: (strategy: Strategy, amount: string) => void;
-  onWithdraw: (strategy: Strategy, amount: string) => void;
-}
-
 function StrategyCard({
   strategy,
   isOperating,
