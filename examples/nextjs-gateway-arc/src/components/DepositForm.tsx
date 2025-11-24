@@ -11,8 +11,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { CONTRACTS } from "@/lib/chains";
-import { baseSepolia, sepolia } from "wagmi/chains";
-import { arcTestnet } from "@/lib/chains";
+import { arcTestnet, baseSepolia, sepolia } from "wagmi/chains";
 import { parseUnits } from "viem";
 
 const erc20Abi = [

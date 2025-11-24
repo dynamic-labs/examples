@@ -1,45 +1,39 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DynamicButton from "@/components/dynamic/dynamic-button";
 import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
 import TransferForm from "@/components/TransferForm";
 import DepositForm from "@/components/DepositForm";
+import { DOMAIN } from "@/lib/chains";
 
 type Balance = { domain: number; balance: string };
 
-class GatewayClient {
-  static GATEWAY_API_BASE_URL = "https://gateway-api-testnet.circle.com/v1";
-  static DOMAINS = { sepolia: 0, baseSepolia: 6, arcTestnet: 26 } as const;
+const GATEWAY_API_BASE_URL = "https://gateway-api-testnet.circle.com/v1";
 
-  async info() {
-    return this.#get("/info");
-  }
+async function gatewayPost(path: string, body: unknown) {
+  const res = await fetch(GATEWAY_API_BASE_URL + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body, (_k, v) =>
+      typeof v === "bigint" ? v.toString() : v
+    ),
+  });
+  return res.json();
+}
 
-  async balances(token: string, depositor: string, domains?: number[]) {
-    if (!domains) domains = [0, 6, 26];
-    return this.#post("/balances", {
-      token,
-      sources: domains.map((domain) => ({ depositor, domain })),
-    });
-  }
-
-  async #get(path: string) {
-    const res = await fetch(GatewayClient.GATEWAY_API_BASE_URL + path);
-    return res.json();
-  }
-
-  async #post(path: string, body: unknown) {
-    const res = await fetch(GatewayClient.GATEWAY_API_BASE_URL + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body, (_k, v) =>
-        typeof v === "bigint" ? v.toString() : v
-      ),
-    });
-    return res.json();
-  }
+async function gatewayBalances(
+  token: string,
+  depositor: string,
+  domains?: number[]
+) {
+  if (!domains)
+    domains = [DOMAIN.sepolia, DOMAIN.baseSepolia, DOMAIN.arcTestnet];
+  return gatewayPost("/balances", {
+    token,
+    sources: domains.map((domain) => ({ depositor, domain })),
+  });
 }
 
 export default function GatewayApp() {
@@ -50,15 +44,17 @@ export default function GatewayApp() {
   const [error, setError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Balance[]>([]);
 
-  const gateway = useMemo(() => new GatewayClient(), []);
-
   useEffect(() => {
     if (!sdkHasLoaded || !address) return;
     const run = async () => {
       setLoading(true);
       setError(null);
       try {
-        const resp = await gateway.balances("USDC", address, [0, 6, 26]);
+        const resp = await gatewayBalances("USDC", address, [
+          DOMAIN.sepolia,
+          DOMAIN.baseSepolia,
+          DOMAIN.arcTestnet,
+        ]);
         setBalances(resp.balances || []);
       } catch {
         setError("Failed to load balances");
@@ -67,7 +63,7 @@ export default function GatewayApp() {
       }
     };
     run();
-  }, [sdkHasLoaded, address, gateway]);
+  }, [sdkHasLoaded, address]);
 
   return (
     <div className="w-full max-w-xl space-y-4">

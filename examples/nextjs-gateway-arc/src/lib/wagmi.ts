@@ -1,6 +1,5 @@
 import { createConfig, http } from "wagmi";
-import { baseSepolia, sepolia } from "wagmi/chains";
-import { arcTestnet } from "@/lib/chains";
+import { arcTestnet, baseSepolia, sepolia } from "wagmi/chains";
 
 const chains = [sepolia, baseSepolia, arcTestnet] as const;
 

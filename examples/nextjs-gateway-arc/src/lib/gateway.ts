@@ -1,30 +1,27 @@
-import { pad, zeroAddress, maxUint256 } from "viem";
+import { pad, maxUint256, zeroAddress, bytesToHex } from "viem";
+
+const baseUrl = "https://gateway-api-testnet.circle.com/v1";
 
 export const GatewayAPI = {
-  baseUrl: "https://gateway-api-testnet.circle.com/v1",
   async get(path: string) {
-    const res = await fetch(this.baseUrl + path);
-    return res.json();
+    return fetch(baseUrl + path).then((r) => r.json());
   },
   async post(path: string, body: unknown) {
-    const res = await fetch(this.baseUrl + path, {
+    return fetch(baseUrl + path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body, (_k, v) =>
         typeof v === "bigint" ? v.toString() : v
       ),
-    });
-    return res.json();
+    }).then((r) => r.json());
   },
 };
 
 const domain = { name: "GatewayWallet", version: "1" } as const;
-
 const EIP712Domain = [
   { name: "name", type: "string" },
   { name: "version", type: "string" },
 ];
-
 const TransferSpec = [
   { name: "version", type: "uint32" },
   { name: "sourceDomain", type: "uint32" },
@@ -41,18 +38,22 @@ const TransferSpec = [
   { name: "salt", type: "bytes32" },
   { name: "hookData", type: "bytes" },
 ];
-
 const BurnIntent = [
   { name: "maxBlockHeight", type: "uint256" },
   { name: "maxFee", type: "uint256" },
   { name: "spec", type: "TransferSpec" },
 ];
 
-export function addressToBytes32(address: string) {
-  return pad(address.toLowerCase(), { size: 32 });
-}
+const addressToBytes32 = (address: string) =>
+  pad(address.toLowerCase() as `0x${string}`, { size: 32 });
 
-export function burnIntent(params: {
+export function burnIntent({
+  account,
+  from,
+  to,
+  amount,
+  recipient,
+}: {
   account: string;
   from: {
     domain: number;
@@ -69,29 +70,28 @@ export function burnIntent(params: {
 }) {
   return {
     maxBlockHeight: maxUint256,
-    maxFee: 2_010000n,
+    maxFee: BigInt(2010000),
     spec: {
       version: 1,
-      sourceDomain: params.from.domain,
-      destinationDomain: params.to.domain,
-      sourceContract: params.from.gatewayWallet.address,
-      destinationContract: params.to.gatewayMinter.address,
-      sourceToken: params.from.usdc.address,
-      destinationToken: params.to.usdc.address,
-      sourceDepositor: params.account,
-      destinationRecipient: params.recipient || params.account,
-      sourceSigner: params.account,
+      sourceDomain: from.domain,
+      destinationDomain: to.domain,
+      sourceContract: from.gatewayWallet.address,
+      destinationContract: to.gatewayMinter.address,
+      sourceToken: from.usdc.address,
+      destinationToken: to.usdc.address,
+      sourceDepositor: account,
+      destinationRecipient: recipient || account,
+      sourceSigner: account,
       destinationCaller: zeroAddress,
-      value: BigInt(Math.floor(params.amount * 1e6)),
-      salt: `0x${crypto
-        .getRandomValues(new Uint8Array(32))
-        .reduce((s, b) => s + b.toString(16).padStart(2, "0"), "")}`,
+      value: BigInt(Math.floor(amount * 1e6)),
+      salt: bytesToHex(crypto.getRandomValues(new Uint8Array(32))),
       hookData: "0x",
     },
   } as const;
 }
 
 export function burnIntentTypedData(intent: ReturnType<typeof burnIntent>) {
+  const spec = intent.spec;
   return {
     types: { EIP712Domain, TransferSpec, BurnIntent },
     domain,
@@ -99,18 +99,16 @@ export function burnIntentTypedData(intent: ReturnType<typeof burnIntent>) {
     message: {
       ...intent,
       spec: {
-        ...intent.spec,
-        sourceContract: addressToBytes32(intent.spec.sourceContract),
-        destinationContract: addressToBytes32(intent.spec.destinationContract),
-        sourceToken: addressToBytes32(intent.spec.sourceToken),
-        destinationToken: addressToBytes32(intent.spec.destinationToken),
-        sourceDepositor: addressToBytes32(intent.spec.sourceDepositor),
-        destinationRecipient: addressToBytes32(
-          intent.spec.destinationRecipient
-        ),
-        sourceSigner: addressToBytes32(intent.spec.sourceSigner),
+        ...spec,
+        sourceContract: addressToBytes32(spec.sourceContract),
+        destinationContract: addressToBytes32(spec.destinationContract),
+        sourceToken: addressToBytes32(spec.sourceToken),
+        destinationToken: addressToBytes32(spec.destinationToken),
+        sourceDepositor: addressToBytes32(spec.sourceDepositor),
+        destinationRecipient: addressToBytes32(spec.destinationRecipient),
+        sourceSigner: addressToBytes32(spec.sourceSigner),
         destinationCaller: addressToBytes32(
-          intent.spec.destinationCaller || zeroAddress
+          spec.destinationCaller || zeroAddress
         ),
       },
     },

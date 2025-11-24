@@ -11,8 +11,8 @@ import {
   useWriteContract,
   useWalletClient,
 } from "wagmi";
-import { CONTRACTS, DOMAIN, arcTestnet } from "@/lib/chains";
-import { baseSepolia, sepolia } from "wagmi/chains";
+import { CONTRACTS, DOMAIN } from "@/lib/chains";
+import { arcTestnet, baseSepolia, sepolia } from "wagmi/chains";
 import { GatewayAPI, burnIntent, burnIntentTypedData } from "@/lib/gateway";
 
 // Minimal ABI for gatewayMint
