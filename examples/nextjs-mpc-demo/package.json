@@ -10,25 +10,25 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dynamic-labs/ethereum": "^4.32.1",
-    "@dynamic-labs/sdk-react-core": "^4.32.1",
-    "@dynamic-labs/solana": "^4.32.1",
-    "@dynamic-labs/sui": "^4.32.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "viem": "^2.23.14"
+    "@dynamic-labs/ethereum": "4.48.2",
+    "@dynamic-labs/sdk-react-core": "4.48.2",
+    "@dynamic-labs/solana": "4.48.2",
+    "@dynamic-labs/sui": "4.48.2",
+    "react": "19.0.1",
+    "react-dom": "19.0.1",
+    "viem": "2.37.6"
   },
   "devDependencies": {
-    "@types/react": "^18.2.55",
-    "@types/react-dom": "^18.2.19",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "@vitejs/plugin-react": "^4.2.1",
-    "eslint": "^8.56.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.5",
-    "typescript": "^5.2.2",
-    "vite": "^6.3.6"
+    "@types/react": "19.0.1",
+    "@types/react-dom": "19.0.1",
+    "@typescript-eslint/eslint-plugin": "6.21.0",
+    "@typescript-eslint/parser": "6.21.0",
+    "@vitejs/plugin-react": "4.5.2",
+    "eslint": "8.57.1",
+    "eslint-plugin-react-hooks": "4.6.2",
+    "eslint-plugin-react-refresh": "0.4.20",
+    "typescript": "5.8.3",
+    "vite": "6.3.6"
   },
   "eslintConfig": {
     "extends": [

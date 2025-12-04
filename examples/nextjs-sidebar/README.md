@@ -12,8 +12,9 @@ This project demonstrates the integration of Dynamic's new Sidebar Widget, a use
 ## Getting Started
 
 1. Install the necessary dependencies:
+
    ```
-   npm install @dynamic-labs/sdk-react-core
+   pnpm install @dynamic-labs/sdk-react-core
    ```
 
 2. Wrap your application with the `DynamicContextProvider` (not shown in the current file).

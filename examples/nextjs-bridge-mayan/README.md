@@ -16,14 +16,14 @@ A modern web application for performing cross-chain token swaps using the Mayan 
 - **Styling**: Tailwind CSS
 - **Wallet Integration**: Dynamic Labs SDK
 - **Cross-Chain Protocol**: Mayan Finance SDK
-- **Package Manager**: Bun
+- **Package Manager**: pnpm
 
 ## Getting Started
 
 1. **Install dependencies**:
 
    ```bash
-   bun install
+   pnpm install
    ```
 
 2. **Set up environment variables**:
@@ -36,7 +36,7 @@ A modern web application for performing cross-chain token swaps using the Mayan 
 3. **Run the development server**:
 
    ```bash
-   bun run dev
+   pnpm run dev
    ```
 
 4. **Open your browser**:
@@ -63,9 +63,9 @@ A modern web application for performing cross-chain token swaps using the Mayan 
 
 ## Development
 
-- **Build**: `bun run build`
-- **Start**: `bun run start`
-- **Lint**: `bun run lint`
+- **Build**: `pnpm run build`
+- **Start**: `pnpm run start`
+- **Lint**: `pnpm run lint`
 
 ## Learn More
 

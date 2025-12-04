@@ -90,7 +90,7 @@ A seamless cross-chain token bridging and swapping experience powered by **Dynam
 
 ### Prerequisites
 
-- Node.js 18+ and bun
+- Node.js 18+ and pnpm
 - Dynamic Environment ID (get one at [dynamic.xyz](https://app.dynamic.xyz))
 - Cross-chain bridge API access
 
@@ -98,7 +98,7 @@ A seamless cross-chain token bridging and swapping experience powered by **Dynam
 
 ```bash
 # Install dependencies
-bun install
+pnpm install
 
 # Copy environment template
 cp .example.env .env.local
@@ -115,7 +115,7 @@ NEXT_PUBLIC_LIFI_API_KEY=your_lifi_api_key_here
 
 ```bash
 # Start the development server
-bun dev
+pnpm run dev
 
 # Open in browser
 open http://localhost:3000
