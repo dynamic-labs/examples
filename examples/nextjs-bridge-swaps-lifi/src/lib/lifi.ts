@@ -8,7 +8,6 @@ export const initializeLiFiConfig = (wagmiConfig: Config) => {
   return createConfig({
     integrator: "Dynamic",
     providers: [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       EVM({
         getWalletClient: () => getWalletClient(config),
         switchChain: async (chainId: number) => {
