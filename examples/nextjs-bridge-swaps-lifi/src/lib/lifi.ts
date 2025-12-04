@@ -3,24 +3,19 @@ import { getWalletClient, switchChain } from "@wagmi/core";
 import type { Config } from "wagmi";
 
 export const initializeLiFiConfig = (wagmiConfig: Config) => {
+  const config = wagmiConfig as any;
+
   return createConfig({
     integrator: "Dynamic",
     providers: [
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       EVM({
-        getWalletClient: () => {
-          const client = getWalletClient(wagmiConfig);
-          return client;
+        getWalletClient: () => getWalletClient(config),
+        switchChain: async (chainId: number) => {
+          const chain = await switchChain(config, { chainId });
+          return getWalletClient(config, { chainId: chain.id });
         },
-        switchChain: async (chainId) => {
-          try {
-            const chain = await switchChain(wagmiConfig, { chainId });
-            const client = getWalletClient(wagmiConfig, { chainId: chain.id });
-            return client;
-          } catch (error) {
-            throw error;
-          }
-        },
-      }),
+      } as any),
     ],
     apiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY,
   });
