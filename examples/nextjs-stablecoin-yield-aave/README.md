@@ -22,7 +22,7 @@ Watch how it works:
    ```bash
    git clone <repository-url>
    cd dynamic-yield
-   bun install
+   pnpm install
    ```
 
 2. **Set up your environment**
@@ -35,7 +35,7 @@ Watch how it works:
 3. **Start the dev server**
 
    ```bash
-   bun dev
+   pnpm run dev
    ```
 
 4. **Open your browser** to [http://localhost:3000](http://localhost:3000)

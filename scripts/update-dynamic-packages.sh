@@ -58,9 +58,7 @@ list_install_args () {
 }
 
 detect_package_manager() {
-    if [ -f "bun.lock" ]; then
-        echo "bun"
-    elif [ -f "pnpm-lock.yaml" ]; then
+    if [ -f "pnpm-lock.yaml" ]; then
         echo "pnpm"
     elif [ -f "package-lock.json" ]; then
         echo "npm"
@@ -73,8 +71,6 @@ for proj in $(list_all_projects); do
         install_args=$(list_install_args)
         if [ -n "$install_args" ]; then
             case "$(detect_package_manager)" in
-                bun)
-                    bun add $install_args ;;
                 pnpm)
                     pnpm add --ignore-workspace $install_args ;;
                 npm)

@@ -51,7 +51,7 @@ src/
 1. Install dependencies:
 
    ```bash
-   bun install
+   pnpm install
    ```
 
 2. Set up environment variables:
@@ -64,7 +64,7 @@ src/
 
 3. Run the development server:
    ```bash
-   bun run dev
+   pnpm run dev
    ```
 
 ## Usage
