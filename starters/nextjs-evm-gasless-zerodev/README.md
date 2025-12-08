@@ -23,7 +23,7 @@ This application demonstrates:
 1. Clone and install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. Set up your environment variables (see `.env.example`)
@@ -31,7 +31,7 @@ npm install
 3. Run the development server:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) and try:
