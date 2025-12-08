@@ -41,9 +41,14 @@ export async function getOrCreateWallet(
 
   // Create new ephemeral wallet
   console.info(`Creating new wallet...`);
+  console.log({
+    thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
+    backUpToClientShareService: true,
+    ...(password && { password }),
+  });
   const wallet = await dynamicEvmClient.createWalletAccount({
     thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-    backUpToClientShareService: false,
+    backUpToClientShareService: true,
     ...(password && { password }),
   });
 

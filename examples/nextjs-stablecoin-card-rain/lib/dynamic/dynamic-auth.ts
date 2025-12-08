@@ -1,7 +1,7 @@
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
-import { NextRequest, NextResponse } from "next/server";
-import { CreateCardForUserResponse } from "../rain";
+import { type NextRequest, NextResponse } from "next/server";
+import type { CreateCardForUserResponse } from "../rain";
 
 /**
  * Represents a verified credential for a user.

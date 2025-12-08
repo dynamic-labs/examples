@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "react-native-expo-dynamic-demo",
-    "slug": "react-native-expo-dynamic-demo",
+    "name": "dynamic-demo",
+    "slug": "dynamic-demo",
     "version": "1.0.0",
     "backgroundColor": "#E6F4FE",
     "orientation": "portrait",
     "icon": "./assets/images/dynamic-logo.png",
-    "scheme": "reactnativeexpov2",
+    "scheme": "dynamicdemo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -16,11 +16,9 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.reactnativeexpov2",
+      "bundleIdentifier": "com.dynamic.demo",
       "entitlements": {
-        "com.apple.developer.in-app-payments": [
-          "merchant.com.yourcompany.reactnativeexpov2"
-        ]
+        "com.apple.developer.in-app-payments": ["merchant.com.dynamic.demo"]
       },
       "infoPlist": {
         "NSApplePayCapabilityEnabled": true
@@ -35,7 +33,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.yourcompany.reactnativeexpov2"
+      "package": "com.dynamic.demo"
     },
     "web": {
       "output": "static",

@@ -59,7 +59,7 @@ async function createWallet(shouldSave: boolean, password?: string) {
   // - password: (Optional) Encrypts the key shares with a password for additional security
   const wallet = await dynamicEvmClient.createWalletAccount({
     thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-    backUpToClientShareService: false,
+    backUpToClientShareService: true,
     ...(password && { password }),
   });
 

@@ -15,4 +15,4 @@ node_modules/
 Thumbs.db
 
 # Wallet storage
-.wallets.json
+**/wallet.json
