@@ -111,7 +111,6 @@ This directory contains automation scripts for maintaining and managing the Dyna
 
 - **pnpm** (preferred)
 - **npm**
-- **bun**
 
 #### **What it Updates**
 

@@ -18,7 +18,7 @@ The lending flow consists of several modular components:
 ## Setup and Dependencies
 
 ```bash
-bun install
+pnpm install
 ```
 
 Key dependencies:
@@ -461,7 +461,7 @@ Base network (Chain ID: 8453):
 First, run the development server:
 
 ```bash
-bun dev
+pnpm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

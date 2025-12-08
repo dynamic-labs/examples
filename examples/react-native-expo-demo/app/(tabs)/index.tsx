@@ -21,8 +21,6 @@ export default function HomeScreen() {
   const balanceSectionRef = useRef<{ refresh: () => Promise<void> }>(null);
   const tokenListRef = useRef<{ refresh: () => Promise<void> }>(null);
 
-  // Get user information from Dynamic client
-  const client = useReactiveClient(dynamicClient);
   const primaryWallet = client.wallets.primary;
   const walletAddress = primaryWallet?.address || "";
 
