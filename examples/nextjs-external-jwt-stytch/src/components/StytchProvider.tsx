@@ -18,6 +18,8 @@ const stytch = createStytchUIClient(
 );
 
 const StytchProvider = ({ children }: { children: ReactNode }) => {
+  const jwt = Cookies.get("stytch_session_jwt");
+  console.log("jwt", jwt);
   return (
     <ProviderActual stytch={stytch}>
       <StytchDynamicBridge />

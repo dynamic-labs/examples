@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { withAuth, AuthenticatedUser } from "@/lib/dynamic/dynamic-auth";
+import { type NextRequest, NextResponse } from "next/server";
+import { type AuthenticatedUser, withAuth } from "@/lib/dynamic/dynamic-auth";
+import { updateUserMetadata } from "@/lib/dynamic/methods";
 import {
+  type CreateUserApplicationRequest,
   createCardForUser,
   createUserApplication,
-  type CreateUserApplicationRequest,
 } from "@/lib/rain";
-import { updateUserMetadata } from "@/lib/dynamic/methods";
 
 /**
  * API route handler for processing application submissions.
