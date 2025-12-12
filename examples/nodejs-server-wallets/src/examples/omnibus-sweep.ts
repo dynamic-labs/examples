@@ -17,10 +17,10 @@
  * ## Usage
  *
  * Run with default settings (10 wallets):
- *   pnpm omnibus
+ *   pnpm example:omnibus
  *
  * Run with custom number of wallets:
- *   pnpm omnibus 20
+ *   pnpm example:omnibus 20
  *
  * ## Use Case
  *
@@ -32,20 +32,31 @@
  */
 
 import { ThresholdSignatureScheme } from "@dynamic-labs-wallet/node";
-import type { DynamicEvmWalletClient } from "@dynamic-labs-wallet/node-evm";
+import {
+  createAccountAdapter,
+  type DynamicEvmWalletClient,
+} from "@dynamic-labs-wallet/node-evm";
 import pLimit from "p-limit";
 import { encodeFunctionData, type Hex, type LocalAccount } from "viem";
-import { baseSepolia } from "viem/chains";
-import { CONTRACTS, TOKEN_ABI } from "../constants";
-import { authenticatedEvmClient } from "./libs/dynamic";
-import { getAuthorization, getSmartAccountClient } from "./libs/pimlico";
+
+import { CONTRACTS, TOKEN_ABI } from "../../constants";
+import { parseArgs, runScript } from "../lib/cli";
+import {
+  DEFAULT_CHAIN,
+  MAX_USDC_AMOUNT,
+  TRANSACTION_CONFIRMATIONS,
+  TRANSACTION_LIMIT as TRANSACTION_CONCURRENCY,
+  USDC_DECIMALS,
+  WALLET_CREATION_LIMIT as WALLET_CREATION_CONCURRENCY,
+} from "../lib/config";
+import { authenticatedEvmClient } from "../lib/dynamic";
+import { getAuthorization, getSmartAccountClient } from "../lib/pimlico";
 import {
   dollarsToTokenUnits,
   formatAddress,
   getAddressLink,
   getTransactionLink,
-} from "./libs/utils";
-import { getPublicClient, getWalletClient } from "./libs/viem";
+} from "../lib/utils";
 
 interface SendTransactionParams {
   walletClient: LocalAccount;
@@ -64,34 +75,14 @@ interface CustomerWallet {
   usdcAmount: bigint;
 }
 
-const USDC_ADDRESS = CONTRACTS[baseSepolia.id].USDC;
+const USDC_ADDRESS = CONTRACTS[DEFAULT_CHAIN.id].USDC;
 
 // Concurrency limits for API rate limiting
-const WALLET_CREATION_LIMIT = pLimit(5);
-const TRANSACTION_LIMIT = pLimit(25);
+const WALLET_CREATION_LIMIT = pLimit(WALLET_CREATION_CONCURRENCY);
+const TRANSACTION_LIMIT = pLimit(TRANSACTION_CONCURRENCY);
 
-// Parse command line arguments
-const numWalletsArg = process.argv[2];
-
-// Demo configuration constants
+// Demo configuration
 const DEFAULT_NUM_WALLETS = 10;
-const MAX_USDC_AMOUNT = 1000; // Maximum USDC amount per wallet
-const USDC_DECIMALS = 6; // USDC has 6 decimals
-const TRANSACTION_CONFIRMATIONS = 2;
-
-// Configuration with defaults
-const NUM_WALLETS = numWalletsArg
-  ? parseInt(numWalletsArg, 10)
-  : DEFAULT_NUM_WALLETS;
-// Validate inputs
-if (Number.isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
-  console.error(
-    "Error: Please provide a positive integer for the number of customer wallets to create"
-  );
-  console.error("Usage: tsx omnibus-sweep.ts [num_wallets]");
-  console.error("Example: tsx omnibus-sweep.ts 10");
-  process.exit(1);
-}
 
 let dynamicEvmClient: DynamicEvmWalletClient;
 
@@ -153,19 +144,22 @@ async function createWalletAccount(
 }
 
 /**
- * Creates a wallet client for signing transactions from a customer wallet.
- * Uses the shared getWalletClient helper from libs/viem.ts
+ * Creates a wallet account for signing transactions from a customer wallet.
+ * Uses the SDK's createAccountAdapter for viem-compatible accounts.
  */
-async function createWalletClientForCustomer(
+function createWalletClientForCustomer(
   customerWallet: CustomerWallet
-): Promise<LocalAccount> {
-  if (!dynamicEvmClient) dynamicEvmClient = await authenticatedEvmClient();
+): LocalAccount {
+  if (!dynamicEvmClient) {
+    throw new Error("dynamicEvmClient not initialized");
+  }
 
-  return getWalletClient({
-    dynamicEvmClient,
-    address: customerWallet.wallet.accountAddress,
+  // Cast to LocalAccount since the SDK adapter implements all required signing methods
+  return createAccountAdapter({
+    evmClient: dynamicEvmClient,
+    accountAddress: customerWallet.wallet.accountAddress as `0x${string}`,
     externalServerKeyShares: customerWallet.wallet.externalServerKeyShares,
-  });
+  }) as LocalAccount;
 }
 
 /**
@@ -177,9 +171,14 @@ async function sendTransactionAndWait({
   to,
   data,
 }: SendTransactionParams): Promise<string> {
-  const publicClient = getPublicClient({ chain: baseSepolia });
-  const smartAccount = await getSmartAccountClient(baseSepolia, walletClient);
-  const authorization = await getAuthorization(baseSepolia, walletClient);
+  const publicClient = dynamicEvmClient.createViemPublicClient({
+    chain: DEFAULT_CHAIN,
+    rpcUrl: DEFAULT_CHAIN.rpcUrls.default.http[0],
+  });
+  const [smartAccount, authorization] = await Promise.all([
+    getSmartAccountClient(publicClient, walletClient),
+    getAuthorization(publicClient, walletClient),
+  ]);
 
   const hash = await smartAccount.sendTransaction({ to, data, authorization });
   await publicClient.waitForTransactionReceipt({
@@ -274,7 +273,25 @@ async function sweepToOmnibus(
   return customerWallet.usdcAmount;
 }
 
-async function main() {
+runScript(async () => {
+  const { positional } = parseArgs(process.argv);
+
+  // Parse number of wallets from command line
+  const numWalletsArg = positional[0];
+  const NUM_WALLETS = numWalletsArg
+    ? parseInt(numWalletsArg, 10)
+    : DEFAULT_NUM_WALLETS;
+
+  // Validate inputs
+  if (Number.isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
+    console.error(
+      "Error: Please provide a positive integer for the number of customer wallets to create"
+    );
+    console.error("Usage: pnpm example:omnibus [num_wallets]");
+    console.error("Example: pnpm example:omnibus 10");
+    process.exit(1);
+  }
+
   console.info("Dynamic Gasless Transaction Demo - Omnibus Sweep");
   console.info(
     "Demonstrating scalable wallet management and gasless transfers"
@@ -347,10 +364,4 @@ async function main() {
       omnibusAddress
     )}#tokentxns`
   );
-  process.exit(0);
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
 });

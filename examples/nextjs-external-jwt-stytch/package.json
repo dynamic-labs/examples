@@ -11,23 +11,23 @@
   "dependencies": {
     "@dynamic-labs-sdk/client": "0.1.0-alpha.12",
     "@dynamic-labs-sdk/evm": "0.1.0-alpha.12",
-    "@stytch/nextjs": "^21.11.1",
-    "@stytch/vanilla-js": "^5.35.1",
-    "@tanstack/react-query": "^5.89.0",
+    "@stytch/nextjs": "21.11.1",
+    "@stytch/vanilla-js": "5.35.1",
+    "@tanstack/react-query": "5.89.0",
     "@types/node": "24.5.2",
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
     "eslint": "9.35.0",
     "eslint-config-next": "15.5.3",
-    "js-cookie": "^3.0.5",
-    "next": "^15.5.4",
-    "prettier": "^3.6.2",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "stytch": "^12.35.0",
-    "typescript": "~5.9.2"
+    "js-cookie": "3.0.5",
+    "next": "15.5.7",
+    "prettier": "3.6.2",
+    "react": "19.1.2",
+    "react-dom": "19.1.2",
+    "stytch": "12.35.0",
+    "typescript": "5.9.2"
   },
   "devDependencies": {
-    "@types/js-cookie": "^3.0.6"
+    "@types/js-cookie": "3.0.6"
   }
 }

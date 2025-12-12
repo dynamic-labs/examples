@@ -1,5 +1,23 @@
 #!/usr/bin/env tsx
 
+/**
+ * Delegated Wallet Transaction Demo
+ *
+ * Send gasless transactions using a delegated wallet.
+ *
+ * ## Prerequisites
+ *
+ * This script requires a wallet.json file with delegated access credentials.
+ * See wallet.json.example for the required format.
+ *
+ * The delegated share is obtained through a separate process where the user
+ * grants your application permission to sign on their behalf.
+ *
+ * ## Usage
+ *
+ *   pnpm delegated:send-txn
+ */
+
 import {
   createDelegatedEvmWalletClient,
   createZerodevClient,
@@ -7,10 +25,18 @@ import {
 import { zeroAddress } from "viem";
 
 import { DYNAMIC_API_TOKEN, DYNAMIC_ENVIRONMENT_ID } from "../../constants";
-import { getTransactionLink } from "../libs/utils";
+import { runScript } from "../lib/cli";
+import { getTransactionLink } from "../lib/utils";
 import wallet from "./wallet.json";
 
+/**
+ * Step 1: Create delegated client and send transaction
+ *
+ * Unlike server wallets where you control the key shares,
+ * delegated wallets use credentials provided by the wallet owner.
+ */
 async function sendTransaction() {
+  // Create a delegated client using your API credentials
   const client = createDelegatedEvmWalletClient({
     environmentId: DYNAMIC_ENVIRONMENT_ID,
     apiKey: DYNAMIC_API_TOKEN,
@@ -18,8 +44,12 @@ async function sendTransaction() {
 
   console.info(`\nSending transaction...`);
   const start = Date.now();
+
+  // Create ZeroDev client for gasless transactions
   const zerodevClient = await createZerodevClient(client);
 
+  // Create smart account with delegated access
+  // This uses the wallet owner's delegated share to authorize signing
   const smartAccount = await zerodevClient.createKernelClientForAddress({
     withSponsorship: true,
     networkId: "11155111",
@@ -32,12 +62,14 @@ async function sendTransaction() {
     },
   });
 
+  // Step 2: Send the gasless transaction
   const hash = await smartAccount.sendTransaction({
     to: zeroAddress,
     value: BigInt(0),
   });
-  const duration = ((Date.now() - start) / 1000).toFixed(2);
 
+  // Step 3: Display results
+  const duration = ((Date.now() - start) / 1000).toFixed(2);
   console.info(`\n✅ Transaction sent in ${duration}s`);
   console.info(`📝 Hash: ${hash}`);
   console.info(`🔗 Explorer: ${getTransactionLink(hash)}`);
@@ -45,17 +77,6 @@ async function sendTransaction() {
   return hash;
 }
 
-async function main() {
-  try {
-    await sendTransaction();
-    process.exit(0);
-  } catch (error) {
-    console.error("❌ Error:", error);
-    process.exit(1);
-  }
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+runScript(async () => {
+  await sendTransaction();
 });

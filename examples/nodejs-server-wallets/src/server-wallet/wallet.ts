@@ -39,8 +39,9 @@
 
 import { ThresholdSignatureScheme } from "@dynamic-labs-wallet/node";
 
-import { authenticatedEvmClient } from "./libs/dynamic";
-import { deleteWallet, listWallets, saveWallet } from "./libs/wallet-storage";
+import { parseArgs, runScript } from "../lib/cli";
+import { authenticatedEvmClient } from "../lib/dynamic";
+import { deleteWallet, listWallets, saveWallet } from "../lib/wallet-storage";
 
 async function createWallet(shouldSave: boolean, password?: string) {
   // Step 1: Authenticate with Dynamic using your API token
@@ -113,39 +114,38 @@ function removeWallet(address: string) {
   console.info(`✅ Wallet deleted successfully`);
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const shouldCreate = args.includes("--create");
-  const shouldList = args.includes("--list");
-  const shouldSave = args.includes("--save");
+function showUsage() {
+  console.error("❌ Please specify an action:");
+  console.error(
+    "  pnpm wallet --create                        # Create wallet (ephemeral)"
+  );
+  console.error(
+    "  pnpm wallet --create --save                 # Create and save wallet"
+  );
+  console.error(
+    "  pnpm wallet --create --save --password xyz  # Create with password"
+  );
+  console.error(
+    "  pnpm wallet --list                          # List saved wallets"
+  );
+  console.error(
+    "  pnpm wallet --delete <address>              # Delete a saved wallet"
+  );
+  process.exit(1);
+}
 
-  // Parse --delete flag and address
-  const deleteIndex = args.indexOf("--delete");
-  const shouldDelete = deleteIndex !== -1;
-  const deleteAddress = shouldDelete ? args[deleteIndex + 1] : undefined;
+runScript(async () => {
+  const { hasFlag, getFlag } = parseArgs(process.argv);
 
-  // Parse --password flag and value
-  const passwordIndex = args.indexOf("--password");
-  const password = passwordIndex !== -1 ? args[passwordIndex + 1] : undefined;
+  const shouldCreate = hasFlag("create");
+  const shouldList = hasFlag("list");
+  const shouldSave = hasFlag("save");
+  const shouldDelete = hasFlag("delete");
+  const deleteAddress = getFlag("delete");
+  const password = getFlag("password");
 
   if (!shouldCreate && !shouldList && !shouldDelete) {
-    console.error("❌ Please specify an action:");
-    console.error(
-      "  pnpm wallet --create                        # Create wallet (ephemeral)"
-    );
-    console.error(
-      "  pnpm wallet --create --save                 # Create and save wallet"
-    );
-    console.error(
-      "  pnpm wallet --create --save --password xyz  # Create with password"
-    );
-    console.error(
-      "  pnpm wallet --list                          # List saved wallets"
-    );
-    console.error(
-      "  pnpm wallet --delete <address>              # Delete a saved wallet"
-    );
-    process.exit(1);
+    showUsage();
   }
 
   if (shouldDelete && !deleteAddress) {
@@ -154,23 +154,11 @@ async function main() {
     process.exit(1);
   }
 
-  try {
-    if (shouldList) {
-      displayWalletList();
-    } else if (shouldDelete && deleteAddress) {
-      removeWallet(deleteAddress);
-    } else if (shouldCreate) {
-      await createWallet(shouldSave, password);
-    }
-
-    process.exit(0);
-  } catch (error) {
-    console.error("Error:", error);
-    process.exit(1);
+  if (shouldList) {
+    displayWalletList();
+  } else if (shouldDelete && deleteAddress) {
+    removeWallet(deleteAddress);
+  } else if (shouldCreate) {
+    await createWallet(shouldSave, password);
   }
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
 });

@@ -9,6 +9,7 @@ import {
   type Client,
   http,
   type LocalAccount,
+  type PublicClient,
   type RpcSchema,
   type SignAuthorizationReturnType,
   type Transport,
@@ -21,7 +22,6 @@ import {
   ACCOUNT_IMPLEMENTATION_ADDRESS,
   PIMLICO_API_KEY,
 } from "../../constants";
-import { getPublicClient } from "./viem";
 
 export type SmartAccountClient = PermissionlessSmartAccountClient<
   Transport,
@@ -70,17 +70,20 @@ export function createPimlicoPaymasterClient(
 }
 
 export async function getSmartAccountClient(
-  chain: Chain,
+  publicClient: PublicClient,
   owner: LocalAccount,
   opts?: { apiKey?: string }
 ): Promise<SmartAccountClient> {
+  const chain = publicClient.chain!;
   const { bundlerTransport } = getPimlicoClientsForChain(chain.id, opts);
   const paymaster = createPimlicoPaymasterClient(chain.id, opts);
-  const client = getPublicClient({ chain });
-  const account = await to7702SimpleSmartAccount({ client, owner });
+  const account = await to7702SimpleSmartAccount({
+    client: publicClient,
+    owner,
+  });
 
   return createSmartAccountClient({
-    client,
+    client: publicClient,
     chain,
     account,
     paymaster,
@@ -89,22 +92,21 @@ export async function getSmartAccountClient(
 }
 
 export async function getAuthorization(
-  chain: Chain,
+  publicClient: PublicClient,
   owner: LocalAccount
 ): Promise<SignAuthorizationReturnType | undefined> {
   const address = owner.address;
-  const client = getPublicClient({ chain });
-  const code = await client.getCode({ address });
+  const code = await publicClient.getCode({ address });
   if (code) return undefined;
 
   if (!owner.signAuthorization) {
     throw new Error("signAuthorization is not supported");
   }
 
-  const nonce = await client.getTransactionCount({ address });
+  const nonce = await publicClient.getTransactionCount({ address });
   const authorization = await owner.signAuthorization({
     address: ACCOUNT_IMPLEMENTATION_ADDRESS,
-    chainId: chain.id,
+    chainId: publicClient.chain!.id,
     nonce,
   });
   return authorization;
