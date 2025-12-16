@@ -1,6 +1,11 @@
-import { decryptMaterials, storeDelegation } from "@/lib/dynamic/delegation";
+import {
+  decryptMaterials,
+  deleteDelegation,
+  storeDelegation,
+} from "@/lib/dynamic/delegation";
 import type {
   DelegationCreatedEvent,
+  DelegationRevokedEvent,
   PingEvent,
 } from "@/lib/dynamic/webhooks/schemas";
 
@@ -53,6 +58,46 @@ export async function handleDelegationCreated(payload: DelegationCreatedEvent) {
     return { success: true, message: "Delegation created" };
   } catch (error) {
     console.error("❌ Failed to process delegation:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Handle wallet.delegation.revoked webhook event
+ *
+ * This is triggered when a user revokes a delegated wallet through Dynamic's UI.
+ *
+ * Process:
+ * 1. Removes the delegation record from Redis (or your configured storage)
+ * 2. Prevents any further server-side operations with the revoked delegation
+ *
+ * After this handler completes, the server will no longer be able to perform
+ * delegated operations for this wallet until a new delegation is created.
+ */
+export async function handleDelegationRevoked(payload: DelegationRevokedEvent) {
+  try {
+    console.log(
+      `🔓 Revoking delegation for user ${payload.data.userId} on ${payload.data.chain}...`
+    );
+
+    // Remove the delegation from storage
+    const deleted = await deleteDelegation(
+      payload.data.userId,
+      payload.data.chain
+    );
+
+    if (deleted) {
+      console.log("✅ Successfully revoked delegation");
+      return { success: true, message: "Delegation revoked" };
+    } else {
+      console.log("⚠️ No delegation found to revoke");
+      return { success: true, message: "No delegation found to revoke" };
+    }
+  } catch (error) {
+    console.error("❌ Failed to revoke delegation:", error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Unknown error",

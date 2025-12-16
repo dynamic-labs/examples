@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
   handleDelegationCreated,
+  handleDelegationRevoked,
   handlePing,
   verifyWebhookSignature,
   WebhookPayloadSchema,
@@ -21,6 +22,7 @@ import {
  * Supported events:
  * - ping: Health check event
  * - wallet.delegation.created: Fired when a delegation is created
+ * - wallet.delegation.revoked: Fired when a delegation is revoked
  */
 export async function handleWebhookRequest(request: NextRequest) {
   // Step 1: Verify the signature and extract payload
@@ -62,6 +64,9 @@ export async function handleWebhookRequest(request: NextRequest) {
       break;
     case "wallet.delegation.created":
       result = await handleDelegationCreated(payload);
+      break;
+    case "wallet.delegation.revoked":
+      result = await handleDelegationRevoked(payload);
       break;
 
     default:

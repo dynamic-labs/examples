@@ -8,9 +8,9 @@ import {
   useIsLoggedIn,
   useUserWallets,
 } from "@/lib/dynamic";
-import DynamicWidget from "./dynamic/dynamic-widget";
-import { Button } from "./ui/button";
-import { Skeleton } from "./ui/skeleton";
+import DynamicWidget from "./dynamic-widget";
+import { Button } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 
 export default function DynamicMethods() {
   const isLoggedIn = useIsLoggedIn();

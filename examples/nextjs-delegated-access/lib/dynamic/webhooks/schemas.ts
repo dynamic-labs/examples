@@ -100,6 +100,29 @@ export const DelegationCreatedEventSchema = BaseWebhookSchema.extend({
 });
 
 /**
+ * Schema for wallet.delegation.revoked webhook event
+ *
+ * This event is fired when a user revokes a delegated wallet through Dynamic's UI.
+ * When received, you should remove the stored delegation share from your storage
+ * to ensure the server can no longer perform operations on behalf of the user.
+ *
+ * The data object includes:
+ * - walletId: Unique identifier for the delegated wallet
+ * - chain: Chain identifier (e.g., "EVM")
+ * - publicKey: The public key/address of the delegated wallet
+ * - userId: The user who revoked the delegation
+ */
+export const DelegationRevokedEventSchema = BaseWebhookSchema.extend({
+  eventName: z.literal("wallet.delegation.revoked"),
+  data: z.object({
+    walletId: z.string(),
+    chain: z.string(),
+    publicKey: z.string(),
+    userId: z.string(),
+  }),
+});
+
+/**
  * Discriminated union schema for all webhook event types
  *
  * This schema uses Zod's discriminatedUnion to create a type-safe union of all
@@ -118,6 +141,7 @@ export const DelegationCreatedEventSchema = BaseWebhookSchema.extend({
  */
 export const WebhookPayloadSchema = z.discriminatedUnion("eventName", [
   DelegationCreatedEventSchema,
+  DelegationRevokedEventSchema,
   PingEventSchema,
 ]);
 
@@ -132,6 +156,9 @@ export type EncryptedDelegatedShare = z.infer<
 >;
 export type DelegationCreatedEvent = z.infer<
   typeof DelegationCreatedEventSchema
+>;
+export type DelegationRevokedEvent = z.infer<
+  typeof DelegationRevokedEventSchema
 >;
 export type PingEvent = z.infer<typeof PingEventSchema>;
 export type WebhookPayload = z.infer<typeof WebhookPayloadSchema>;

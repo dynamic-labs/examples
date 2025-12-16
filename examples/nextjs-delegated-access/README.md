@@ -2,21 +2,33 @@
 
 A Next.js demo showcasing how to build delegated wallet access with Dynamic's webhook system, including secure encryption/decryption of delegation shares.
 
+## What is Delegated Access?
+
+Delegated Access allows your application to act on behalf of a user's wallet. When a user approves delegation, you receive:
+
+- **Delegated share** - An encrypted MPC key share for signing operations
+- **Per-wallet API key** - A scoped API key for that specific wallet
+
+This enables server-side automation (bots, agents, recurring jobs) while keeping users in full control. Users can revoke delegation at any time.
+
+**Limitations:** Delegated access only permits signing operations. It does not allow exporting private keys, refreshing/resharing, or modifying wallet policies.
+
 ## What This Demo Does
 
 This application demonstrates:
 
-- **Webhook integration** - Receive and process Dynamic delegation webhooks
+- **Webhook integration** - Receive and process Dynamic delegation webhooks (created and revoked events)
 - **Secure decryption** - Decrypt delegation shares using RSA-OAEP + AES-GCM hybrid encryption
-- **Share storage** - Store decrypted shares for delegated operations (demo: in-memory)
+- **Share storage** - Store decrypted shares in Redis for delegated operations
+- **Server-side signing** - Sign messages using delegated wallet shares
 - **Production guidance** - Learn best practices for production deployments with KMS and encrypted storage
 
 ## Key Features
 
-- 🔐 **Webhook handling** - Process delegation created/updated events from Dynamic
-- 🔓 **Hybrid decryption** - RSA-OAEP for key exchange, AES-256-GCM for data encryption
-- 💾 **Flexible storage** - In-memory demo with clear production migration path
-- 📚 **Educational** - Comprehensive documentation on security best practices
+- **Webhook handling** - Process `wallet.delegation.created` and `wallet.delegation.revoked` events
+- **Hybrid decryption** - RSA-OAEP for key exchange, AES-256-GCM for data encryption
+- **Redis storage** - Supports Vercel KV (production) and local Redis (development)
+- **Delegated signing** - Sign messages server-side using stored delegation shares
 
 ## Quick Start
 
@@ -26,7 +38,41 @@ This application demonstrates:
 pnpm install
 ```
 
-### 2. Generate RSA keypair
+### 2. Configure Next.js for server-side signing
+
+The Dynamic node packages must be configured as external packages in `next.config.ts` to work correctly with server-side signing:
+
+```typescript
+const nextConfig: NextConfig = {
+  serverExternalPackages: [
+    "@dynamic-labs-wallet/node",
+    "@dynamic-labs-wallet/node-evm",
+  ],
+};
+```
+
+This prevents Next.js from bundling these packages, which is required for the native crypto operations used in delegated signing.
+
+### 3. Start Redis (for local development)
+
+This demo uses Redis to store delegation shares. For local development:
+
+```bash
+# macOS
+brew install redis
+redis-server
+
+# Linux
+sudo apt-get install redis-server
+redis-server
+
+# Or use Docker
+docker run -d -p 6379:6379 redis
+```
+
+The app automatically connects to `redis://localhost:6379` when no Vercel KV credentials are configured.
+
+### 4. Generate RSA keypair
 
 ```bash
 # Generate private key (3072-bit RSA)
@@ -36,68 +82,89 @@ openssl genrsa -out private-key.pem 3072
 openssl rsa -in private-key.pem -pubout -out public-key.pem
 ```
 
-### 3. Configure environment variables
+### 5. Configure environment variables
 
 ```bash
 # Copy the example file
 cp .env.example .env.local
+```
 
-# Add your Dynamic Environment ID
-NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=your_env_id_here
+Required environment variables:
 
-# Add your webhook secret from Dynamic dashboard
+```bash
+# Dynamic Environment ID (from dashboard)
+NEXT_PUBLIC_DYNAMIC_ENV_ID=your_env_id_here
+
+# Webhook secret (from Dynamic dashboard → Webhooks)
 DYNAMIC_WEBHOOK_SECRET=your_webhook_secret_here
 
-# Add your Dynamic API token (for server-side operations)
+# API token (from Dynamic dashboard → API)
 DYNAMIC_API_TOKEN=your_api_token_here
 
-# Add your private key (copy contents of private-key.pem)
+# Private key for decryption (copy contents of private-key.pem)
 DYNAMIC_DELEGATION_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----
 ...
 -----END PRIVATE KEY-----"
 ```
 
-### 4. Upload public key to Dynamic
+Optional Redis configuration (defaults to local Redis if not set):
+
+```bash
+# For Vercel KV (production)
+KV_REST_API_URL=your_vercel_kv_url
+KV_REST_API_TOKEN=your_vercel_kv_token
+
+# Or for custom Redis instance
+KV_URL=redis://your-redis-host:6379
+```
+
+### 6. Configure Dynamic Dashboard
 
 1. Go to your [Dynamic dashboard](https://app.dynamic.xyz)
-2. Navigate to Webhooks → Delegation settings
-3. Upload the `public-key.pem` file
+2. Navigate to **Embedded Wallets → Delegated Access**
+3. Enable Delegated Access and configure defaults
+4. Upload your `public-key.pem` file
+5. Register your webhook endpoint URL (e.g., `https://your-domain.com/api/webhooks/dynamic`)
 
-### 5. Run the development server
+The webhook is automatically created with `wallet.delegation.created` and `wallet.delegation.revoked` events enabled.
+
+### 7. Run the development server
 
 ```bash
 pnpm dev
 ```
 
-### 6. Test the webhook flow
+### 8. Test the webhook flow
 
 1. Use a tool like [ngrok](https://ngrok.com) to expose your local server
 2. Configure the webhook URL in Dynamic dashboard: `https://your-url.ngrok.io/api/webhooks/dynamic`
 3. Create a delegated wallet in your app
 4. Check the console logs to see the decryption and storage in action
+5. Test revoking the delegation to see the `wallet.delegation.revoked` event
 
-### 7. Test delegated access methods
+### 9. Test delegated access methods
 
 Once a wallet is delegated, you can:
 
 1. **Use the UI**: Click the buttons in the delegated access panel to:
 
-   - Fetch all delegations for your user
+   - View stored delegation details
    - Sign a message with your delegated wallet
+   - Revoke the delegation
 
 2. **Use the API directly**:
 
 ```bash
-# Get all delegations for a user
-curl http://localhost:3000/api/delegation?userId=USER_ID
+# Get delegation for an address and chain
+curl "http://localhost:3000/api/delegation?address=0x123...&chain=EVM"
 
-# Sign a message with a delegated wallet (chain is required)
+# Sign a message with a delegated wallet
 curl -X POST http://localhost:3000/api/delegation/sign \
   -H "Content-Type: application/json" \
-  -d '{"userId": "USER_ID", "chain": "EVM", "message": "Hello, World!"}'
+  -d '{"address": "0x123...", "chain": "EVM", "message": "Hello, World!"}'
 ```
 
-**⚠️ Security Note:** In production, this endpoint should be protected with authentication to ensure users can only access their own delegations. Consider using:
+**Security Note:** In production, these endpoints should be protected with authentication. Consider:
 
 - Dynamic's JWT verification to validate the requesting user
 - API keys for server-to-server communication
@@ -105,29 +172,70 @@ curl -X POST http://localhost:3000/api/delegation/sign \
 
 ## How It Works
 
-### Delegation Flow
+### Triggering Delegation (Client-Side)
 
-When a user delegates wallet access:
+Delegation can be triggered in two ways:
 
-1. **User delegates** → Through Dynamic's UI, user grants delegation permissions
-2. **Dynamic encrypts** → Delegation share and API key are encrypted with your public RSA key
-3. **Webhook sent** → `wallet.delegation.created` event is sent to your endpoint
-4. **Signature verified** → Your server verifies the webhook signature using HMAC-SHA256
-5. **Shares decrypted** → Your server decrypts the shares using your RSA private key
-6. **Shares stored** → Decrypted shares are stored for later use in delegated operations
+1. **Auto-prompt on sign-in** - Configure in the Dynamic dashboard to prompt users automatically
+2. **Programmatically** - Use the `useWalletDelegation` hook:
+
+```typescript
+import { useWalletDelegation } from "@dynamic-labs/sdk-react-core";
+
+const { initDelegationProcess } = useWalletDelegation();
+
+// Trigger delegation for the user's wallet
+await initDelegationProcess();
+```
+
+### Delegation Creation Flow
+
+When a user approves delegation:
+
+1. **User approves** - User sees a prompt and grants delegation permissions
+2. **Reshare ceremony** - Dynamic generates new user and server shares
+3. **Dynamic encrypts** - Delegation share and per-wallet API key are encrypted with your RSA public key
+4. **Webhook sent** - `wallet.delegation.created` event is sent to your endpoint
+5. **Signature verified** - Your server verifies the webhook signature using HMAC-SHA256
+6. **Shares decrypted** - Your server decrypts the materials using your RSA private key
+7. **Shares stored** - Decrypted shares are stored in Redis for delegated operations
+
+**Note:** Each wallet receives its own unique API key, scoped only to that wallet.
+
+### Delegation Revocation Flow
+
+Users can revoke delegation at any time, immediately disabling delegated operations:
+
+1. **User revokes** - Via Dynamic's UI or the `revokeDelegation` hook
+2. **Webhook sent** - `wallet.delegation.revoked` event is sent to your endpoint
+3. **Signature verified** - Your server verifies the webhook signature
+4. **Shares deleted** - Your server removes the delegation from Redis
+
+```typescript
+import { useWalletDelegation, ChainEnum } from "@dynamic-labs/sdk-react-core";
+
+const { revokeDelegation } = useWalletDelegation();
+
+await revokeDelegation([
+  {
+    chainName: ChainEnum.Evm,
+    accountAddress: "0x123...",
+  },
+]);
+```
 
 ### Encryption Scheme
 
 Dynamic uses **hybrid encryption** for maximum security and performance:
 
-**Step 1: Encryption (Dynamic's side)**
+#### Step 1: Encryption (Dynamic's side)
 
 - Generate random AES-256 symmetric key
 - Encrypt symmetric key with your RSA public key (RSA-OAEP + SHA-256) → `ek` field
 - Encrypt delegation share with symmetric key (AES-256-GCM) → `ct` field
 - Include initialization vector (`iv`) and authentication tag (`tag`)
 
-**Step 2: Decryption (Your side)**
+#### Step 2: Decryption (Your side)
 
 ```typescript
 // 1. Decrypt symmetric key with RSA private key
@@ -145,42 +253,48 @@ This approach combines:
 
 ## Project Structure
 
-```
+```text
 lib/
 ├── dynamic/
 │   ├── delegation/          # Delegation decryption & storage
 │   │   ├── decrypt.ts       # RSA+AES decryption logic
-│   │   ├── storage.ts       # In-memory demo storage
+│   │   ├── sign.ts          # Delegated message signing
+│   │   ├── storage.ts       # Redis-based storage
 │   │   └── types.ts         # TypeScript interfaces
 │   ├── webhooks/            # Dynamic webhook handlers
-│   │   ├── handlers.ts      # Event handlers
+│   │   ├── handlers.ts      # Event handlers (created/revoked)
 │   │   ├── schemas.ts       # Zod validation schemas
 │   │   └── verify-signature.ts
 │   └── index.ts             # Dynamic SDK re-exports
+├── redis.ts                 # Redis client (Vercel KV + ioredis)
 app/api/
 ├── webhooks/dynamic/        # Webhook endpoint
 │   └── route.ts             # POST handler for Dynamic webhooks
-└── delegations/             # Delegation data API
-    └── route.ts             # GET handler for retrieving delegations
+└── delegation/              # Delegation API
+    ├── route.ts             # GET handler for retrieving delegations
+    └── sign/
+        └── route.ts         # POST handler for signing messages
 ```
 
 ## Security Notes
 
-### ⚠️ This is a Demo
+### This is a Demo
 
 **What this demo uses:**
 
 - Environment variables for private key storage
-- In-memory storage for decrypted shares
-- Simple error handling
+- Redis for storing decrypted delegation shares (unencrypted)
+- Basic error handling without comprehensive logging
 
-**Why this works for local development:**
+**Why this works for development:**
 
-- ✅ Single process = memory persists across requests
-- ✅ Fast iteration and testing
-- ✅ No infrastructure setup required
+- Fast iteration and testing
+- Works with serverless (Vercel) via Vercel KV
+- Simple local setup with Redis
 
-### ⚠️ Do NOT Use in Production
+**Important:** Dynamic recommends re-encrypting delegation shares before storage. This demo stores shares in plain text for simplicity. In production, encrypt shares at rest using your own encryption layer.
+
+### Production Considerations
 
 **For production deployments, you MUST:**
 
@@ -261,16 +375,17 @@ await db.query(
 - Access audit logging
 - Rate limiting
 
-#### 4. Serverless Deployment Considerations
+#### 4. Serverless Deployment
 
-**Problem:** In-memory storage doesn't work on serverless (different lambda instances)
+This demo already supports serverless deployments via Redis:
 
-**Solutions:**
+- **Vercel KV** - Set `KV_REST_API_URL` and `KV_REST_API_TOKEN` environment variables
+- **Upstash Redis** - Set `KV_URL` to your Upstash Redis URL
 
-- **Vercel KV** (Redis) - Built-in for Vercel deployments
-- **Upstash Redis** - Global serverless Redis
-- **AWS DynamoDB** - Serverless NoSQL database
-- **PlanetScale** - Serverless MySQL
+For alternative storage backends, consider:
+
+- **AWS DynamoDB** - Serverless NoSQL database with encryption at rest
+- **PlanetScale** - Serverless MySQL with field-level encryption
 
 #### 5. Best Practices Checklist
 
@@ -287,11 +402,13 @@ await db.query(
 
 ## Resources
 
-- [Dynamic Documentation](https://docs.dynamic.xyz)
-- [Dynamic Delegation Guide](https://docs.dynamic.xyz/delegation)
-- [Webhook Signature Verification](https://docs.dynamic.xyz/webhooks/signature-validation)
+- [Delegated Access Overview](https://www.dynamic.xyz/docs/wallets/embedded-wallets/mpc/delegated-access/overview)
+- [Delegated Access Setup](https://www.dynamic.xyz/docs/wallets/embedded-wallets/mpc/delegated-access/configuration)
+- [useWalletDelegation Hook](https://www.dynamic.xyz/docs/react-sdk/hooks/usewalletdelegation)
+- [Node SDK Reference](https://www.dynamic.xyz/docs/node-sdk/overview)
+- [Webhook Documentation](https://www.dynamic.xyz/docs/developer-dashboard/webhooks)
+- [Webhook Signature Validation](https://www.dynamic.xyz/docs/guides/webhooks-signature-validation)
 - [AWS KMS Best Practices](https://docs.aws.amazon.com/kms/latest/developerguide/best-practices.html)
-- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
 
 ## Tech Stack
 
@@ -299,4 +416,5 @@ await db.query(
 - **Dynamic SDK** - Wallet delegation and webhooks
 - **TypeScript** - Type safety
 - **Zod** - Runtime schema validation
+- **Redis** - Vercel KV or ioredis for delegation storage
 - **Node.js Crypto** - Built-in encryption (RSA-OAEP, AES-GCM)

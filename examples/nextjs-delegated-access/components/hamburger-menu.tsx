@@ -1,8 +1,9 @@
 "use client";
 
-import { Menu, Monitor, Moon, Sun, X } from "lucide-react";
+import { LogOut, Menu, Monitor, Moon, Sun, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 
@@ -14,9 +15,15 @@ interface HamburgerMenuProps {
 export function HamburgerMenu({ children, className }: HamburgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { user, handleLogOut } = useDynamicContext();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const handleThemeChange = (newTheme: string) => setTheme(newTheme);
+
+  const onLogOut = async () => {
+    await handleLogOut();
+    setIsOpen(false);
+  };
 
   return (
     <div className={cn("relative", className)}>
@@ -85,6 +92,22 @@ export function HamburgerMenu({ children, className }: HamburgerMenuProps) {
                 </Button>
               </div>
             </div>
+
+            {/* Log Out (only shown when logged in) */}
+            {user && (
+              <>
+                <div className="border-t my-2" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onLogOut}
+                  className="justify-start h-8 px-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}

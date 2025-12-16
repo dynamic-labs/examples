@@ -1,6 +1,10 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import {
+  type AuthenticatedUser,
+  userOwnsAddress,
+} from "@/lib/dynamic/dynamic-auth";
 import { getDelegationByAddress, signMessage } from "@/lib/dynamic/delegation";
 import { SignMessageRequestSchema } from "./schema";
 
@@ -9,19 +13,16 @@ import { SignMessageRequestSchema } from "./schema";
  *
  * This handler:
  * 1. Validates the request body using Zod schema
- * 2. Retrieves the delegated share by address and chain
- * 3. Signs the message using the delegated share
+ * 2. Verifies the user owns the requested wallet address
+ * 3. Retrieves the delegated share by address and chain
+ * 4. Signs the message using the delegated share
  *
- * ⚠️ DEMO ONLY: This endpoint is NOT protected by authentication.
- *
- * In production, you MUST:
- * - Add authentication (verify Dynamic JWT tokens)
- * - Ensure users can only sign messages for their own delegations
- * - Add rate limiting
- * - Log access for audit trails
+ * Protected by Dynamic JWT authentication - users can only
+ * sign messages for their own verified wallet addresses.
  */
 export async function handleSignMessageRequest(
-  request: NextRequest
+  request: NextRequest,
+  user: AuthenticatedUser
 ): Promise<NextResponse> {
   const body = await request.json();
 
@@ -40,6 +41,17 @@ export async function handleSignMessageRequest(
   }
 
   const { address, chain, message } = validationResult.data;
+
+  // Authorization: Ensure the user owns the requested address
+  if (!userOwnsAddress(user, address)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "You are not authorized to sign for this address",
+      },
+      { status: 403 }
+    );
+  }
 
   // Get the delegated share by address and chain
   const delegation = await getDelegationByAddress(address, chain);

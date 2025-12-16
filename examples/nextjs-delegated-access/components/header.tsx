@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import DynamicLogo from "./dynamic/logo";
+import LogoutButton from "./dynamic/logout-button";
 import { HamburgerMenu } from "./hamburger-menu";
 import { ModeToggle } from "./mode-toggle";
 import { Button } from "./ui/button";
@@ -21,8 +22,9 @@ export default function Header() {
           <DynamicLogo />
         </Link>
       </div>
-      <div className="hidden md:flex gap-2 pr-4">
+      <div className="hidden md:flex gap-2 pr-4 items-center">
         {navItems}
+        <LogoutButton />
         <ModeToggle />
       </div>
       <div className="md:hidden pr-4">

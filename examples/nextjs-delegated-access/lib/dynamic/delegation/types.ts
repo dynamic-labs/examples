@@ -20,7 +20,7 @@ export interface DelegationRecord {
   address: string;
 
   /** The decrypted delegation share (TSS key share) */
-  delegatedShare: EcdsaKeygenResult;
+  delegatedShare: typeof EcdsaKeygenResult;
 
   /** The decrypted wallet API key for Dynamic API calls */
   walletApiKey: string;

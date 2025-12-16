@@ -1,4 +1,4 @@
-import DynamicMethods from "@/components/dynamic-methods";
+import DynamicMethods from "@/components/dynamic/dynamic-methods";
 
 export default function MethodsPage() {
   return (

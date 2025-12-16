@@ -1,20 +1,18 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import {
+  type AuthenticatedUser,
+  userOwnsAddress,
+} from "@/lib/dynamic/dynamic-auth";
 import { getDelegationByAddress } from "@/lib/dynamic/delegation";
 import { DelegationQuerySchema } from "./schema";
 
 /**
  * Handler for GET /api/delegation requests
  *
- * Retrieve delegation record for a specific wallet address and chain
- *
- * ⚠️ DEMO ONLY: This endpoint is NOT protected by authentication.
- *
- * In production, you MUST:
- * - Add authentication (verify Dynamic JWT tokens)
- * - Ensure users can only access their own delegations
- * - Add rate limiting
- * - Log access for audit trails
+ * Retrieve delegation record for a specific wallet address and chain.
+ * Protected by Dynamic JWT authentication - users can only access
+ * delegations for their own verified wallet addresses.
  *
  * Query params (both required):
  * - address: Wallet address to fetch delegation for
@@ -24,7 +22,8 @@ import { DelegationQuerySchema } from "./schema";
  * - GET /api/delegation?address=0x123...&chain=EVM - Get delegation for address on chain
  */
 export async function handleGetDelegationRequest(
-  request: NextRequest
+  request: NextRequest,
+  user: AuthenticatedUser
 ): Promise<NextResponse> {
   const { searchParams } = request.url
     ? new URL(request.url)
@@ -51,6 +50,17 @@ export async function handleGetDelegationRequest(
   }
 
   const { address, chain } = validationResult.data;
+
+  // Authorization: Ensure the user owns the requested address
+  if (!userOwnsAddress(user, address)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "You are not authorized to access this delegation",
+      },
+      { status: 403 }
+    );
+  }
 
   // Get delegation by address and chain
   const delegation = await getDelegationByAddress(address, chain);

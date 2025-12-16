@@ -1,14 +1,23 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import {
+  Key,
+  FileSignature,
+  XCircle,
+  Code2,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ChainEnum,
   useDynamicContext,
   useWalletDelegation,
 } from "@/lib/dynamic";
+import { authFetch } from "@/lib/dynamic/auth-fetch";
 import { EcdsaKeygenResult } from "@dynamic-labs-wallet/node";
+import ResponseDisplay from "./components/response-display";
 
 interface DelegationResponse {
   success: boolean;
@@ -16,7 +25,7 @@ interface DelegationResponse {
     address: string;
     walletId: string;
     walletApiKey: string;
-    delegatedShare: EcdsaKeygenResult;
+    delegatedShare: typeof EcdsaKeygenResult;
   };
   error?: string;
 }
@@ -31,66 +40,65 @@ interface SignMessageResponse {
   error?: string;
 }
 
+type ActionType = "getKey" | "sign" | "revoke" | null;
+
 export default function DelegatedAccessMethods() {
   const { user, primaryWallet } = useDynamicContext();
   const { revokeDelegation } = useWalletDelegation();
 
   const [result, setResult] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeAction, setActiveAction] = useState<ActionType>(null);
+  const [lastAction, setLastAction] = useState<ActionType>(null);
   const [message, setMessage] = useState("Hello, World!");
 
   function clearResult() {
     setResult("");
     setError(null);
+    setLastAction(null);
   }
 
   async function handleRevokeDelegation(address: string) {
     try {
       setIsLoading(true);
+      setActiveAction("revoke");
       setError(null);
-      console.log("revoking delegation for address", address);
+      setResult("");
+
       const response = await revokeDelegation([
-        {
-          accountAddress: address,
-          chainName: ChainEnum.Evm,
-          status: "delegated",
-        },
+        { accountAddress: address, chainName: ChainEnum.Evm },
       ]);
 
-      console.log(response);
-
-      setError(null);
+      console.log("Revocation response:", response);
+      setResult("Delegation revoked successfully");
+      setLastAction("revoke");
     } catch (err) {
-      console.error(err);
+      console.error("Revocation error:", err);
       setError(
         err instanceof Error ? err.message : "Failed to revoke delegation"
       );
-      setResult("");
+      setLastAction("revoke");
     } finally {
       setIsLoading(false);
+      setActiveAction(null);
     }
   }
 
   async function handleGetDelegatedKey() {
-    if (!primaryWallet?.address) {
-      setError("Wallet address not found. Please connect your wallet.");
-      return;
-    }
-
-    if (!primaryWallet?.chain) {
-      setError(
-        "Wallet chain not available. Please ensure your wallet is connected"
-      );
+    if (!primaryWallet?.address || !primaryWallet?.chain) {
+      setError("Wallet not properly connected. Please reconnect.");
+      setLastAction("getKey");
       return;
     }
 
     try {
       setIsLoading(true);
+      setActiveAction("getKey");
       setError(null);
+      setResult("");
 
-      const response = await fetch(
+      const response = await authFetch(
         `/api/delegation?address=${encodeURIComponent(
           primaryWallet.address
         )}&chain=${encodeURIComponent(primaryWallet.chain)}`
@@ -99,56 +107,44 @@ export default function DelegatedAccessMethods() {
 
       if (!response.ok || !data.success) {
         setError(data.error || "Failed to fetch delegation");
-        setResult("");
+        setLastAction("getKey");
         return;
       }
 
       setResult(JSON.stringify(data.data, null, 2));
-      setError(null);
+      setLastAction("getKey");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch delegation"
       );
-      setResult("");
+      setLastAction("getKey");
     } finally {
       setIsLoading(false);
+      setActiveAction(null);
     }
   }
 
-  async function signMessage() {
-    if (!user?.userId) {
-      setError("User ID not found. Please log in.");
+  async function handleSignMessage() {
+    if (!user?.userId || !primaryWallet?.chain || !primaryWallet?.address) {
+      setError("Please ensure you are logged in and wallet is connected.");
+      setLastAction("sign");
       return;
     }
 
     if (!message.trim()) {
       setError("Please enter a message to sign");
-      return;
-    }
-
-    if (!primaryWallet?.chain) {
-      setError(
-        "Wallet chain not available. Please ensure your wallet is connected"
-      );
-      return;
-    }
-
-    if (!primaryWallet?.address) {
-      setError(
-        "Wallet address not available. Please ensure your wallet is connected"
-      );
+      setLastAction("sign");
       return;
     }
 
     try {
       setIsLoading(true);
+      setActiveAction("sign");
       setError(null);
+      setResult("");
 
-      const response = await fetch(`/api/delegation/sign`, {
+      const response = await authFetch(`/api/delegation/sign`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           address: primaryWallet.address,
           chain: primaryWallet.chain,
@@ -160,132 +156,205 @@ export default function DelegatedAccessMethods() {
 
       if (!response.ok || !data.success) {
         setError(data.error || "Failed to sign message");
-        setResult("");
+        setLastAction("sign");
         return;
       }
 
       setResult(JSON.stringify(data, null, 2));
-      setError(null);
+      setLastAction("sign");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign message");
-      setResult("");
+      setLastAction("sign");
     } finally {
       setIsLoading(false);
+      setActiveAction(null);
     }
   }
 
   return (
     <div className="w-full space-y-4">
-      <div className="rounded-lg border p-4">
-        <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
-          <span>Delegated Access Methods</span>
-        </h3>
+      <div className="rounded-xl border bg-card overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b bg-muted/30">
+          <div className="flex items-center gap-2">
+            <Code2 className="w-5 h-5 text-dynamic" />
+            <h3 className="font-semibold">Delegated Access Methods</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Test server-side wallet operations using your delegated key
+          </p>
+        </div>
 
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-            onClick={handleGetDelegatedKey}
-            disabled={
-              !primaryWallet?.address || !primaryWallet?.chain || isLoading
-            }
+        <div className="p-6 space-y-4">
+          {/* Get Delegated Key */}
+          <MethodCard
+            icon={<Key className="w-4 h-4 text-dynamic" />}
+            iconBg="bg-dynamic/10"
+            title="Retrieve Delegated Key"
+            description="Fetch the encrypted delegation share from the server. This is the key material your backend uses for signing."
           >
-            Get Delegated Key
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start"
-            onClick={() => handleRevokeDelegation(primaryWallet?.address!)}
-            disabled={!user?.userId || isLoading || !primaryWallet?.address}
-          >
-            Revoke Delegation
-          </Button>
-
-          <div className="space-y-2">
-            <label
-              htmlFor="message-input"
-              className="text-xs font-medium text-gray-600 dark:text-gray-400"
-            >
-              Message to Sign
-            </label>
-            <input
-              id="message-input"
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter message to sign"
-              disabled={isLoading}
-            />
             <Button
               variant="outline"
-              className="w-full justify-start"
-              onClick={signMessage}
-              disabled={
-                !user?.userId ||
-                !message.trim() ||
-                !primaryWallet?.chain ||
-                isLoading
-              }
+              className="w-full"
+              onClick={handleGetDelegatedKey}
+              disabled={!primaryWallet?.address || isLoading}
             >
-              Sign Message
+              {isLoading && activeAction === "getKey" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Fetching...
+                </>
+              ) : (
+                "Get Delegated Key"
+              )}
             </Button>
+            {lastAction === "getKey" && (
+              <ResponseDisplay
+                result={result}
+                error={error}
+                onClear={clearResult}
+              />
+            )}
+          </MethodCard>
+
+          {/* Sign Message */}
+          <MethodCard
+            icon={<FileSignature className="w-4 h-4 text-dynamic" />}
+            iconBg="bg-dynamic/15"
+            title="Sign Message (Server-Side)"
+            description="Sign a message using the delegated key on the server. This demonstrates server-side signing without user interaction."
+          >
+            <div className="space-y-2">
+              <label
+                htmlFor="message-input"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Message to Sign
+              </label>
+              <input
+                id="message-input"
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                className="w-full px-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-dynamic focus:border-transparent"
+                placeholder="Enter message to sign"
+                disabled={isLoading}
+              />
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleSignMessage}
+                disabled={!user?.userId || !message.trim() || isLoading}
+              >
+                {isLoading && activeAction === "sign" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Signing...
+                  </>
+                ) : (
+                  "Sign Message"
+                )}
+              </Button>
+            </div>
+            {lastAction === "sign" && (
+              <ResponseDisplay
+                result={result}
+                error={error}
+                onClear={clearResult}
+              />
+            )}
+          </MethodCard>
+
+          {/* Revoke Delegation */}
+          <div className="rounded-lg border border-red-200 dark:border-red-900/50 p-4 space-y-3 bg-red-50/50 dark:bg-red-950/20">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0">
+                <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-sm text-red-700 dark:text-red-400">
+                  Revoke Delegation
+                </h4>
+                <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+                  Remove server access to your wallet. This invalidates the
+                  delegated key share immediately.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
+              onClick={() => handleRevokeDelegation(primaryWallet?.address!)}
+              disabled={!user?.userId || isLoading || !primaryWallet?.address}
+            >
+              {isLoading && activeAction === "revoke" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Revoking...
+                </>
+              ) : (
+                "Revoke Delegation"
+              )}
+            </Button>
+            {lastAction === "revoke" && (
+              <ResponseDisplay
+                result={result}
+                error={error}
+                onClear={clearResult}
+              />
+            )}
           </div>
         </div>
       </div>
 
-      {(result || error) && (
-        <div className="rounded-lg border p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium">Response</h4>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={clearResult}>
-                Clear
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const textToCopy = error ? String(error) : result;
-                  navigator.clipboard.writeText(textToCopy).then(() => {
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1500);
-                  });
-                }}
-              >
-                {copied ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
+      {/* User Warning */}
+      {!user?.userId && (
+        <div className="rounded-xl border border-yellow-200 dark:border-yellow-900/50 bg-yellow-50 dark:bg-yellow-950/30 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 shrink-0" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                Authentication Required
+              </h4>
+              <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                Please log in with Dynamic to access delegation methods.
+              </p>
             </div>
           </div>
-
-          {error ? (
-            <div className="rounded-md bg-red-50 dark:bg-red-950/20 p-3">
-              <pre className="font-mono text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">
-                {error}
-              </pre>
-            </div>
-          ) : (
-            <div className="rounded-md bg-gray-50 dark:bg-gray-900 p-3 max-h-96 overflow-auto">
-              <pre className="font-mono text-xs whitespace-pre-wrap">
-                {result}
-              </pre>
-            </div>
-          )}
         </div>
       )}
+    </div>
+  );
+}
 
-      {!user?.userId && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 p-4">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            ⚠️ User ID not available. Please ensure you're logged in with
-            Dynamic.
-          </p>
+// Reusable Method Card Component
+function MethodCard({
+  icon,
+  iconBg,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode;
+  iconBg: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-dynamic/20 p-4 space-y-3 transition-colors">
+      <div className="flex items-start gap-3">
+        <div
+          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}
+        >
+          {icon}
         </div>
-      )}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-sm">{title}</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        </div>
+      </div>
+      {children}
     </div>
   );
 }

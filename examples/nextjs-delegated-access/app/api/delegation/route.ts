@@ -1,24 +1,28 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { type AuthenticatedUser, withAuth } from "@/lib/dynamic/dynamic-auth";
 import { handleGetDelegationRequest } from "./handler";
 
 /**
  * GET handler for delegation endpoint
  *
- * Wraps the delegation handler in error handling to ensure
- * all errors are caught and returned as proper HTTP responses
+ * Protected by Dynamic JWT authentication. Users can only
+ * access delegations for their own verified wallet addresses.
  */
-export async function GET(request: NextRequest) {
-  try {
-    return await handleGetDelegationRequest(request);
-  } catch (error) {
-    console.error("Error fetching delegation:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 }
-    );
+export const GET = withAuth(
+  async (req: NextRequest, { user }: { user: AuthenticatedUser }) => {
+    try {
+      return await handleGetDelegationRequest(req, user);
+    } catch (error) {
+      console.error("Error fetching delegation:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            error instanceof Error ? error.message : "Internal server error",
+        },
+        { status: 500 }
+      );
+    }
   }
-}
+);

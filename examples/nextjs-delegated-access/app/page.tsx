@@ -1,11 +1,15 @@
 import DelegatedAccess from "@/components/dynamic/delegated-access";
-import DynamicEmbeddedWidget from "@/components/dynamic/dynamic-embedded-widget";
+import DelegationHero from "@/components/info/delegation-hero";
+import DelegationSteps from "@/components/info/delegation-steps";
+import DelegationUseCases from "@/components/info/delegation-use-cases";
 
 export default function Main() {
   return (
-    <div className="flex w-full max-w-sm flex-col gap-6">
+    <div className="flex w-full max-w-2xl flex-col gap-8 pt-16">
+      <DelegationHero />
+      <DelegationSteps />
       <DelegatedAccess />
-      <DynamicEmbeddedWidget />
+      <DelegationUseCases />
     </div>
   );
 }

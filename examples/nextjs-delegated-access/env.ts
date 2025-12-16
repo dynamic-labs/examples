@@ -1,3 +1,20 @@
+/**
+ * Environment variable configuration and validation
+ *
+ * This file uses @t3-oss/env-nextjs for type-safe environment variables.
+ * All environment variables are validated at build time, ensuring proper configuration.
+ *
+ * Required variables:
+ * - NEXT_PUBLIC_DYNAMIC_ENV_ID: Dynamic environment ID (from dashboard)
+ * - DYNAMIC_API_TOKEN: API token for server-side operations
+ * - DYNAMIC_WEBHOOK_SECRET: Secret for verifying webhook signatures
+ * - DYNAMIC_DELEGATION_PRIVATE_KEY: RSA private key for decrypting delegation shares
+ *
+ * Optional variables:
+ * - KV_URL: Redis connection URL (defaults to redis://localhost:6379)
+ * - KV_REST_API_URL: Vercel KV REST API URL
+ * - KV_REST_API_TOKEN: Vercel KV REST API token
+ */
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
