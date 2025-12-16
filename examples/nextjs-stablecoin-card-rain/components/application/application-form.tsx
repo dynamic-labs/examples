@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { redirect } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-
+import type { z } from "zod";
+import { AddressAutocomplete } from "@/components/application/address-autocomplete";
+import { Calendar as DateInput } from "@/components/application/calendar";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -14,26 +16,22 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
+import { OCCUPATION_OPTIONS, US_STATES } from "@/constants";
 import {
-  useDynamicContext,
   getAuthToken,
+  useDynamicContext,
   useIsLoggedIn,
   useRefreshUser,
 } from "@/lib/dynamic";
-import { Calendar as DateInput } from "@/components/application/calendar";
-import { US_STATES, OCCUPATION_OPTIONS } from "@/constants";
-import { formatSSN } from "@/utils/format-ssn";
-import { formatPhone } from "@/utils/format-phone";
+import type { CreateCardForUserResponse } from "@/lib/rain";
+import { cn } from "@/lib/utils";
 import {
   formatNumberWithCommas,
   parseNumberFromFormatted,
 } from "@/utils/format-number";
-import { AddressAutocomplete } from "@/components/application/address-autocomplete";
-import { cn } from "@/lib/utils";
+import { formatPhone } from "@/utils/format-phone";
+import { formatSSN } from "@/utils/format-ssn";
 import { defaultValues, FormSchema, STEPS } from "./helpers";
-import { CreateCardForUserResponse } from "@/lib/rain";
 
 export default function ApplicationForm({ formId }: { formId: string }) {
   const { sdkHasLoaded, user, setShowAuthFlow } = useDynamicContext();
@@ -43,13 +41,13 @@ export default function ApplicationForm({ formId }: { formId: string }) {
   useEffect(() => {
     const metadata = user?.metadata as { rainCard?: CreateCardForUserResponse };
     if (metadata?.rainCard) redirect("/card");
-  }, [sdkHasLoaded, user]);
+  }, [user]);
 
   useEffect(() => {
     if (sdkHasLoaded && !isLoggedIn) {
       setShowAuthFlow(true);
     }
-  }, [sdkHasLoaded, isLoggedIn]);
+  }, [sdkHasLoaded, isLoggedIn, setShowAuthFlow]);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -513,7 +511,7 @@ export default function ApplicationForm({ formId }: { formId: string }) {
                 <FormItem>
                   <div className="flex items-center gap-3">
                     <input
-                      id="tos"
+                      id={`tos`}
                       type="checkbox"
                       checked={field.value}
                       onChange={(e) => field.onChange(e.target.checked)}

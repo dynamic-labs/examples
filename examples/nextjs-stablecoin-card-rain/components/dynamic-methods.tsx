@@ -116,7 +116,7 @@ export default function DynamicMethods() {
     }
   }
 
-  async function fetchEthereumMessage() {
+  async function signEthereumMessage() {
     if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
     try {
       setIsLoading(true);
@@ -230,10 +230,10 @@ export default function DynamicMethods() {
 
                   <Button
                     variant="outline"
-                    onClick={fetchEthereumMessage}
+                    onClick={signEthereumMessage}
                     className="cursor-pointer"
                   >
-                    Fetch Message
+                    Sign Message
                   </Button>
                 </div>
               </div>

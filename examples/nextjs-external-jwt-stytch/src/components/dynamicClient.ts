@@ -9,7 +9,7 @@
 
 import {
   createDynamicClient,
-  DynamicClient,
+  type DynamicClient,
   initializeClient,
   onEvent,
 } from "@dynamic-labs-sdk/client";
@@ -42,6 +42,9 @@ const getDynamicClient = (): DynamicClient | null => {
     _dynamicClient = createDynamicClient({
       environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "",
       autoInitialize: false, // We'll handle initialization manually
+      coreConfig: {
+        apiBaseUrl: "https://app.dynamic-preprod.xyz/api/v0",
+      },
     });
   }
 
@@ -79,7 +82,7 @@ const getDynamicClient = (): DynamicClient | null => {
  * worrying about initialization order or SSR issues.
  */
 export const dynamicClient = new Proxy({} as DynamicClient, {
-  get(target, prop) {
+  get(_target, prop) {
     // Get the client instance (which may be a mock during SSR)
     const client = getDynamicClient();
     if (!client) return null;

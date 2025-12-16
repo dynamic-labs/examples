@@ -1,7 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import { Check, Copy } from "lucide-react";
 import { redirect } from "next/navigation";
-import { Copy, Check } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   useDynamicContext,
   useIsLoggedIn,
@@ -10,7 +11,6 @@ import {
 import DynamicWidget from "./dynamic/dynamic-widget";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
 
 export default function DynamicMethods() {
   const isLoggedIn = useIsLoggedIn();
@@ -111,7 +111,7 @@ export default function DynamicMethods() {
     }
   }
 
-  async function fetchEthereumMessage() {
+  async function signEthereumMessage() {
     if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
     try {
       setIsLoading(true);
@@ -225,10 +225,10 @@ export default function DynamicMethods() {
 
                   <Button
                     variant="outline"
-                    onClick={fetchEthereumMessage}
+                    onClick={signEthereumMessage}
                     className="cursor-pointer"
                   >
-                    Fetch Message
+                    Sign Message
                   </Button>
                 </div>
               </div>

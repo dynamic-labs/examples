@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 import {
-  useDynamicContext,
   isEthereumWallet,
   isZeroDevConnector,
+  useDynamicContext,
 } from "@/lib/dynamic";
 import { getContractAddress, TOKEN_ABI } from "../constants";
 
