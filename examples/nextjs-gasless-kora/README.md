@@ -14,13 +14,13 @@ This example demonstrates how to:
 
 ## Key Features
 
-| Feature              | Description                                          |
-| -------------------- | ---------------------------------------------------- |
-| 🔐 Dynamic SDK       | Seamless Solana wallet connection and management     |
-| ⛽ Gasless           | Pay transaction fees in SPL tokens, not SOL         |
-| 🔄 Kora Integration  | Fee abstraction service for Solana transactions      |
-| 📝 Memo Transactions  | Simple demo transaction (easily extensible)          |
-| ✅ Transaction Status | Real-time status updates and confirmation tracking  |
+| Feature               | Description                                        |
+| --------------------- | -------------------------------------------------- |
+| 🔐 Dynamic SDK        | Seamless Solana wallet connection and management   |
+| ⛽ Gasless            | Pay transaction fees in SPL tokens, not SOL        |
+| 🔄 Kora Integration   | Fee abstraction service for Solana transactions    |
+| 📝 Memo Transactions  | Simple demo transaction (easily extensible)        |
+| ✅ Transaction Status | Real-time status updates and confirmation tracking |
 
 ## How Gasless Transactions Work
 
@@ -123,8 +123,7 @@ Open [http://localhost:3000](http://localhost:3000) and:
 │   └── gasless-transaction-demo.tsx  # Main gasless transaction component
 │
 ├── lib/
-│   ├── providers.tsx                 # Dynamic SDK provider setup
-│   └── dynamic.ts                    # Dynamic SDK re-exports
+│   └── providers.tsx                 # Dynamic SDK provider setup
 │
 └── package.json                      # Dependencies
 ```
@@ -256,4 +255,3 @@ const transactionVersion = 0 as TransactionVersion; // or 1 for versioned
 ## License
 
 MIT
-
