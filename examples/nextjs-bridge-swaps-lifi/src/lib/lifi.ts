@@ -1,20 +1,17 @@
 import { ChainType, EVM, createConfig, getChains } from "@lifi/sdk";
-import { getWalletClient, switchChain } from "@wagmi/core";
-import type { Config } from "wagmi";
+import { getWalletClient, switchChain, type Config } from "@wagmi/core";
 
 export const initializeLiFiConfig = (wagmiConfig: Config) => {
-  const config = wagmiConfig as any;
-
   return createConfig({
     integrator: "Dynamic",
     providers: [
       EVM({
-        getWalletClient: () => getWalletClient(config),
+        getWalletClient: () => getWalletClient(wagmiConfig),
         switchChain: async (chainId: number) => {
-          const chain = await switchChain(config, { chainId });
-          return getWalletClient(config, { chainId: chain.id });
+          const chain = await switchChain(wagmiConfig, { chainId });
+          return getWalletClient(wagmiConfig, { chainId: chain.id });
         },
-      } as any),
+      }),
     ],
     apiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY,
   });
