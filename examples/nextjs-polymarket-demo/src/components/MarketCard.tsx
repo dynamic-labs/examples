@@ -1,0 +1,713 @@
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useRef, useState } from "react";
+import ClockIcon from "./ClockIcon";
+import { ImageWithFallback } from "./ImageWithFallback";
+import PriceChart from "./PriceChart";
+import { usePolymarketTrading } from "@/lib/hooks/usePolymarketTrading";
+import { polygon } from "wagmi/chains";
+import { useDynamicContext } from "@/lib/dynamic";
+
+interface MarketCardProps {
+  question: string;
+  timeRemaining: string;
+  yesPrice: string;
+  noPrice: string;
+  category?: string;
+  imageUrl?: string;
+  yesTraders?: number;
+  noTraders?: number;
+  conditionId?: string;
+  yesTokenId?: string;
+  noTokenId?: string;
+  marketId?: string;
+  tags?: string[];
+}
+
+const TAG_COLORS: Record<string, string> = {
+  trending: "bg-[#ff6b6b]/20 text-[#ff6b6b] border-[#ff6b6b]/30",
+  hot: "bg-[#ff9500]/20 text-[#ff9500] border-[#ff9500]/30",
+  new: "bg-[#4ecdc4]/20 text-[#4ecdc4] border-[#4ecdc4]/30",
+  "ending soon": "bg-[#ffd93d]/20 text-[#ffd93d] border-[#ffd93d]/30",
+  "high stakes": "bg-[#9b59b6]/20 text-[#9b59b6] border-[#9b59b6]/30",
+  "close call": "bg-[#3498db]/20 text-[#3498db] border-[#3498db]/30",
+};
+
+export function MarketCard({
+  question,
+  timeRemaining,
+  yesPrice,
+  noPrice,
+  imageUrl,
+  yesTraders,
+  noTraders,
+  conditionId,
+  yesTokenId,
+  noTokenId,
+  marketId,
+  tags = [],
+}: MarketCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<"yes" | "no" | null>(
+    null
+  );
+  const [betAmount, setBetAmount] = useState<number>(0);
+  const [betAmountInput, setBetAmountInput] = useState<string>("");
+  const [tradingError, setTradingError] = useState<string | null>(null);
+  const [tradingSuccess, setTradingSuccess] = useState(false);
+  // Local loading state to properly track buy operation (prevents flash between hook's isLoading and success state)
+  const [isProcessing, setIsProcessing] = useState(false);
+  const cardPosition = useRef<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Ref to prevent double-submission of orders
+  const isSubmittingRef = useRef(false);
+
+  const { primaryWallet, setShowAuthFlow } = useDynamicContext();
+  const { placeOrder } = usePolymarketTrading();
+
+  const handleOptionClick = (option: "yes" | "no") => {
+    // If wallet not connected, show connect modal
+    if (!primaryWallet) {
+      setShowAuthFlow(true);
+      return;
+    }
+
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      cardPosition.current = {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+      };
+    }
+    setSelectedOption(option);
+    setIsExpanded(true);
+    setBetAmount(0);
+    setBetAmountInput("");
+    setTradingError(null);
+    setTradingSuccess(false);
+  };
+
+  const handleClose = useCallback(() => {
+    setIsExpanded(false);
+    setTimeout(() => {
+      setSelectedOption(null);
+      cardPosition.current = null;
+      setTradingError(null);
+      setTradingSuccess(false);
+    }, 300); // Reset after animation (increased from 200ms)
+  }, []);
+
+  const handleQuickAdd = (amount: number) => {
+    const newAmount = betAmount + amount;
+    setBetAmount(newAmount);
+    setBetAmountInput(newAmount === 0 ? "" : newAmount.toString());
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+
+    // Remove $ sign if present
+    value = value.replace(/\$/g, "");
+
+    // Allow digits, single decimal point, and empty string
+    // Prevent multiple decimal points
+    const parts = value.split(".");
+    if (parts.length > 2) {
+      value = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    // Only allow digits and a single decimal point
+    value = value.replace(/[^0-9.]/g, "");
+
+    // Update input string
+    setBetAmountInput(value);
+
+    // If empty or just a decimal point, set amount to 0
+    if (value === "" || value === ".") {
+      setBetAmount(0);
+      return;
+    }
+
+    // Parse as float to allow decimals
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      setBetAmount(numValue);
+    }
+  };
+
+  const handleBuy = useCallback(async () => {
+    // Prevent double-submission - check ref only (not isProcessing to avoid stale closures)
+    if (isSubmittingRef.current) return;
+    if (betAmount === 0 || !selectedOption) return;
+
+    // Check if wallet is connected first
+    if (!primaryWallet) {
+      setShowAuthFlow(true);
+      return;
+    }
+
+    if (!conditionId || (!yesTokenId && !noTokenId)) {
+      setTradingError("Market data incomplete. Please try again.");
+      return;
+    }
+
+    // Set submitting flag and local loading state immediately to prevent double-clicks
+    isSubmittingRef.current = true;
+    setIsProcessing(true);
+    setTradingError(null);
+    setTradingSuccess(false);
+
+    try {
+      // Switch to Polygon if not already on it
+      const currentNetwork = await primaryWallet.getNetwork();
+      if (currentNetwork !== polygon.id) {
+        try {
+          if (primaryWallet.connector.supportsNetworkSwitching()) {
+            await primaryWallet.switchNetwork(polygon.id);
+            // Wait a bit for network switch
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          } else {
+            setTradingError("Please switch to Polygon network to trade");
+            return;
+          }
+        } catch (switchError) {
+          setTradingError("Please switch to Polygon network to trade");
+          return;
+        }
+      }
+
+      // Get the appropriate token ID
+      const tokenId = selectedOption === "yes" ? yesTokenId : noTokenId;
+      if (!tokenId) {
+        setTradingError("Token ID not available for this market");
+        return;
+      }
+
+      // Place the order as a market order so it fills immediately
+      const result = await placeOrder({
+        marketId: marketId || "",
+        conditionId,
+        tokenId,
+        side: selectedOption,
+        amount: betAmount,
+        isMarketOrder: true, // Execute at market price for immediate fill
+      });
+
+      if (result.success) {
+        // Set success state BEFORE clearing processing to prevent flash
+        setTradingSuccess(true);
+        setIsProcessing(false);
+        // Close after a short delay to show success
+        setTimeout(() => {
+          handleClose();
+        }, 2000);
+      } else {
+        setIsProcessing(false);
+        setTradingError(result.error || "Failed to place order");
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      setIsProcessing(false);
+      setTradingError(errorMessage);
+      console.error("Trading error:", error);
+    } finally {
+      // Always reset the submitting flag when done
+      isSubmittingRef.current = false;
+    }
+  }, [
+    betAmount,
+    selectedOption,
+    primaryWallet,
+    conditionId,
+    yesTokenId,
+    noTokenId,
+    marketId,
+    placeOrder,
+    setShowAuthFlow,
+    handleClose,
+  ]);
+
+  const potentialWin =
+    betAmount > 0
+      ? selectedOption === "yes"
+        ? (betAmount / parseFloat(yesPrice)) * 100
+        : (betAmount / parseFloat(noPrice)) * 100
+      : 0;
+
+  // Calculate bar widths based on prices
+  const yesPercentage = parseFloat(yesPrice);
+  const noPercentage = parseFloat(noPrice);
+  const totalPercentage = yesPercentage + noPercentage;
+  const _yesBarWidth = (yesPercentage / totalPercentage) * 100;
+
+  // Generate dynamic chart data based on yes/no prices
+  const generateChartData = () => {
+    const data = [];
+    const numPoints = 6; // Very few points like Polymarket/Kalshi
+
+    // Use question hash to generate consistent but different data per card
+    const seed = question
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
+    // Start from a different point than current price
+    let yesValue = yesPercentage + ((seed % 30) - 15);
+    let noValue = noPercentage + (((seed * 7) % 30) - 15);
+
+    yesValue = Math.max(20, Math.min(80, yesValue));
+    noValue = Math.max(20, Math.min(80, noValue));
+
+    for (let i = 0; i < numPoints; i++) {
+      // Smooth gradual trend toward final price
+      const progress = i / (numPoints - 1);
+      const currentYes = yesValue + (yesPercentage - yesValue) * progress;
+      const currentNo = noValue + (noPercentage - noValue) * progress;
+
+      // Add small natural variation (not wild swings)
+      const yesVariation = Math.sin(seed + i) * 3;
+      const noVariation = Math.cos(seed * 1.3 + i) * 3;
+
+      data.push({
+        name: i,
+        yes: Math.max(20, Math.min(80, currentYes + yesVariation)),
+        no: Math.max(20, Math.min(80, currentNo + noVariation)),
+      });
+    }
+
+    // Ensure last point is exactly the current price
+    data[numPoints - 1].yes = yesPercentage;
+    data[numPoints - 1].no = noPercentage;
+
+    return data;
+  };
+
+  const chartData = generateChartData();
+
+  // Get the last data point for positioning dots
+  const lastDataPoint = chartData[chartData.length - 1];
+
+  // Calculate dot positions based on actual SVG coordinates
+  // For Yes line: height is 48px, viewBox is 0-50
+  // Y in SVG = 48 - (percentage/100 * 48), then convert to position in container
+  const _yesDotTopPercent = ((48 - (lastDataPoint.yes / 100) * 48) / 48) * 100;
+  const _noDotTopPercent =
+    ((44.44 - (lastDataPoint.no / 100) * 44.44) / 44.44) * 100;
+
+  const cardContent = (
+    <motion.div
+      layout
+      className={`bg-[#141620] rounded-[22.837px] w-full relative ${
+        isExpanded ? "z-50" : "z-0"
+      }`}
+      style={
+        isExpanded && cardPosition.current
+          ? {
+              position: "fixed",
+              top: cardPosition.current.top,
+              left: cardPosition.current.left,
+              width: cardPosition.current.width,
+            }
+          : undefined
+      }
+    >
+      <div className="content-stretch flex flex-col items-start overflow-clip relative rounded-[inherit] w-full">
+        {/* Card Header */}
+        <div className="bg-[#191b25] relative rounded-[22.837px] shrink-0 w-full">
+          <div
+            aria-hidden="true"
+            className="absolute border-[#262a34] border-[0.571px] border-solid inset-0 pointer-events-none rounded-[22.837px] shadow-[0px_1.142px_2.284px_0px_rgba(0,0,0,0.02),0px_1.142px_2.284px_0px_rgba(0,0,0,0.02)]"
+          />
+          <div className="size-full">
+            <div className="box-border content-stretch flex flex-col gap-[13.702px] items-start p-[15.986px] relative w-full">
+              <div className="content-stretch flex gap-[9.135px] items-start relative shrink-0 w-full">
+                {/* Image and Question */}
+                <div className="basis-0 content-stretch flex flex-col gap-[9.135px] grow items-start min-h-px min-w-px relative shrink-0">
+                  <div className="bg-[rgba(241,241,241,0.1)] overflow-clip relative rounded-[7px] shrink-0 size-[45.675px]">
+                    {imageUrl ? (
+                      <ImageWithFallback
+                        src={imageUrl}
+                        alt="Market thumbnail"
+                        className="absolute left-0 top-0 size-[45.675px] object-cover"
+                        sizes="50px"
+                      />
+                    ) : (
+                      <div className="absolute bg-[rgba(241,241,241,0.1)] left-0 size-[45.675px] top-0" />
+                    )}
+                  </div>
+                  <p
+                    className={`font-['SF_Pro_Rounded:Bold',sans-serif] leading-[22.837px] not-italic relative shrink-0 text-white text-[18.27px] tracking-[0.1827px] ${
+                      isExpanded ? "" : "line-clamp-2 h-[45.674px]"
+                    }`}
+                  >
+                    {question}
+                  </p>
+                  {/* Tags */}
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-[6px] items-center">
+                      {tags.slice(0, 3).map((tag) => {
+                        const tagColor =
+                          TAG_COLORS[tag] ||
+                          "bg-[rgba(221,226,246,0.1)] text-[rgba(221,226,246,0.6)] border-[rgba(221,226,246,0.2)]";
+                        return (
+                          <span
+                            key={tag}
+                            className={`px-[6px] py-[2px] rounded-[12px] text-[11px] font-['SF_Pro_Rounded:Semibold',sans-serif] border ${tagColor}`}
+                          >
+                            {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Timer */}
+                <div className="content-stretch flex gap-[9.135px] h-[27.405px] items-center justify-end relative shrink-0 w-[80px]">
+                  <div className="content-stretch flex gap-[4.567px] items-center overflow-clip relative shrink-0">
+                    <ClockIcon />
+                    <p className="font-['SF_Pro_Rounded:Semibold',sans-serif] leading-[18.27px] not-italic relative shrink-0 text-[13.702px] text-[rgba(221,226,246,0.5)] text-nowrap tracking-[0.137px] whitespace-pre">
+                      {timeRemaining}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trader Bar - Only show if trader data is available */}
+              {yesTraders !== undefined && noTraders !== undefined && (
+                <div className="bg-[#191b25] h-[80px] relative rounded-[12px] shrink-0 w-full">
+                  <div className="h-[80px] overflow-clip relative rounded-[inherit] w-full">
+                    {/* Left Panel */}
+                    <div className="absolute bg-[#191b25] bottom-0 box-border content-stretch flex flex-col items-start justify-between left-0 p-[8px] top-0 w-[100px]">
+                      <div
+                        aria-hidden="true"
+                        className="absolute border-[#262a34] border-[0px_0.5px_0px_0px] border-solid inset-0 pointer-events-none"
+                      />
+                      <div className="content-stretch flex flex-col gap-[4px] items-start relative shrink-0 w-full">
+                        {/* Yes Percentage */}
+                        <div className="bg-[rgba(255,255,255,0.05)] box-border content-stretch flex flex-col gap-[4px] h-[18px] items-center justify-center px-[8px] py-[6px] relative rounded-[20px] shrink-0 min-w-[51px]">
+                          <div
+                            aria-hidden="true"
+                            className="absolute border-[0.5px] border-[rgba(224,224,224,0.05)] border-solid inset-0 pointer-events-none rounded-[20px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.02)]"
+                          />
+                          <div className="flex flex-col font-['SF_Pro_Rounded:Semibold',sans-serif] justify-center leading-0 not-italic relative shrink-0 text-[#3ea34b] text-[9px] text-nowrap">
+                            <p className="leading-[13px] whitespace-nowrap">
+                              Yes {yesPrice}%
+                            </p>
+                          </div>
+                        </div>
+                        {/* No Percentage */}
+                        <div className="bg-[rgba(255,255,255,0.05)] box-border content-stretch flex flex-col gap-[4px] h-[18px] items-center justify-center px-[8px] py-[6px] relative rounded-[20px] shrink-0 min-w-[42px]">
+                          <div
+                            aria-hidden="true"
+                            className="absolute border-[0.5px] border-[rgba(224,224,224,0.05)] border-solid inset-0 pointer-events-none rounded-[20px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.02)]"
+                          />
+                          <div className="flex flex-col font-['SF_Pro_Rounded:Semibold',sans-serif] justify-center leading-0 not-italic relative shrink-0 text-[#e64341] text-[9px] text-nowrap">
+                            <p className="leading-[13px] whitespace-nowrap">
+                              No {noPrice}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Volume Display */}
+                      <div className="flex flex-col font-['SF_Pro_Rounded:Semibold',sans-serif] justify-center leading-0 not-italic relative shrink-0 text-[#7b7f8d] text-[10px] text-nowrap">
+                        <p className="leading-[13px] whitespace-pre">
+                          ${((yesTraders + noTraders) * 234).toLocaleString()}{" "}
+                          Vol.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Chart Area */}
+                    <PriceChart />
+                  </div>
+                  <div
+                    aria-hidden="true"
+                    className="absolute border-[#262a34] border-[0.5px] border-solid inset-0 pointer-events-none rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.02),0px_1px_2px_0px_rgba(0,0,0,0.02)]"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Yes/No Selection + Expanded Section */}
+        <motion.div layout className="relative shrink-0 w-full">
+          <div className="flex flex-col justify-center size-full">
+            <div className="box-border content-stretch flex flex-col gap-[11px] items-start p-[13.702px] relative w-full">
+              {/* Yes/No Buttons */}
+              <div className="content-stretch flex gap-[4.567px] h-[41.107px] items-start relative shrink-0 w-full">
+                {/* Yes Button */}
+                <motion.button
+                  onClick={() => handleOptionClick("yes")}
+                  className={`basis-0 grow h-full min-h-px min-w-px relative rounded-[9.135px] shrink-0 cursor-pointer transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                    selectedOption === "yes"
+                      ? "bg-[#3ea34b]"
+                      : "bg-[rgba(62,163,75,0.1)] hover:opacity-80"
+                  }`}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div
+                    aria-hidden="true"
+                    className="absolute border-[0.571px] border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[9.135px]"
+                  />
+                  <div className="flex flex-row items-center justify-center size-full">
+                    <div className="box-border content-stretch flex gap-[22.837px] items-center justify-center px-[22.837px] py-[11.419px] relative size-full">
+                      <div
+                        className={`flex flex-col font-['SF_Pro_Rounded:Semibold',sans-serif] justify-center leading-0 not-italic relative shrink-0 text-[15.986px] text-nowrap text-right ${
+                          selectedOption === "yes"
+                            ? "text-[#141620]"
+                            : "text-[#3ea34b]"
+                        }`}
+                      >
+                        <p className="leading-[28.547px] whitespace-pre">
+                          Yes {yesPrice}¢
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.button>
+
+                {/* No Button */}
+                <motion.button
+                  onClick={() => handleOptionClick("no")}
+                  className={`basis-0 grow h-full min-h-px min-w-px relative rounded-[9.135px] shrink-0 cursor-pointer transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                    selectedOption === "no"
+                      ? "bg-[#e64341]"
+                      : "bg-[rgba(230,67,65,0.1)] hover:opacity-80"
+                  }`}
+                  whileTap={{ scale: 0.9 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div
+                    aria-hidden="true"
+                    className="absolute border-[0.571px] border-[rgba(255,255,255,0.05)] border-solid inset-0 pointer-events-none rounded-[9.135px]"
+                  />
+                  <div className="flex flex-row items-center justify-center size-full">
+                    <div className="box-border content-stretch flex gap-[22.837px] items-center justify-center px-[22.837px] py-[11.419px] relative size-full">
+                      <div
+                        className={`flex flex-col font-['SF_Pro_Rounded:Semibold',sans-serif] justify-center leading-0 not-italic relative shrink-0 text-[15.986px] text-nowrap text-right ${
+                          selectedOption === "no"
+                            ? "text-white"
+                            : "text-[#e64341]"
+                        }`}
+                      >
+                        <p className="leading-[28.547px] whitespace-pre">
+                          No {noPrice}¢
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.button>
+              </div>
+
+              {/* Expanded Section */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{
+                      duration: 0.25,
+                      ease: [0.25, 0.46, 0.45, 0.94], // easeOutQuad
+                    }}
+                    className="overflow-hidden w-full"
+                  >
+                    <div className="content-stretch flex flex-col gap-[11px] items-start w-full">
+                      {/* Input Field */}
+                      <div className="bg-[#191b25] h-[48px] relative rounded-[10px] shrink-0 w-full">
+                        <div
+                          aria-hidden="true"
+                          className="absolute border-[#262a34] border-[0.5px] border-solid inset-0 pointer-events-none rounded-[10px]"
+                        />
+                        <div className="flex flex-row items-center size-full">
+                          <div className="box-border content-stretch flex h-[48px] items-center justify-between pl-[12px] pr-[11px] py-[12px] relative w-full">
+                            {/* Amount Input */}
+                            <div className="content-stretch flex flex-col items-start justify-center relative flex-1">
+                              <div className="content-stretch flex gap-[6px] items-center relative shrink-0">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={
+                                    betAmountInput === ""
+                                      ? ""
+                                      : `$${betAmountInput}`
+                                  }
+                                  onChange={handleAmountChange}
+                                  placeholder="$0"
+                                  className="font-['SF_Pro_Rounded:Medium',sans-serif] leading-[normal] text-[#72d0ed] text-[20px] tracking-[-0.2px] bg-transparent border-none outline-none w-full placeholder:text-[#72d0ed] placeholder:opacity-30"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Quick Add Buttons */}
+                            <div className="content-stretch flex gap-[5px] items-center relative shrink-0">
+                              <motion.button
+                                onClick={() => handleQuickAdd(5)}
+                                whileTap={{ scale: 0.9 }}
+                                transition={{ duration: 0.15 }}
+                                className="bg-[rgba(199,196,245,0.1)] content-stretch flex gap-[10px] h-[25px] items-center justify-center relative rounded-[16px] shrink-0 w-[36px] cursor-pointer hover:bg-[rgba(199,196,245,0.15)]"
+                              >
+                                <p className="font-['SF_Pro_Rounded:Medium',sans-serif] leading-[16px] relative shrink-0 text-[#7b7f8d] text-[14px] text-center text-nowrap whitespace-pre">
+                                  +5
+                                </p>
+                              </motion.button>
+                              <motion.button
+                                onClick={() => handleQuickAdd(10)}
+                                whileTap={{ scale: 0.9 }}
+                                transition={{ duration: 0.15 }}
+                                className="bg-[rgba(199,196,245,0.1)] content-stretch flex gap-[10px] h-[25px] items-center justify-center relative rounded-[16px] shrink-0 w-[36px] cursor-pointer hover:bg-[rgba(199,196,245,0.15)]"
+                              >
+                                <p className="font-['SF_Pro_Rounded:Medium',sans-serif] h-[16px] leading-[16px] relative shrink-0 text-[#7b7f8d] text-[14px] text-center text-nowrap whitespace-pre">
+                                  +10
+                                </p>
+                              </motion.button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Error/Success Messages */}
+                      {tradingError && (
+                        <div className="bg-[rgba(230,67,65,0.1)] border border-[rgba(230,67,65,0.3)] rounded-[10px] p-[12px]">
+                          <p className="font-['SF_Pro_Rounded:Medium',sans-serif] text-[#e64341] text-[14px]">
+                            {tradingError}
+                          </p>
+                        </div>
+                      )}
+                      {tradingSuccess && (
+                        <div className="bg-[rgba(62,163,75,0.1)] border border-[rgba(62,163,75,0.3)] rounded-[10px] p-[12px]">
+                          <p className="font-['SF_Pro_Rounded:Medium',sans-serif] text-[#3ea34b] text-[14px]">
+                            Order placed successfully!
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Buy Button */}
+                      <motion.button
+                        onClick={handleBuy}
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ duration: 0.15 }}
+                        disabled={betAmount === 0 || isProcessing}
+                        className={`h-[48px] relative rounded-[12px] shadow-[0px_1px_2px_0px_rgba(24,39,75,0.04)] shrink-0 w-full ${
+                          betAmount > 0 && !isProcessing
+                            ? "cursor-pointer"
+                            : "cursor-not-allowed"
+                        } ${
+                          betAmount > 0 && !isProcessing
+                            ? "bg-[#4779ff]"
+                            : "bg-[#1a2239]"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center justify-center overflow-clip rounded-[inherit] size-full">
+                          <div
+                            className={`box-border content-stretch flex flex-col h-[48px] items-center justify-center leading-[normal] px-[20px] py-[14px] relative text-[14px] text-nowrap w-full whitespace-pre ${
+                              betAmount === 0 || isProcessing
+                                ? "opacity-40"
+                                : ""
+                            }`}
+                          >
+                            <p className="font-['SF_Pro_Rounded:Bold',sans-serif] relative shrink-0 text-[rgba(248,250,255,0.95)]">
+                              {isProcessing
+                                ? "Processing..."
+                                : !primaryWallet
+                                ? "Connect Wallet"
+                                : `Buy ${
+                                    selectedOption === "yes" ? "Yes" : "No"
+                                  }`}
+                            </p>
+                            {betAmount > 0 && !isProcessing && (
+                              <p className="font-['SF_Pro_Rounded:Medium',sans-serif] relative shrink-0 text-[rgba(248,250,255,0.65)]">
+                                To win ${potentialWin.toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+      <div
+        aria-hidden="true"
+        className="absolute border-[#262a34] border-[0.571px] border-solid inset-0 pointer-events-none rounded-[22.837px] shadow-[0px_1.142px_2.284px_0px_rgba(0,0,0,0.02),0px_1.142px_2.284px_0px_rgba(0,0,0,0.02)]"
+      />
+    </motion.div>
+  );
+
+  return (
+    <>
+      {/* Blur Overlay */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.25,
+              ease: [0.25, 0.46, 0.45, 0.94], // easeOutQuad
+            }}
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+            onClick={handleClose}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Placeholder to maintain grid space */}
+      <div ref={cardRef} className="w-full">
+        {isExpanded ? (
+          // Invisible placeholder to keep grid space
+          <div className="bg-neutral-50 rounded-[22.837px] w-full opacity-0 pointer-events-none">
+            <div className="content-stretch flex flex-col items-start overflow-clip relative rounded-[inherit] w-full">
+              <div className="bg-white relative rounded-[22.837px] shrink-0 w-full">
+                <div className="size-full">
+                  <div className="box-border content-stretch flex flex-col gap-[13.702px] items-start p-[15.986px] relative w-full">
+                    <div className="content-stretch flex gap-[9.135px] items-start relative shrink-0 w-full">
+                      <div className="basis-0 content-stretch flex flex-col gap-[9.135px] grow items-start min-h-px min-w-px relative shrink-0">
+                        <div className="bg-[#c4c4c4] overflow-clip relative rounded-[9.135px] shrink-0 size-[45.675px]" />
+                        <p className="font-['SF_Pro_Rounded:Bold',sans-serif] leading-[22.837px] min-w-full not-italic relative shrink-0 text-[#1a1a1a] text-[18.27px] tracking-[0.1827px] w-min-content">
+                          {question}
+                        </p>
+                      </div>
+                      <div className="content-stretch flex gap-[9.135px] h-[27.405px] items-center justify-end relative shrink-0">
+                        <div className="content-stretch flex gap-[4.567px] items-center overflow-clip relative shrink-0">
+                          <ClockIcon />
+                          <p className="font-['SF_Pro_Rounded:Semibold',sans-serif] leading-[18.27px] not-italic relative shrink-0 text-[13.702px] text-[rgba(26,26,26,0.5)] text-nowrap tracking-[0.137px] whitespace-pre">
+                            {timeRemaining}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="relative shrink-0 w-full">
+                <div className="flex flex-col justify-center size-full">
+                  <div className="box-border content-stretch flex flex-col gap-[11px] items-start p-[13.702px] relative w-full">
+                    <div className="content-stretch flex gap-[4.567px] h-[41.107px] items-start relative shrink-0 w-full" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          cardContent
+        )}
+      </div>
+
+      {/* Fixed positioned card when expanded */}
+      {isExpanded && cardContent}
+    </>
+  );
+}

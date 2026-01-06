@@ -1,0 +1,96 @@
+.active-wallet-information,
+.collect-user-data__img-container,
+.collect-user-data__network-picker {
+  display: none;
+}
+
+/* Add wallet button - no background or border */
+button[class*="dynamic-widget-wallets-header__add_wallet" i] {
+  background-color: transparent !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Add wallet button hover state */
+button[class*="dynamic-widget-wallets-header__add_wallet" i]:hover,
+button[class*="dynamic-widget-wallets-header__add_wallet" i]:hover * {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Settings view section buttons and card buttons - match list-tile style */
+button[class*="settings-view__body__section__button" i],
+button[class*="button--card" i] {
+  background-color: #2a2f42 !important;
+  background: #2a2f42 !important;
+  border: 1.142px solid rgba(22, 22, 22, 0.06) !important;
+}
+
+/* Settings view section buttons and card buttons hover - keep background unchanged */
+button[class*="settings-view__body__section__button" i]:hover,
+button[class*="button--card" i]:hover {
+  background-color: #2a2f42 !important;
+  background: #2a2f42 !important;
+}
+
+/* Primary buttons */
+button[class*="button--primary" i],
+button[class*="button-primary" i] {
+  background-color: rgba(114, 208, 237, 0.15);
+  color: #72d0ed;
+  border: 1.142px solid rgba(114, 208, 237, 0.3);
+  border-radius: 4px;
+  font-family: "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  box-shadow: none;
+  transition: opacity 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Primary button text and icons */
+button[class*="button--primary" i] *,
+button[class*="button-primary" i] * {
+  color: #ffffff;
+}
+
+/* Primary button hover */
+button[class*="button--primary" i]:hover,
+button[class*="button-primary" i]:hover {
+  background-color: rgba(114, 208, 237, 0.25);
+  color: #72d0ed;
+  border-color: rgba(114, 208, 237, 0.4);
+}
+
+button[class*="button--primary" i]:hover *,
+button[class*="button-primary" i]:hover * {
+  color: #72d0ed;
+}
+
+/* Primary button active */
+button[class*="button--primary" i]:active,
+button[class*="button-primary" i]:active {
+  transform: scale(0.9);
+}
+
+/* Target typography--button-primary for font size and weight */
+[class*="typography--button-primary" i],
+[class*="typography-button-primary" i] {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Tooltip text should use dynamic-text-secondary */
+[class*="tooltip" i],
+[class*="Tooltip" i],
+[role="tooltip"],
+[data-tooltip],
+[aria-describedby*="tooltip" i] {
+  color: var(--dynamic-text-secondary) !important;
+}
+
+[class*="tooltip" i] *,
+[class*="Tooltip" i] *,
+[role="tooltip"] *,
+[data-tooltip] *,
+[aria-describedby*="tooltip" i] * {
+  color: var(--dynamic-text-secondary) !important;
+}
+
