@@ -11,10 +11,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
       <div className="w-full max-w-2xl space-y-8">
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold">Gasless Solana Transactions</h1>
-          <p className="text-muted-foreground">
-            Powered by Dynamic SDK and Kora
-          </p>
+          <h1 className="text-4xl font-bold">Gasless Solana Transactions with a Relayer</h1>
         </div>
 
         <div className="flex justify-center">

@@ -380,8 +380,8 @@ export default function GaslessTransactionDemo() {
     <div className="w-full max-w-2xl mx-auto p-6 border rounded-lg space-y-4">
       <h2 className="text-2xl font-semibold">Gasless Transaction Demo</h2>
       <p className="text-sm text-muted-foreground">
-        This demo sends a gasless transaction on Solana using Kora. The
-        transaction fees are paid in SPL tokens instead of SOL.
+        This demo sends a gasless transaction on Solana using Kora (a gasless
+        relayer). The transaction fees are paid in SPL tokens instead of SOL.
       </p>
 
       <div className="space-y-2">

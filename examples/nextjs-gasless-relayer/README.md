@@ -1,6 +1,6 @@
 # Gasless Solana Transactions with Dynamic SDK and Kora
 
-A Next.js demo showcasing **gasless transactions on Solana** using Dynamic SDK for wallet management and Kora for fee abstraction. Users can send transactions without needing SOL in their wallet - fees are paid in SPL tokens instead.
+A Next.js demo showcasing **gasless transactions on Solana** using Dynamic SDK for wallet management and Kora (a Solana gasless relayer) for fee abstraction. Users can send transactions without needing SOL in their wallet - fees are paid in SPL tokens instead.
 
 ## What This Demo Shows
 
@@ -8,7 +8,7 @@ This example demonstrates how to:
 
 - **Connect Solana wallets** using Dynamic SDK
 - **Create gasless transactions** where fees are paid in SPL tokens (e.g., USDC) instead of SOL
-- **Integrate Kora** for transaction fee abstraction
+- **Integrate Kora** (a gasless relayer) for transaction fee abstraction
 - **Build and sign transactions** with proper compute budget instructions
 - **Submit transactions** to the Solana network with Kora co-signing
 
@@ -18,7 +18,7 @@ This example demonstrates how to:
 | --------------------- | -------------------------------------------------- |
 | 🔐 Dynamic SDK        | Seamless Solana wallet connection and management   |
 | ⛽ Gasless            | Pay transaction fees in SPL tokens, not SOL        |
-| 🔄 Kora Integration   | Fee abstraction service for Solana transactions    |
+| 🔄 Kora Integration   | Gasless relayer service for Solana transactions    |
 | 📝 Memo Transactions  | Simple demo transaction (easily extensible)        |
 | ✅ Transaction Status | Real-time status updates and confirmation tracking |
 
@@ -240,7 +240,7 @@ const transactionVersion = 0 as TransactionVersion; // or 1 for versioned
 ## Documentation
 
 - [Dynamic SDK Docs](https://www.dynamic.xyz/docs) - Wallet connection and management
-- [Kora Documentation](https://github.com/solana-foundation/kora) - Fee abstraction service
+- [Kora Documentation](https://github.com/solana-foundation/kora) - Solana gasless relayer
 - [Solana Web3.js](https://solana-labs.github.io/solana-web3.js/) - Solana transaction building
 - [Solana Cookbook](https://solanacookbook.com/) - Solana development patterns
 
@@ -248,7 +248,7 @@ const transactionVersion = 0 as TransactionVersion; // or 1 for versioned
 
 - **[Next.js 15](https://nextjs.org/)** - React framework
 - **[Dynamic SDK](https://www.dynamic.xyz/)** - Wallet authentication and management
-- **[Kora](https://github.com/solana-foundation/kora)** - Solana fee abstraction
+- **[Kora](https://github.com/solana-foundation/kora)** - Solana gasless relayer
 - **[@solana/kit](https://github.com/solana-labs/solana-web3.js)** - Solana transaction building
 - **[Tailwind CSS](https://tailwindcss.com/)** - Styling
 

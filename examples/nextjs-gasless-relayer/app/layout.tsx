@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Dynamic Gasless Transactions with Kora",
-  description: "Gasless Solana transactions using Dynamic SDK and Kora",
+  description: "Gasless Solana transactions using Dynamic SDK and Kora (a gasless relayer)",
 };
 
 interface RootLayoutProps {

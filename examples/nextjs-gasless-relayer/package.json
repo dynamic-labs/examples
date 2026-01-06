@@ -1,5 +1,5 @@
 {
-  "name": "nextjs-gasless-kora",
+  "name": "nextjs-gasless-relayer",
   "version": "0.1.0",
   "private": true,
   "scripts": {
