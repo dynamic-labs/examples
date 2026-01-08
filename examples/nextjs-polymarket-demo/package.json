@@ -1,0 +1,51 @@
+{
+  "name": "nextjs-polymarket-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@awesome-qrcode/react": "^1.0.0",
+    "@checkout.com/checkout-web-components": "^1.7.1",
+    "@dynamic-labs/ethereum": "^4.50.5",
+    "@dynamic-labs/sdk-react-core": "^4.50.5",
+    "@dynamic-labs/wagmi-connector": "^4.50.5",
+    "@lifi/sdk": "^3.14.1",
+    "@lifi/wallet-management": "^3.21.0",
+    "@polymarket/abstract-signer": "^0.0.8",
+    "@polymarket/builder-relayer-client": "^0.0.8",
+    "@polymarket/clob-client": "^5.1.1",
+    "@t3-oss/env-nextjs": "^0.13.10",
+    "@tanstack/react-query": "^5.90.12",
+    "clsx": "^2.1.1",
+    "embla-carousel-react": "^8.6.0",
+    "ethers": "^5.8.0",
+    "lucide-react": "^0.487.0",
+    "motion": "^12.23.26",
+    "next": "^15.5.9",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.4.0",
+    "viem": "^2.42.1",
+    "wagmi": "^3.1.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^20.19.27",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9.34.0",
+    "eslint-config-next": "^15.5.9",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3"
+  }
+}
