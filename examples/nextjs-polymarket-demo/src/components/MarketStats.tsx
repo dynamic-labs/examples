@@ -25,9 +25,7 @@ export function MarketStats({ markets }: MarketStatsProps) {
     );
     const avgPriceDiff =
       markets.reduce((sum, m) => {
-        const diff = Math.abs(
-          parseFloat(m.yesPrice) - parseFloat(m.noPrice)
-        );
+        const diff = Math.abs(parseFloat(m.yesPrice) - parseFloat(m.noPrice));
         return sum + diff;
       }, 0) / markets.length;
 
@@ -86,4 +84,3 @@ export function MarketStats({ markets }: MarketStatsProps) {
     </div>
   );
 }
-

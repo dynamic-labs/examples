@@ -246,7 +246,6 @@ export function CheckoutFlow({
         <div className="flex flex-col">
           <SuccessView
             amount={amount}
-            orderId={paymentId}
             onStartNewTransaction={handleStartNewTransaction}
           />
         </div>

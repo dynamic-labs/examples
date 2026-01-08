@@ -2,12 +2,6 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 
-/**
- * Create a Checkout.com Payment Session
- *
- * This endpoint creates a payment session that can be used with Checkout.com Flow
- * to accept payments inline on the website.
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

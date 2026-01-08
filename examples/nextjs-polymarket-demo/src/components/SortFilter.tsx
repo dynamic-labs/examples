@@ -33,4 +33,3 @@ export function SortFilter({ sortBy, onSortChange }: SortFilterProps) {
     </div>
   );
 }
-

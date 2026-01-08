@@ -110,7 +110,8 @@ export function SellModal({
                     {position.outcome}
                   </span>
                   <span className="text-[11px] text-[rgba(221,226,246,0.5)]">
-                    {position.size.toFixed(1)} shares @ ${position.curPrice.toFixed(3)}
+                    {position.size.toFixed(1)} shares @ $
+                    {position.curPrice.toFixed(3)}
                   </span>
                 </div>
               </div>
@@ -139,7 +140,9 @@ export function SellModal({
                     min="1"
                     max="100"
                     value={percentage}
-                    onChange={(e) => handlePercentageChange(parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handlePercentageChange(parseInt(e.target.value))
+                    }
                     disabled={isLoading}
                     className="w-full h-[6px] bg-[#191b25] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[18px] [&::-webkit-slider-thumb]:h-[18px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#72D0ED] [&::-webkit-slider-thumb]:cursor-pointer"
                   />
@@ -230,4 +233,3 @@ export function SellModal({
     </>
   );
 }
-

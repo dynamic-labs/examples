@@ -93,7 +93,7 @@ async function ensureAllUsdcApprovals(
       signer
     );
 
-    for (const { address, name } of POLYMARKET_USDC_SPENDERS) {
+    for (const { address } of POLYMARKET_USDC_SPENDERS) {
       const currentAllowance: BigNumber = await usdcContract.allowance(
         signerAddress,
         address
@@ -125,7 +125,7 @@ async function ensureAllOutcomeTokenApprovals(
       signer
     );
 
-    for (const { address, name } of POLYMARKET_OUTCOME_TOKEN_SPENDERS) {
+    for (const { address } of POLYMARKET_OUTCOME_TOKEN_SPENDERS) {
       const isApproved: boolean = await ctfContract.isApprovedForAll(
         signerAddress,
         address

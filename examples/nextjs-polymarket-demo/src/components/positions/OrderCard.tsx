@@ -18,7 +18,11 @@ function formatPrice(price: number): string {
   return `${Math.round(price * 100)}¢`;
 }
 
-export function OrderCard({ order, onCancel, isCancelling = false }: OrderCardProps) {
+export function OrderCard({
+  order,
+  onCancel,
+  isCancelling = false,
+}: OrderCardProps) {
   // Fetch market info to display the question
   const { data: marketInfo } = useQuery({
     queryKey: ["market-info", order.asset_id],
@@ -166,4 +170,3 @@ export function OrderCard({ order, onCancel, isCancelling = false }: OrderCardPr
     </div>
   );
 }
-

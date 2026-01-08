@@ -31,7 +31,16 @@ export interface PolymarketPosition {
 interface UseUserPositionsOptions {
   sizeThreshold?: number;
   limit?: number;
-  sortBy?: "CURRENT" | "INITIAL" | "TOKENS" | "CASHPNL" | "PERCENTPNL" | "TITLE" | "RESOLVING" | "PRICE" | "AVGPRICE";
+  sortBy?:
+    | "CURRENT"
+    | "INITIAL"
+    | "TOKENS"
+    | "CASHPNL"
+    | "PERCENTPNL"
+    | "TITLE"
+    | "RESOLVING"
+    | "PRICE"
+    | "AVGPRICE";
   sortDirection?: "ASC" | "DESC";
   redeemable?: boolean;
 }
@@ -77,9 +86,8 @@ export function useUserPositions(
     queryKey: ["polymarket-positions", walletAddress, options],
     queryFn: () => fetchPositions(walletAddress!, options),
     enabled: !!walletAddress,
-    staleTime: 5000, // 5 seconds
-    refetchInterval: 10000, // 10 seconds
+    staleTime: 5000,
+    refetchInterval: 10000,
     refetchOnWindowFocus: true,
   });
 }
-

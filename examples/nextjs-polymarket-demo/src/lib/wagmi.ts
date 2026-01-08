@@ -1,5 +1,5 @@
 import { createConfig, http } from "wagmi";
-import { mainnet, polygon } from "wagmi/chains";
+import { polygon } from "wagmi/chains";
 
 export const config = createConfig({
   chains: [polygon],
@@ -7,7 +7,6 @@ export const config = createConfig({
   transports: {
     [polygon.id]: http(),
   },
-  // Disable multi-injected provider discovery since Dynamic handles wallet detection
   multiInjectedProviderDiscovery: false,
 });
 

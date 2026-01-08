@@ -25,8 +25,6 @@ const sizeClasses: Record<TextSize, string> = {
   "2xl": "text-[22px]",
 };
 
-// Font weights are handled via font-family classes
-
 const colorClasses: Record<
   Exclude<TypographyProps["color"], "custom" | undefined>,
   string

@@ -19,10 +19,8 @@ export default function PriceChart() {
               aria-label="Yes price trend"
             >
               <title>Yes price trend</title>
-              {/** biome-ignore lint/correctness/useUniqueElementIds: Static ID from design system */}
               <path
                 d={pe42cf40}
-                id="Vector 3"
                 stroke="var(--stroke-0, #3EA34B)"
                 strokeWidth="1.5"
               />
@@ -56,10 +54,8 @@ export default function PriceChart() {
               aria-label="No price trend"
             >
               <title>No price trend</title>
-              {/** biome-ignore lint/correctness/useUniqueElementIds: Static ID from design system */}
               <path
                 d={p195766e6}
-                id="Vector 3"
                 stroke="var(--stroke-0, #E64341)"
                 strokeWidth="1.5"
               />

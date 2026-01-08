@@ -3,7 +3,6 @@ import { BodyText, Heading, Label, Value } from "@/components/ui/Typography";
 
 interface SuccessViewProps {
   amount: string;
-  orderId?: string | null;
   onStartNewTransaction: () => void;
 }
 
@@ -45,14 +44,6 @@ export function SuccessView({
             Base
           </Value>
         </div>
-        {/* {orderId && (
-          <div className="flex justify-between items-start">
-            <Label>Order ID</Label>
-            <span className="font-mono text-[12px] text-[#dde2f6] break-all text-right max-w-[200px]">
-              {orderId}
-            </span>
-          </div>
-        )} */}
       </div>
 
       {/* Done Button */}

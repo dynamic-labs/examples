@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
 import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "loading";
@@ -37,7 +43,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const showToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = Math.random().toString(36).substring(2, 9);
     const newToast = { ...toast, id };
-    
+
     setToasts((prev) => [...prev, newToast]);
 
     // Auto-dismiss non-loading toasts
@@ -55,19 +61,22 @@ export function ToastProvider({ children }: ToastProviderProps) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const updateToast = useCallback((id: string, updates: Partial<Omit<Toast, "id">>) => {
-    setToasts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-    );
+  const updateToast = useCallback(
+    (id: string, updates: Partial<Omit<Toast, "id">>) => {
+      setToasts((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      );
 
-    // If updating to non-loading, auto-dismiss
-    if (updates.type && updates.type !== "loading") {
-      const duration = updates.duration ?? 4000;
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, duration);
-    }
-  }, []);
+      // If updating to non-loading, auto-dismiss
+      if (updates.type && updates.type !== "loading") {
+        const duration = updates.duration ?? 4000;
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+        }, duration);
+      }
+    },
+    []
+  );
 
   return (
     <ToastContext.Provider value={{ showToast, hideToast, updateToast }}>
@@ -116,7 +125,9 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 rounded-[12px] border backdrop-blur-sm shadow-lg animate-in slide-in-from-right-5 fade-in duration-200 ${bgColors[toast.type]}`}
+      className={`flex items-start gap-3 p-4 rounded-[12px] border backdrop-blur-sm shadow-lg animate-in slide-in-from-right-5 fade-in duration-200 ${
+        bgColors[toast.type]
+      }`}
     >
       <div className="shrink-0 mt-0.5">{icons[toast.type]}</div>
       <div className="flex-1 min-w-0">
@@ -141,4 +152,3 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
     </div>
   );
 }
-

@@ -239,65 +239,6 @@ export function MarketCard({
         : (betAmount / parseFloat(noPrice)) * 100
       : 0;
 
-  // Calculate bar widths based on prices
-  const yesPercentage = parseFloat(yesPrice);
-  const noPercentage = parseFloat(noPrice);
-  const totalPercentage = yesPercentage + noPercentage;
-  const _yesBarWidth = (yesPercentage / totalPercentage) * 100;
-
-  // Generate dynamic chart data based on yes/no prices
-  const generateChartData = () => {
-    const data = [];
-    const numPoints = 6; // Very few points like Polymarket/Kalshi
-
-    // Use question hash to generate consistent but different data per card
-    const seed = question
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-    // Start from a different point than current price
-    let yesValue = yesPercentage + ((seed % 30) - 15);
-    let noValue = noPercentage + (((seed * 7) % 30) - 15);
-
-    yesValue = Math.max(20, Math.min(80, yesValue));
-    noValue = Math.max(20, Math.min(80, noValue));
-
-    for (let i = 0; i < numPoints; i++) {
-      // Smooth gradual trend toward final price
-      const progress = i / (numPoints - 1);
-      const currentYes = yesValue + (yesPercentage - yesValue) * progress;
-      const currentNo = noValue + (noPercentage - noValue) * progress;
-
-      // Add small natural variation (not wild swings)
-      const yesVariation = Math.sin(seed + i) * 3;
-      const noVariation = Math.cos(seed * 1.3 + i) * 3;
-
-      data.push({
-        name: i,
-        yes: Math.max(20, Math.min(80, currentYes + yesVariation)),
-        no: Math.max(20, Math.min(80, currentNo + noVariation)),
-      });
-    }
-
-    // Ensure last point is exactly the current price
-    data[numPoints - 1].yes = yesPercentage;
-    data[numPoints - 1].no = noPercentage;
-
-    return data;
-  };
-
-  const chartData = generateChartData();
-
-  // Get the last data point for positioning dots
-  const lastDataPoint = chartData[chartData.length - 1];
-
-  // Calculate dot positions based on actual SVG coordinates
-  // For Yes line: height is 48px, viewBox is 0-50
-  // Y in SVG = 48 - (percentage/100 * 48), then convert to position in container
-  const _yesDotTopPercent = ((48 - (lastDataPoint.yes / 100) * 48) / 48) * 100;
-  const _noDotTopPercent =
-    ((44.44 - (lastDataPoint.no / 100) * 44.44) / 44.44) * 100;
-
   const cardContent = (
     <motion.div
       layout

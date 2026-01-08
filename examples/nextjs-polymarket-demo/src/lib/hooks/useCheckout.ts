@@ -6,22 +6,7 @@ import type {
   PaymentSessionResponse,
 } from "@/lib/types/checkout";
 
-/**
- * Checkout.com Hook
- *
- * Provides functionality for creating payment sessions
- * via Checkout.com Flow API.
- *
- * @returns Object with createPaymentSession function
- */
 export function useCheckout() {
-  /**
-   * Create a payment session for Checkout.com Flow
-   *
-   * @param params - Payment session creation parameters
-   * @returns Payment session response with token and secret
-   * @throws Error if payment session creation fails
-   */
   const createPaymentSession = async (
     params: CreatePaymentSessionParams
   ): Promise<PaymentSessionResponse> => {

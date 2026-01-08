@@ -60,4 +60,3 @@ export function usePolymarketMarkets() {
     refetchInterval: 60000,
   });
 }
-

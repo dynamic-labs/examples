@@ -33,11 +33,10 @@ export function useActiveOrders(
       try {
         const allOrders = await clobClient.getOpenOrders();
 
-        // Filter orders for the current user and live status
         const activeOrders = (allOrders as PolymarketOrder[]).filter(
           (order) =>
-            order.maker_address?.toLowerCase() === walletAddress.toLowerCase() &&
-            order.status === "LIVE"
+            order.maker_address?.toLowerCase() ===
+              walletAddress.toLowerCase() && order.status === "LIVE"
         );
 
         return activeOrders;
@@ -53,4 +52,3 @@ export function useActiveOrders(
     refetchOnWindowFocus: true,
   });
 }
-
