@@ -71,6 +71,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       settings={{
         environmentId: env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
         walletConnectors: [EthereumWalletConnectors],
+        // eslint-disable-next-line @next/next/no-css-tags
         cssOverrides: <link rel="stylesheet" href="/dynamicOverrides.css" />,
         termsOfServiceUrl: "https://www.example.com",
         privacyPolicyUrl: "https://www.example.com",

@@ -5,7 +5,7 @@ import { RefreshCw, TrendingDown, TrendingUp, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUserPositions, type PolymarketPosition } from "@/lib/hooks/useUserPositions";
-import { useActiveOrders, type PolymarketOrder } from "@/lib/hooks/useActiveOrders";
+import { useActiveOrders } from "@/lib/hooks/useActiveOrders";
 import { usePolymarketTrading } from "@/lib/hooks/usePolymarketTrading";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -62,6 +62,7 @@ export function PortfolioModal({ isOpen, onClose }: PortfolioModalProps) {
   } = usePolymarketTrading();
 
   // Initialize CLOB client for orders
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [clobClient, setClobClient] = useState<any>(null);
 
   useEffect(() => {
@@ -541,7 +542,7 @@ export function PortfolioModal({ isOpen, onClose }: PortfolioModalProps) {
                     No Open Orders
                   </p>
                   <p className="font-['SF_Pro_Rounded:Semibold',sans-serif] text-[13px] text-[rgba(221,226,246,0.5)] text-center">
-                    You don't have any pending orders.
+                    You don&apos;t have any pending orders.
                   </p>
                 </div>
               ) : (

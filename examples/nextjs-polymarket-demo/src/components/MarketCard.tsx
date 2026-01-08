@@ -174,7 +174,7 @@ export function MarketCard({
             setTradingError("Please switch to Polygon network to trade");
             return;
           }
-        } catch (switchError) {
+        } catch {
           setTradingError("Please switch to Polygon network to trade");
           return;
         }

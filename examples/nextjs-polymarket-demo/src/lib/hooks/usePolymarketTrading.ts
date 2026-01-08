@@ -345,6 +345,7 @@ export function usePolymarketTrading(): UsePolymarketTradingReturn {
         const tempClient = new ClobClient(
           CLOB_API_URL,
           POLYGON_CHAIN_ID,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ethersSigner as any
         );
 
@@ -419,6 +420,7 @@ export function usePolymarketTrading(): UsePolymarketTradingReturn {
         client = new ClobClient(
           CLOB_API_URL,
           POLYGON_CHAIN_ID,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ethersSigner as any,
           credentials,
           SIGNATURE_TYPE_EOA
@@ -543,6 +545,7 @@ export function usePolymarketTrading(): UsePolymarketTradingReturn {
         client = new ClobClient(
           CLOB_API_URL,
           POLYGON_CHAIN_ID,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ethersSigner as any,
           credentials,
           SIGNATURE_TYPE_EOA
@@ -701,6 +704,7 @@ export function usePolymarketTrading(): UsePolymarketTradingReturn {
       const client = new ClobClient(
         CLOB_API_URL,
         POLYGON_CHAIN_ID,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ethersSigner as any,
         credentials,
         SIGNATURE_TYPE_EOA
