@@ -32,12 +32,13 @@ export function CheckoutFlow({
     string,
     unknown
   > | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const flowContainerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const checkoutInstanceRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const flowComponentRef = useRef<any>(null);
 
   const { createPaymentSession } = useCheckout();
@@ -48,7 +49,7 @@ export function CheckoutFlow({
       if (flowComponentRef.current) {
         try {
           flowComponentRef.current.unmount();
-        } catch (_e) {
+        } catch {
           // Ignore unmount errors
         }
         flowComponentRef.current = null;
@@ -56,7 +57,7 @@ export function CheckoutFlow({
       if (checkoutInstanceRef.current) {
         try {
           checkoutInstanceRef.current.unmount();
-        } catch (_e) {
+        } catch {
           // Ignore unmount errors
         }
         checkoutInstanceRef.current = null;
@@ -74,14 +75,14 @@ export function CheckoutFlow({
           if (flowComponentRef.current) {
             try {
               flowComponentRef.current.unmount();
-            } catch (_e) {
+            } catch {
               // Ignore unmount errors
             }
           }
           if (checkoutInstanceRef.current) {
             try {
               checkoutInstanceRef.current.unmount();
-            } catch (_e) {
+            } catch {
               // Ignore unmount errors
             }
           }
@@ -110,7 +111,7 @@ export function CheckoutFlow({
               _self: unknown,
               paymentResponse: PaymentResponse
             ) => {
-              setPaymentId(paymentResponse.id);
+              console.log("Payment completed:", paymentResponse.id);
               setShowSuccess(true);
               setError(null);
             },
@@ -164,14 +165,14 @@ export function CheckoutFlow({
       if (flowComponentRef.current) {
         try {
           flowComponentRef.current.unmount();
-        } catch (_e) {
+        } catch {
           // Ignore unmount errors
         }
       }
       if (checkoutInstanceRef.current) {
         try {
           checkoutInstanceRef.current.unmount();
-        } catch (_e) {
+        } catch {
           // Ignore unmount errors
         }
       }
@@ -221,7 +222,6 @@ export function CheckoutFlow({
 
   const handleStartNewTransaction = useCallback(() => {
     setShowSuccess(false);
-    setPaymentId(null);
     setPaymentSession(null);
     setAmount("1");
     const newView: View = "amount";

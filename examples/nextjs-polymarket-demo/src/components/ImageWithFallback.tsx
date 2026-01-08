@@ -58,10 +58,11 @@ export function ImageWithFallback({
       >
         <div className="flex items-center justify-center w-full h-full">
           {shouldUseFill ? (
-            <Image {...errorImageProps} fill sizes={sizes || "100vw"} />
+            <Image {...errorImageProps} alt={errorImageProps.alt} fill sizes={sizes || "100vw"} />
           ) : (
             <Image
               {...errorImageProps}
+              alt={errorImageProps.alt}
               width={numWidth || 88}
               height={numHeight || 88}
             />
@@ -84,6 +85,7 @@ export function ImageWithFallback({
     return (
       <Image
         {...imageProps}
+        alt={imageProps.alt}
         fill
         sizes={sizes || "100vw"}
         onError={handleError}
@@ -94,6 +96,7 @@ export function ImageWithFallback({
   return (
     <Image
       {...imageProps}
+      alt={imageProps.alt}
       width={numWidth}
       height={numHeight}
       onError={handleError}
