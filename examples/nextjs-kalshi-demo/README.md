@@ -40,7 +40,7 @@ pnpm install
 
 ```bash
 NEXT_PUBLIC_DYNAMIC_ENV_ID=your_dynamic_environment_id
-NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet.solana.com # Optional
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet.solana.com
 ```
 
 3. Start the development server:
