@@ -174,19 +174,50 @@ curl -X POST http://localhost:3000/api/delegation/sign \
 
 ### Triggering Delegation (Client-Side)
 
-Delegation can be triggered in two ways:
+Delegation can be triggered in three ways:
 
 1. **Auto-prompt on sign-in** - Configure in the Dynamic dashboard to prompt users automatically
-2. **Programmatically** - Use the `useWalletDelegation` hook:
+
+2. **Modal UI** - Use `initDelegationProcess()` to open Dynamic's built-in delegation modal:
 
 ```typescript
 import { useWalletDelegation } from "@dynamic-labs/sdk-react-core";
 
 const { initDelegationProcess } = useWalletDelegation();
 
-// Trigger delegation for the user's wallet
+// Opens Dynamic's modal UI for delegation
 await initDelegationProcess();
+
+// Or delegate specific wallets only
+await initDelegationProcess({ wallets: [primaryWallet] });
 ```
+
+3. **Custom UI** - Use `delegateKeyShares()` for programmatic delegation without any UI:
+
+```typescript
+import { useWalletDelegation } from "@dynamic-labs/sdk-react-core";
+import { ChainEnum } from "@dynamic-labs/sdk-api-core";
+
+const { delegateKeyShares, getWalletsDelegatedStatus } = useWalletDelegation();
+
+// Get wallets pending delegation
+const pendingWallets = getWalletsDelegatedStatus().filter(
+  (wallet) => wallet.status === "pending"
+);
+
+// Delegate specific wallets (no UI shown)
+await delegateKeyShares(
+  pendingWallets.map((wallet) => ({
+    chainName: wallet.chain as ChainEnum,
+    accountAddress: wallet.address,
+  }))
+);
+
+// Or delegate all pending wallets at once
+await delegateKeyShares();
+```
+
+**Note:** Use `getWalletsDelegatedStatus()` to find eligible wallets. This returns all wallets with their delegation status (`"pending"`, `"delegated"`, or `"denied"`).
 
 ### Delegation Creation Flow
 
@@ -254,6 +285,14 @@ This approach combines:
 ## Project Structure
 
 ```text
+components/
+├── dynamic/
+│   └── delegated-access/    # Client-side delegation UI
+│       ├── index.tsx        # Main entry with tabbed UI
+│       ├── init.tsx         # Modal UI (initDelegationProcess)
+│       ├── management.tsx   # Custom UI (delegateKeyShares)
+│       ├── methods.tsx      # Post-delegation actions
+│       └── components/      # Shared UI components
 lib/
 ├── dynamic/
 │   ├── delegation/          # Delegation decryption & storage
