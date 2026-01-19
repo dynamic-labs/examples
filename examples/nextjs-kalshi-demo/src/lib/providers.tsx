@@ -20,11 +20,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         environmentId: env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
         walletConnectors: [SolanaWalletConnectors],
         cssOverrides: <link rel="stylesheet" href="/dynamicOverrides.css" />,
-        termsOfServiceUrl: "https://www.example.com",
-        privacyPolicyUrl: "https://www.example.com",
-        policiesConsentInnerComponent:
-          "I agree to the terms of service and privacy policy",
-        logLevel: "ERROR",
       }}
     >
       <QueryClientProvider client={queryClient}>

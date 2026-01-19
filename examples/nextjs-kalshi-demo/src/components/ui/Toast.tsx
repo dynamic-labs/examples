@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
 
@@ -81,10 +87,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               )} backdrop-blur-sm`}
             >
               {getIcon(toast.type)}
-              <p className="text-[#dde2f6] text-sm font-medium">{toast.message}</p>
+              <p className="text-[#dde2f6] text-sm font-medium">
+                {toast.message}
+              </p>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="ml-2 text-[rgba(221,226,246,0.5)] hover:text-[#dde2f6] transition-colors"
+                className="ml-2 text-[rgba(221,226,246,0.5)] hover:text-[#dde2f6] transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -95,4 +103,3 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </ToastContext.Provider>
   );
 }
-

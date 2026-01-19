@@ -9,6 +9,7 @@ import {
   Transaction,
   SystemProgram,
   LAMPORTS_PER_SOL,
+  TransactionMessage,
 } from "@solana/web3.js";
 import {
   NATIVE_MINT,
@@ -18,20 +19,22 @@ import {
   getAccount,
   TokenAccountNotFoundError,
 } from "@solana/spl-token";
-
-// Token mint addresses on Solana mainnet
-const WSOL_MINT = "So11111111111111111111111111111111111111112"; // Wrapped SOL
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-
-// Slippage tolerance in basis points (50 = 0.5%)
-const DEFAULT_SLIPPAGE_BPS = 50;
+import {
+  WSOL_MINT,
+  USDC_MINT,
+  DEFAULT_SLIPPAGE_BPS,
+  MIN_BET_USD,
+  SOL_PRICE_ESTIMATE,
+  TX_FEE_RESERVE,
+  SOLANA_RPC_URL,
+} from "@/lib/constants";
 
 export interface TradeParams {
   marketId: string;
   ticker: string;
   tokenMint?: string;
   side: "yes" | "no";
-  amount: number; // Amount in USD
+  amount: number;
   price?: number;
   isMarketOrder?: boolean;
 }
@@ -39,6 +42,7 @@ export interface TradeParams {
 export interface SellParams {
   marketId: string;
   tokenMint?: string;
+  settlementMint?: string;
   side: "yes" | "no";
   size: number;
   price?: number;
@@ -78,114 +82,82 @@ export interface UseKalshiTradingReturn {
 
 export function useKalshiTrading(): UseKalshiTradingReturn {
   const { primaryWallet } = useDynamicContext();
-
   const [isLoading, setIsLoading] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const connectionRef = useRef<Connection | null>(null);
 
   const getConnection = useCallback((): Connection => {
     if (!connectionRef.current) {
-      connectionRef.current = new Connection(
-        process.env.NEXT_PUBLIC_SOLANA_RPC_URL!,
-        "confirmed"
-      );
+      connectionRef.current = new Connection(SOLANA_RPC_URL, "confirmed");
     }
     return connectionRef.current;
   }, []);
 
   const getSolBalance = useCallback(async (): Promise<number> => {
-    // Get address directly from primaryWallet to avoid stale closure
     const walletAddress = primaryWallet?.address;
-    console.log(
-      "getSolBalance called, primaryWallet:",
-      !!primaryWallet,
-      "address:",
-      walletAddress
-    );
-
-    if (!primaryWallet || !walletAddress) {
-      console.warn("getSolBalance: No wallet or address available");
-      return 0;
-    }
+    if (!primaryWallet || !walletAddress) return 0;
 
     try {
       const connection = getConnection();
       const publicKey = new PublicKey(walletAddress);
-      console.log("Fetching balance for:", walletAddress);
       const balance = await connection.getBalance(publicKey);
-      console.log("SOL balance in lamports:", balance);
-      console.log("SOL balance:", balance / LAMPORTS_PER_SOL);
       return balance / LAMPORTS_PER_SOL;
-    } catch (err) {
-      console.error("Failed to get SOL balance:", err);
+    } catch {
       return 0;
     }
   }, [primaryWallet, getConnection]);
 
   const getUsdcBalance = useCallback(async (): Promise<number> => {
     const walletAddress = primaryWallet?.address;
-    if (!primaryWallet || !walletAddress) {
-      return 0;
-    }
+    if (!primaryWallet || !walletAddress) return 0;
 
     try {
       const connection = getConnection();
       const publicKey = new PublicKey(walletAddress);
       const usdcMint = new PublicKey(USDC_MINT);
-
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         publicKey,
         { mint: usdcMint }
       );
 
       if (tokenAccounts.value.length > 0) {
-        const balance =
-          tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-        return balance || 0;
+        return (
+          tokenAccounts.value[0].account.data.parsed.info.tokenAmount
+            .uiAmount || 0
+        );
       }
-
       return 0;
-    } catch (err) {
-      console.error("Failed to get USDC balance:", err);
+    } catch {
       return 0;
     }
   }, [primaryWallet, getConnection]);
 
   const getWsolBalance = useCallback(async (): Promise<number> => {
     const walletAddress = primaryWallet?.address;
-    if (!primaryWallet || !walletAddress) {
-      return 0;
-    }
+    if (!primaryWallet || !walletAddress) return 0;
 
     try {
       const connection = getConnection();
       const publicKey = new PublicKey(walletAddress);
-
+      const wsolMint = new PublicKey(WSOL_MINT);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         publicKey,
-        { mint: NATIVE_MINT }
+        { mint: wsolMint }
       );
 
       if (tokenAccounts.value.length > 0) {
-        const balance =
-          tokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-        console.log("WSOL balance:", balance);
-        return balance || 0;
+        return (
+          tokenAccounts.value[0].account.data.parsed.info.tokenAmount
+            .uiAmount || 0
+        );
       }
-
       return 0;
-    } catch (err) {
-      console.error("Failed to get WSOL balance:", err);
+    } catch {
       return 0;
     }
   }, [primaryWallet, getConnection]);
 
-  /**
-   * Wrap native SOL into WSOL
-   * Creates ATA if needed, transfers SOL to it, and syncs the balance
-   */
   const wrapSol = useCallback(
     async (
       solAmount: number
@@ -202,102 +174,86 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
       try {
         const connection = getConnection();
         const publicKey = new PublicKey(walletAddress);
+        const wsolAta = await getAssociatedTokenAddress(NATIVE_MINT, publicKey);
         const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
-
-        // Get the associated token account for WSOL
-        const ata = await getAssociatedTokenAddress(NATIVE_MINT, publicKey);
 
         const transaction = new Transaction();
 
-        // Check if ATA exists, if not create it
+        let ataExists = false;
         try {
-          await getAccount(connection, ata);
-          console.log("WSOL ATA already exists:", ata.toBase58());
-        } catch (error) {
-          if (error instanceof TokenAccountNotFoundError) {
-            console.log("Creating WSOL ATA:", ata.toBase58());
-            transaction.add(
-              createAssociatedTokenAccountInstruction(
-                publicKey, // payer
-                ata, // ata
-                publicKey, // owner
-                NATIVE_MINT // mint
-              )
-            );
-          } else {
-            throw error;
-          }
+          await getAccount(connection, wsolAta);
+          ataExists = true;
+        } catch (e) {
+          if (!(e instanceof TokenAccountNotFoundError)) throw e;
         }
 
-        // Transfer SOL to the ATA
+        if (!ataExists) {
+          transaction.add(
+            createAssociatedTokenAccountInstruction(
+              publicKey,
+              wsolAta,
+              publicKey,
+              NATIVE_MINT
+            )
+          );
+        }
+
         transaction.add(
           SystemProgram.transfer({
             fromPubkey: publicKey,
-            toPubkey: ata,
+            toPubkey: wsolAta,
             lamports,
           })
         );
 
-        // Sync the wrapped SOL balance
-        transaction.add(createSyncNativeInstruction(ata));
+        transaction.add(createSyncNativeInstruction(wsolAta));
 
-        // Get recent blockhash
         const { blockhash, lastValidBlockHeight } =
-          await connection.getLatestBlockhash("confirmed");
+          await connection.getLatestBlockhash();
         transaction.recentBlockhash = blockhash;
         transaction.feePayer = publicKey;
 
-        // Sign and send transaction
+        // Convert legacy Transaction to VersionedTransaction for Dynamic wallet compatibility
+        const messageV0 = new TransactionMessage({
+          payerKey: publicKey,
+          recentBlockhash: blockhash,
+          instructions: transaction.instructions,
+        }).compileToV0Message();
+
+        const versionedTransaction = new VersionedTransaction(messageV0);
+
         const signer = await primaryWallet.getSigner();
         const signedTx = await signer.signTransaction(
-          transaction as unknown as Parameters<typeof signer.signTransaction>[0]
+          versionedTransaction as unknown as Parameters<
+            typeof signer.signTransaction
+          >[0]
         );
 
         const signature = await connection.sendRawTransaction(
-          signedTx.serialize(),
-          {
-            skipPreflight: false,
-            preflightCommitment: "confirmed",
-          }
+          signedTx.serialize()
         );
 
-        // Wait for confirmation
-        const confirmation = await connection.confirmTransaction(
-          {
-            signature,
-            blockhash,
-            lastValidBlockHeight,
-          },
+        await connection.confirmTransaction(
+          { signature, blockhash, lastValidBlockHeight },
           "confirmed"
         );
 
-        if (confirmation.value.err) {
-          throw new Error(
-            `Wrap SOL failed: ${JSON.stringify(confirmation.value.err)}`
-          );
-        }
-
-        console.log("SOL wrapped successfully:", signature);
         return { success: true, txHash: signature };
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to wrap SOL";
-        console.error("Wrap SOL error:", err);
-        return { success: false, error: errorMessage };
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to wrap SOL",
+        };
       }
     },
     [primaryWallet, getConnection]
   );
 
-  /**
-   * Execute a swap using DFlow Trade API
-   */
   const executeDFlowSwap = useCallback(
     async (
       inputMint: string,
       outputMint: string,
-      amount: number,
-      slippageBps: number = DEFAULT_SLIPPAGE_BPS
+      amount: number
     ): Promise<{ success: boolean; txHash?: string; error?: string }> => {
       const walletAddress = primaryWallet?.address;
       if (!walletAddress || !primaryWallet) {
@@ -311,16 +267,14 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
       try {
         const connection = getConnection();
 
-        // Build query parameters for DFlow API proxy
         const queryParams = new URLSearchParams();
         queryParams.append("endpoint", "order");
         queryParams.append("inputMint", inputMint);
         queryParams.append("outputMint", outputMint);
         queryParams.append("amount", amount.toString());
-        queryParams.append("slippageBps", slippageBps.toString());
+        queryParams.append("slippageBps", DEFAULT_SLIPPAGE_BPS.toString());
         queryParams.append("userPublicKey", walletAddress);
 
-        // Get order transaction via our proxy (API key is handled server-side)
         const orderResponse = await fetch(
           `/api/dflow?${queryParams.toString()}`
         );
@@ -332,29 +286,20 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
 
         const orderData: DFlowOrderResponse = await orderResponse.json();
 
-        // Deserialize the transaction from base64
         const transactionBuffer = Buffer.from(orderData.transaction, "base64");
         const transaction = VersionedTransaction.deserialize(transactionBuffer);
 
-        // Get the signer from Dynamic wallet and sign the transaction
-        // Cast via unknown to handle version mismatch between Dynamic's @solana/web3.js and ours
         const signer = await primaryWallet.getSigner();
         const signedTx = await signer.signTransaction(
           transaction as unknown as Parameters<typeof signer.signTransaction>[0]
         );
 
-        // Send the transaction to Solana
         const signature = await connection.sendRawTransaction(
           signedTx.serialize(),
-          {
-            skipPreflight: false,
-            preflightCommitment: "confirmed",
-          }
+          { skipPreflight: false, preflightCommitment: "confirmed" }
         );
 
-        // Handle based on execution mode
         if (orderData.executionMode === "sync") {
-          // For sync mode, wait for transaction confirmation
           const confirmation = await connection.confirmTransaction(
             {
               signature,
@@ -374,7 +319,7 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
 
           return { success: true, txHash: signature };
         } else {
-          // For async mode, poll the order status via our proxy
+          // Async mode - poll for status
           let attempts = 0;
           const maxAttempts = 30;
 
@@ -386,6 +331,24 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
             const statusResponse = await fetch(
               `/api/dflow?${statusParams.toString()}`
             );
+
+            if (statusResponse.status === 404) {
+              // Order not found - check on-chain
+              const txStatus = await connection.getSignatureStatus(signature);
+              if (
+                txStatus.value?.confirmationStatus === "confirmed" ||
+                txStatus.value?.confirmationStatus === "finalized"
+              ) {
+                if (!txStatus.value.err) {
+                  return { success: true, txHash: signature };
+                } else {
+                  throw new Error("Transaction failed on-chain");
+                }
+              }
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              attempts++;
+              continue;
+            }
 
             if (!statusResponse.ok) {
               throw new Error("Failed to get order status");
@@ -399,38 +362,39 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
               throw new Error("Order failed to execute");
             }
 
-            // Wait before polling again
             await new Promise((resolve) => setTimeout(resolve, 2000));
             attempts++;
+          }
+
+          // Final on-chain check
+          const finalStatus = await connection.getSignatureStatus(signature);
+          if (finalStatus.value?.confirmationStatus && !finalStatus.value.err) {
+            return { success: true, txHash: signature };
           }
 
           throw new Error("Order timed out");
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Swap failed";
-        console.error("DFlow swap error:", err);
-        return { success: false, error: errorMessage };
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Swap failed",
+        };
       }
     },
     [primaryWallet, getConnection]
   );
 
-  /**
-   * Swap WSOL to USDC using DFlow
-   * Will wrap SOL first if needed
-   */
   const swapSolToUsdc = useCallback(
     async (
       solAmount: number
     ): Promise<{ success: boolean; txHash?: string; error?: string }> => {
-      // Check WSOL balance first
       const wsolBalance = await getWsolBalance();
 
       if (wsolBalance < solAmount) {
         const solBalance = await getSolBalance();
         const wsolNeeded = solAmount - wsolBalance;
 
-        if (solBalance < wsolNeeded + 0.01) {
+        if (solBalance < wsolNeeded + TX_FEE_RESERVE) {
           return {
             success: false,
             error: `Insufficient balance. You have ${solBalance.toFixed(
@@ -439,7 +403,6 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
           };
         }
 
-        // Wrap SOL first
         const wrapResult = await wrapSol(wsolNeeded + 0.001);
         if (!wrapResult.success) {
           return {
@@ -449,7 +412,6 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
         }
       }
 
-      // Convert SOL to lamports and swap WSOL to USDC
       const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
       return executeDFlowSwap(WSOL_MINT, USDC_MINT, lamports);
     },
@@ -469,47 +431,65 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
         return { success: false, error: "Please connect a Solana wallet" };
       }
 
+      if (!params.tokenMint) {
+        return {
+          success: false,
+          error:
+            "This market does not have a valid outcome token. Cannot place order.",
+        };
+      }
+
+      if (params.amount < MIN_BET_USD) {
+        return {
+          success: false,
+          error: `Minimum bet is $${MIN_BET_USD}. Please increase your bet amount.`,
+        };
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
-        // Estimate SOL needed (rough estimate based on current SOL price ~$200)
-        // In production, you'd fetch the actual price from an oracle
-        const estimatedSolNeeded = params.amount / 200;
-        const lamportsToSwap = Math.floor(
-          estimatedSolNeeded * LAMPORTS_PER_SOL
-        );
-
-        // Check WSOL balance first
+        const solBalance = await getSolBalance();
         const wsolBalance = await getWsolBalance();
-        console.log(
-          `WSOL balance: ${wsolBalance}, needed: ${estimatedSolNeeded}`
+        const totalBalance = solBalance + wsolBalance;
+
+        const baseSolNeeded = params.amount / SOL_PRICE_ESTIMATE;
+        const estimatedSolNeeded = baseSolNeeded * 1.2 + TX_FEE_RESERVE;
+
+        if (totalBalance < estimatedSolNeeded) {
+          const maxBetUsd = Math.floor(
+            ((totalBalance - TX_FEE_RESERVE) * SOL_PRICE_ESTIMATE) / 1.2
+          );
+          setIsLoading(false);
+          return {
+            success: false,
+            error: `Insufficient balance. You have ${totalBalance.toFixed(
+              4
+            )} SOL total but need ~${estimatedSolNeeded.toFixed(
+              4
+            )} SOL. Max bet: ~$${Math.max(0, maxBetUsd)}.`,
+          };
+        }
+
+        const lamportsToSwap = Math.floor(
+          baseSolNeeded * 1.2 * LAMPORTS_PER_SOL
         );
 
-        // If WSOL balance is insufficient, we need to wrap SOL first
-        if (wsolBalance < estimatedSolNeeded) {
-          const solBalance = await getSolBalance();
-          const wsolNeeded = estimatedSolNeeded - wsolBalance;
+        if (wsolBalance < baseSolNeeded * 1.2) {
+          const wsolNeeded = baseSolNeeded * 1.2 - wsolBalance;
 
-          // Check if we have enough native SOL to wrap
-          if (solBalance < wsolNeeded + 0.01) {
-            // +0.01 SOL for fees
+          if (solBalance < wsolNeeded + TX_FEE_RESERVE) {
             setIsLoading(false);
             return {
               success: false,
-              error: `Insufficient SOL balance. You have ${solBalance.toFixed(
+              error: `Insufficient SOL to wrap. Have ${solBalance.toFixed(
                 4
-              )} SOL and ${wsolBalance.toFixed(
-                4
-              )} WSOL but need approximately ${estimatedSolNeeded.toFixed(
-                4
-              )} SOL total plus fees.`,
+              )} SOL, need ${(wsolNeeded + TX_FEE_RESERVE).toFixed(4)} SOL.`,
             };
           }
 
-          console.log(`Wrapping ${wsolNeeded.toFixed(4)} SOL to WSOL...`);
-          const wrapResult = await wrapSol(wsolNeeded + 0.001); // Add small buffer for rounding
-
+          const wrapResult = await wrapSol(wsolNeeded + 0.002);
           if (!wrapResult.success) {
             setIsLoading(false);
             return {
@@ -517,15 +497,11 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
               error: `Failed to wrap SOL: ${wrapResult.error}`,
             };
           }
-
-          console.log("SOL wrapped successfully, proceeding with trade...");
         }
 
-        // Now execute the swap using WSOL
-        // Use DFlow to swap WSOL to the target token
         const result = await executeDFlowSwap(
           WSOL_MINT,
-          params.tokenMint || USDC_MINT,
+          params.tokenMint,
           lamportsToSwap
         );
 
@@ -534,7 +510,6 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to place order";
-        console.error("Trading error:", err);
         setError(errorMessage);
         setIsLoading(false);
         return { success: false, error: errorMessage };
@@ -556,18 +531,25 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
         return { success: false, error: "Please connect a Solana wallet" };
       }
 
+      if (!params.tokenMint) {
+        return {
+          success: false,
+          error:
+            "Position does not have a valid outcome token mint. Cannot sell.",
+        };
+      }
+
       setIsSelling(true);
       setError(null);
 
       try {
-        // In a real implementation, this would swap the outcome token back to USDC or WSOL
-        // For demo purposes, we simulate selling by swapping a small amount
-        const lamportsToSwap = Math.floor(params.size * 1000000); // Convert to smallest units
-
+        // Sell outcome tokens back to settlement currency (USDC by default)
+        const outputMint = params.settlementMint || USDC_MINT;
+        const amountToSwap = Math.floor(params.size * 1000000);
         const result = await executeDFlowSwap(
-          params.tokenMint || USDC_MINT,
-          WSOL_MINT,
-          lamportsToSwap
+          params.tokenMint,
+          outputMint,
+          amountToSwap
         );
 
         setIsSelling(false);
@@ -575,7 +557,6 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to sell position";
-        console.error("Sell error:", err);
         setError(errorMessage);
         setIsSelling(false);
         return { success: false, error: errorMessage };

@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingUp, Users, DollarSign } from "lucide-react";
-import type { Market } from "@/lib/hooks/useKalshiMarkets";
+import type { Market } from "@/lib/types/market";
 
 interface MarketStatsProps {
   markets: Market[];
@@ -60,4 +60,3 @@ export function MarketStats({ markets }: MarketStatsProps) {
     </div>
   );
 }
-

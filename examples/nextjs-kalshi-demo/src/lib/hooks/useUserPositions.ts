@@ -9,11 +9,18 @@ interface PositionsResponse {
   orders: Order[];
 }
 
-async function fetchPositions(walletAddress: string): Promise<PositionsResponse> {
-  const response = await fetch(`/api/kalshi/positions?wallet=${walletAddress}`);
+async function fetchPositions(
+  walletAddress: string
+): Promise<PositionsResponse> {
+  const response = await fetch(
+    `/api/kalshi/positions?wallet=${walletAddress}`
+  );
+
   if (!response.ok) {
-    throw new Error("Failed to fetch positions");
+    const data = await response.json();
+    throw new Error(data.error || "Failed to fetch positions");
   }
+
   return response.json();
 }
 
@@ -37,4 +44,3 @@ export function useUserPositions() {
     refetch,
   };
 }
-

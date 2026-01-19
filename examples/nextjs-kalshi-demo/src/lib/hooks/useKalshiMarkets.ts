@@ -1,22 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import type { Market } from "@/lib/types/market";
 
-export interface Market {
-  id: string;
-  question: string;
-  endDate: string;
-  yesPrice: string;
-  noPrice: string;
-  category: string;
-  imageUrl: string;
-  yesTraders: number;
-  noTraders: number;
-  ticker: string;
-  yesTokenMint?: string;
-  noTokenMint?: string;
-  tags: string[];
-  volume: number;
-  status: "open" | "closed" | "settled";
-}
+// Re-export Market type for consumers
+export type { Market };
 
 // Calculate time remaining on client side
 export function calculateTimeRemaining(endDate: string): string {
@@ -66,4 +52,3 @@ export function useKalshiMarkets(category?: string) {
     refetchInterval: 60000,
   });
 }
-

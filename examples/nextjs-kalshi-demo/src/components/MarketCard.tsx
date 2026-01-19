@@ -148,8 +148,7 @@ export function MarketCard({
     setTradingSuccess(false);
 
     try {
-      const tokenMint =
-        selectedOption === "yes" ? yesTokenMint : noTokenMint;
+      const tokenMint = selectedOption === "yes" ? yesTokenMint : noTokenMint;
 
       const result = await placeOrder({
         marketId: marketId || "",
@@ -175,7 +174,6 @@ export function MarketCard({
         error instanceof Error ? error.message : "An unexpected error occurred";
       setIsProcessing(false);
       setTradingError(errorMessage);
-      console.error("Trading error:", error);
     } finally {
       isSubmittingRef.current = false;
     }
@@ -187,6 +185,7 @@ export function MarketCard({
     yesTokenMint,
     noTokenMint,
     marketId,
+    question,
     placeOrder,
     setShowAuthFlow,
     handleClose,
@@ -321,7 +320,10 @@ export function MarketCard({
                     </div>
 
                     {/* Chart Area */}
-                    <PriceChart yesPercentage={yesPercentage} noPercentage={noPercentage} />
+                    <PriceChart
+                      yesPercentage={yesPercentage}
+                      noPercentage={noPercentage}
+                    />
                   </div>
                   <div
                     aria-hidden="true"
@@ -581,4 +583,3 @@ export function MarketCard({
     </>
   );
 }
-

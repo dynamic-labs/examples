@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
-
-const DFLOW_API_BASE_URL = "https://c.quote-api.dflow.net";
+import { DFLOW_TRADE_API_URL } from "@/lib/constants";
 
 /**
- * Proxy endpoint for DFlow API /order
+ * Proxy endpoint for DFlow Trade API
  * Keeps the API key server-side
  */
 export async function GET(request: NextRequest) {
@@ -18,36 +17,37 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Remove our custom endpoint param and forward the rest
   searchParams.delete("endpoint");
 
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-
-  console.log("DFLOW_API_KEY", env.DFLOW_API_KEY);
-
+  const headers: HeadersInit = { "Content-Type": "application/json" };
   if (env.DFLOW_API_KEY) {
     headers["x-api-key"] = env.DFLOW_API_KEY;
   }
 
-  try {
-    const response = await fetch(
-      `${DFLOW_API_BASE_URL}/${endpoint}?${searchParams.toString()}`,
-      { headers }
-    );
+  const fullUrl = `${DFLOW_TRADE_API_URL}/${endpoint}?${searchParams.toString()}`;
 
-    const responseJson = await response.json();
-    console.log("DFlow API response:", responseJson);
+  try {
+    const response = await fetch(fullUrl, { headers });
+    const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: `Error` }, { status: response.status });
+      console.error(
+        "[DFlow] API error:",
+        response.status,
+        JSON.stringify(data)
+      );
+      return NextResponse.json(
+        {
+          error: data?.error || data?.msg || data?.message || "DFlow API error",
+          details: data,
+        },
+        { status: response.status }
+      );
     }
 
-    const data = await response.text();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("DFlow proxy error:", error);
+    console.error("[DFlow] Proxy error:", error);
     return NextResponse.json(
       { error: "Failed to proxy request to DFlow" },
       { status: 500 }
