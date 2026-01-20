@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/env";
 import { DFLOW_TRADE_API_URL } from "@/lib/constants";
+import { checkGeoBlocking } from "@/lib/api-geo-blocking";
 
 /**
  * Proxy endpoint for DFlow Trade API
  * Keeps the API key server-side
  */
 export async function GET(request: NextRequest) {
+  // Check geo-blocking (fallback - middleware should handle most cases)
+  const geoBlockResponse = checkGeoBlocking(request);
+  if (geoBlockResponse) return geoBlockResponse;
+
   const searchParams = request.nextUrl.searchParams;
   const endpoint = searchParams.get("endpoint");
 

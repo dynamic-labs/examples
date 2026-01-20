@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { DFLOW_METADATA_API_URL, USDC_MINT } from "@/lib/constants";
+import { checkGeoBlocking } from "@/lib/api-geo-blocking";
 
 const CATEGORY_MAP: Record<string, string> = {
   politics: "Politics",
@@ -179,6 +180,10 @@ async function fetchDFlowMarkets(activeOnly = false): Promise<DFlowMarket[]> {
 }
 
 export async function GET(request: Request) {
+  // Check geo-blocking (fallback - middleware should handle most cases)
+  const geoBlockResponse = checkGeoBlocking(request);
+  if (geoBlockResponse) return geoBlockResponse;
+
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "100");

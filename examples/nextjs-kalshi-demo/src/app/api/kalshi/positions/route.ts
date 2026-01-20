@@ -4,6 +4,7 @@ import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import type { Position } from "@/lib/types/market";
 import { env } from "@/env";
 import { DFLOW_METADATA_API_URL, SOLANA_RPC_URL } from "@/lib/constants";
+import { checkGeoBlocking } from "@/lib/api-geo-blocking";
 
 interface TokenBalance {
   mint: string;
@@ -211,6 +212,10 @@ function buildPositions(
 }
 
 export async function GET(request: Request) {
+  // Check geo-blocking (fallback - middleware should handle most cases)
+  const geoBlockResponse = checkGeoBlocking(request);
+  if (geoBlockResponse) return geoBlockResponse;
+
   try {
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get("wallet");
