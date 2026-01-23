@@ -21,7 +21,7 @@ export function ImageWithFallback({
   if (error || !src) {
     return (
       <div
-        className={`bg-gradient-to-br from-[#8b5cf6]/30 to-[#06b6d4]/30 flex items-center justify-center ${className}`}
+        className={`bg-linear-to-br from-[#8b5cf6]/30 to-[#06b6d4]/30 flex items-center justify-center ${className}`}
       >
         <span className="text-lg">📊</span>
       </div>

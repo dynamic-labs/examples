@@ -4,10 +4,8 @@ export default function Logo() {
   return (
     <div className="flex items-center gap-2 shrink-0">
       <div className="relative w-[36px] h-[36px]">
-        {/* Outer glow */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#8b5cf6] to-[#06b6d4] rounded-lg blur-sm opacity-50" />
-        {/* Main logo container */}
-        <div className="relative w-full h-full bg-gradient-to-br from-[#8b5cf6] to-[#06b6d4] rounded-lg flex items-center justify-center">
+        <div className="absolute inset-0 bg-linear-to-br from-[#8b5cf6] to-[#06b6d4] rounded-lg blur-sm opacity-50" />
+        <div className="relative w-full h-full bg-linear-to-br from-[#8b5cf6] to-[#06b6d4] rounded-lg flex items-center justify-center">
           <svg
             width="20"
             height="20"
@@ -39,7 +37,7 @@ export default function Logo() {
           </svg>
         </div>
       </div>
-      <span className="font-['Clash_Display',sans-serif] text-[20px] font-bold bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4] bg-clip-text text-transparent hidden sm:block">
+      <span className="font-['Clash_Display',sans-serif] text-[20px] font-bold bg-linear-to-r from-[#8b5cf6] to-[#06b6d4] bg-clip-text text-transparent hidden sm:block">
         Kalshi
       </span>
     </div>
