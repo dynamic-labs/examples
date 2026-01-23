@@ -112,7 +112,7 @@ export function getContractAddress(
   networkId: string | number,
   contractName: string
 ): `0x${string}` | undefined {
-  const networkContracts = (CONTRACTS as Record<string, any>)[networkId];
+  const networkContracts = (CONTRACTS as Record<string, Record<string, `0x${string}`>>)[String(networkId)];
   if (networkContracts && contractName in networkContracts) {
     return networkContracts[contractName];
   }
