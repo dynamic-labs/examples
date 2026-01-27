@@ -32,6 +32,7 @@ export function CheckoutFlow({
     string,
     unknown
   > | null>(null);
+  const [, setPaymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -48,7 +49,7 @@ export function CheckoutFlow({
     if (view === "amount") {
       if (flowComponentRef.current) {
         try {
-          flowComponentRef.current.unmount();
+          flowComponentRef.current.unmount?.();
         } catch {
           // Ignore unmount errors
         }
@@ -56,7 +57,7 @@ export function CheckoutFlow({
       }
       if (checkoutInstanceRef.current) {
         try {
-          checkoutInstanceRef.current.unmount();
+          checkoutInstanceRef.current.unmount?.();
         } catch {
           // Ignore unmount errors
         }
@@ -74,14 +75,14 @@ export function CheckoutFlow({
         try {
           if (flowComponentRef.current) {
             try {
-              flowComponentRef.current.unmount();
+              flowComponentRef.current.unmount?.();
             } catch {
               // Ignore unmount errors
             }
           }
           if (checkoutInstanceRef.current) {
             try {
-              checkoutInstanceRef.current.unmount();
+              checkoutInstanceRef.current.unmount?.();
             } catch {
               // Ignore unmount errors
             }
@@ -111,7 +112,7 @@ export function CheckoutFlow({
               _self: unknown,
               paymentResponse: PaymentResponse
             ) => {
-              console.log("Payment completed:", paymentResponse.id);
+              setPaymentId(paymentResponse.id);
               setShowSuccess(true);
               setError(null);
             },
@@ -164,14 +165,14 @@ export function CheckoutFlow({
     return () => {
       if (flowComponentRef.current) {
         try {
-          flowComponentRef.current.unmount();
+          flowComponentRef.current.unmount?.();
         } catch {
           // Ignore unmount errors
         }
       }
       if (checkoutInstanceRef.current) {
         try {
-          checkoutInstanceRef.current.unmount();
+          checkoutInstanceRef.current.unmount?.();
         } catch {
           // Ignore unmount errors
         }
@@ -222,6 +223,7 @@ export function CheckoutFlow({
 
   const handleStartNewTransaction = useCallback(() => {
     setShowSuccess(false);
+    setPaymentId(null);
     setPaymentSession(null);
     setAmount("1");
     const newView: View = "amount";
