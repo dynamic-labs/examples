@@ -7,6 +7,19 @@ const __dirname = path.dirname(__filename);
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // Turbopack config (used with --turbopack flag in dev)
+  turbopack: {
+    resolveAlias: {
+      "@gemini-wallet/core": path.resolve(__dirname, "./empty-module.js"),
+      "porto": path.resolve(__dirname, "./empty-module.js"),
+      "porto/internal": path.resolve(__dirname, "./empty-module.js"),
+      "@safe-global/safe-apps-sdk": path.resolve(__dirname, "./empty-module.js"),
+      "@safe-global/safe-apps-provider": path.resolve(__dirname, "./empty-module.js"),
+      "@base-org/account": path.resolve(__dirname, "./empty-module.js"),
+    },
+  },
+
   webpack: (config, { isServer }) => {
     // Add externals for server-side only modules
     config.externals.push("pino-pretty", "lokijs", "encoding");

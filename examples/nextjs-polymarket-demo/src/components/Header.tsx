@@ -6,12 +6,29 @@ import {
   useTokenBalances,
 } from "@dynamic-labs/sdk-react-core";
 import { ChevronDown, Loader2, PieChart, Search, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { getContractAddress } from "@/lib/constants/contracts";
 import { DEFAULT_NETWORK_ID } from "@/lib/constants/network";
-import { DepositModal } from "./DepositModal";
-import { PortfolioModal } from "./positions/PortfolioModal";
 import Logo from "./LogoIcon";
+
+// Lazy load heavy modals to reduce initial bundle size
+const DepositModal = dynamic(
+  () => import("./DepositModal").then((mod) => ({ default: mod.DepositModal })),
+  {
+    ssr: false,
+  }
+);
+const PortfolioModal = dynamic(
+  () =>
+    import("./positions/PortfolioModal").then((mod) => ({
+      default: mod.PortfolioModal,
+    })),
+  {
+    ssr: false,
+  }
+);
+
 
 interface HeaderProps {
   searchValue: string;

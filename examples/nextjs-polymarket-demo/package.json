@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -16,8 +16,6 @@
     "@dynamic-labs/wagmi-connector": "^4.50.5",
     "@lifi/sdk": "^3.14.1",
     "@lifi/wallet-management": "^3.21.0",
-    "@polymarket/abstract-signer": "^0.0.8",
-    "@polymarket/builder-relayer-client": "^0.0.8",
     "@polymarket/clob-client": "^5.1.1",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-query": "^5.90.12",
@@ -27,7 +25,6 @@
     "lucide-react": "^0.487.0",
     "motion": "^12.23.26",
     "next": "^15.5.9",
-    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^3.4.0",
@@ -41,7 +38,6 @@
     "@types/node": "^20.19.27",
     "@types/react": "^18.3.27",
     "@types/react-dom": "^18.3.7",
-    "autoprefixer": "^10.4.23",
     "eslint": "^9.34.0",
     "eslint-config-next": "^15.5.9",
     "postcss": "^8.5.6",

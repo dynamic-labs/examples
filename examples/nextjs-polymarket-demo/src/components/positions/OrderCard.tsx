@@ -43,7 +43,6 @@ export function OrderCard({
   const price = parseFloat(order.price);
   const shares = parseFloat(order.original_size);
   const matched = parseFloat(order.size_matched);
-  const remaining = shares - matched;
   const totalValue = shares * price;
   const isBuy = order.side === "BUY";
 

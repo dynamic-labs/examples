@@ -32,12 +32,14 @@ export function CheckoutFlow({
     string,
     unknown
   > | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [, setPaymentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const flowContainerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const checkoutInstanceRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const flowComponentRef = useRef<any>(null);
 
   const { createPaymentSession } = useCheckout();
@@ -47,16 +49,16 @@ export function CheckoutFlow({
     if (view === "amount") {
       if (flowComponentRef.current) {
         try {
-          flowComponentRef.current.unmount();
-        } catch (_e) {
+          flowComponentRef.current.unmount?.();
+        } catch {
           // Ignore unmount errors
         }
         flowComponentRef.current = null;
       }
       if (checkoutInstanceRef.current) {
         try {
-          checkoutInstanceRef.current.unmount();
-        } catch (_e) {
+          checkoutInstanceRef.current.unmount?.();
+        } catch {
           // Ignore unmount errors
         }
         checkoutInstanceRef.current = null;
@@ -73,15 +75,15 @@ export function CheckoutFlow({
         try {
           if (flowComponentRef.current) {
             try {
-              flowComponentRef.current.unmount();
-            } catch (_e) {
+              flowComponentRef.current.unmount?.();
+            } catch {
               // Ignore unmount errors
             }
           }
           if (checkoutInstanceRef.current) {
             try {
-              checkoutInstanceRef.current.unmount();
-            } catch (_e) {
+              checkoutInstanceRef.current.unmount?.();
+            } catch {
               // Ignore unmount errors
             }
           }
@@ -163,15 +165,15 @@ export function CheckoutFlow({
     return () => {
       if (flowComponentRef.current) {
         try {
-          flowComponentRef.current.unmount();
-        } catch (_e) {
+          flowComponentRef.current.unmount?.();
+        } catch {
           // Ignore unmount errors
         }
       }
       if (checkoutInstanceRef.current) {
         try {
-          checkoutInstanceRef.current.unmount();
-        } catch (_e) {
+          checkoutInstanceRef.current.unmount?.();
+        } catch {
           // Ignore unmount errors
         }
       }
