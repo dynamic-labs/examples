@@ -63,7 +63,7 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
             aria-label="Sign out"
             title="Sign out"
           >
-            <LogOut className="w-4 h-4" />
+            {!logoutMutation.isPending && <LogOut className="w-4 h-4" />}
           </Button>
         </div>
       </div>
