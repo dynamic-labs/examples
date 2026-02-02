@@ -9,7 +9,8 @@ interface WidgetCardProps {
   /** Icon to display in header (enables icon-style header layout) */
   icon?: ReactNode;
   title?: string;
-  subtitle?: string;
+  /** Subtitle - can be string or ReactNode for custom content */
+  subtitle?: ReactNode;
   onBack?: () => void;
   onClose?: () => void;
   className?: string;

@@ -8,6 +8,8 @@ import {
   Send,
   AlertCircle,
   Zap,
+  Copy,
+  Check,
 } from "lucide-react";
 import { WidgetCard } from "@/components/ui/widget-card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +20,7 @@ import { useSendTransaction } from "@/hooks/use-mutations";
 import { useWalletAccounts } from "@/hooks/use-wallet-accounts";
 import { useActiveNetwork } from "@/hooks/use-active-network";
 import { useGasSponsorship } from "@/hooks/use-gas-sponsorship";
-import { truncateAddress } from "@/lib/utils";
+import { truncateAddress, copyToClipboard } from "@/lib/utils";
 import type { NetworkData } from "@/lib/dynamic-client";
 import type { NavigationReturn } from "@/hooks/use-navigation";
 
@@ -30,6 +32,149 @@ interface SendTxScreenProps {
     txHash: string;
     networkData: NetworkData;
   };
+}
+
+/**
+ * Transaction result view - shown after successful transaction
+ */
+function TransactionResultView({
+  txHash,
+  networkData,
+  explorerUrl,
+  onClose,
+}: {
+  txHash: string;
+  networkData: NetworkData;
+  explorerUrl?: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const success = await copyToClipboard(txHash);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // Truncate hash for display
+  const truncatedHash = `${txHash.slice(0, 10)}...${txHash.slice(-8)}`;
+
+  return (
+    <WidgetCard
+      icon={
+        <CheckCircle
+          className="w-[18px] h-[18px] text-(--widget-success)"
+          strokeWidth={1.5}
+        />
+      }
+      title="Transaction Sent"
+      subtitle="Your transaction was submitted successfully"
+      onClose={onClose}
+    >
+      <div className="space-y-3">
+        {/* Network info */}
+        <div className="flex items-center gap-2 p-3 bg-(--widget-row-bg) rounded-(--widget-radius)">
+          {networkData.iconUrl && (
+            <img
+              src={networkData.iconUrl}
+              alt={networkData.displayName}
+              className="w-6 h-6 rounded"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-(--widget-muted) tracking-[-0.12px]">
+              Network
+            </p>
+            <p className="text-sm font-medium text-(--widget-fg) tracking-[-0.14px]">
+              {networkData.displayName}
+            </p>
+          </div>
+        </div>
+
+        {/* Transaction hash */}
+        <div className="p-3 bg-(--widget-row-bg) rounded-(--widget-radius)">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-(--widget-muted) tracking-[-0.12px] mb-1">
+                Transaction Hash
+              </p>
+              <p className="text-sm font-mono text-(--widget-fg) truncate">
+                {truncatedHash}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="p-2 rounded-full hover:bg-black/5 text-(--widget-muted) hover:text-(--widget-fg) transition-colors cursor-pointer shrink-0"
+              aria-label="Copy transaction hash"
+            >
+              {copied ? (
+                <Check className="w-4 h-4 text-(--widget-success)" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 pt-1">
+          {explorerUrl && (
+            <a
+              href={`${explorerUrl}/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 h-9 px-3 text-xs font-medium text-(--widget-accent) bg-(--widget-accent)/5 rounded-(--widget-radius) hover:bg-(--widget-accent)/10 transition-colors"
+            >
+              View on Explorer
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+
+          <Button variant="secondary" className="w-full" onClick={onClose}>
+            <ArrowLeft className="w-4 h-4" />
+            Back to Wallets
+          </Button>
+        </div>
+      </div>
+    </WidgetCard>
+  );
+}
+
+/**
+ * Address subtitle with copy button
+ */
+function AddressSubtitle({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await copyToClipboard(address);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      From {truncateAddress(address)}
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="p-0.5 rounded hover:bg-black/5 text-(--widget-muted) hover:text-(--widget-fg) transition-colors cursor-pointer"
+        aria-label="Copy address"
+      >
+        {copied ? (
+          <Check className="w-3 h-3 text-(--widget-success)" />
+        ) : (
+          <Copy className="w-3 h-3" />
+        )}
+      </button>
+    </span>
+  );
 }
 
 /**
@@ -77,51 +222,12 @@ export function SendTxScreen({
     const explorerUrl = txResult.networkData.blockExplorerUrls?.[0];
 
     return (
-      <WidgetCard
-        icon={
-          <CheckCircle
-            className="w-[18px] h-[18px] text-(--widget-success)"
-            strokeWidth={1.5}
-          />
-        }
-        title="Transaction Sent"
-        subtitle="Your transaction was successful"
+      <TransactionResultView
+        txHash={txResult.txHash}
+        networkData={txResult.networkData}
+        explorerUrl={explorerUrl}
         onClose={navigation.goToDashboard}
-      >
-        <div className="space-y-4">
-          <div className="flex items-center justify-center py-4">
-            <CheckCircle className="w-16 h-16 text-(--widget-success)" />
-          </div>
-
-          <div className="p-3 bg-(--widget-row-bg) rounded-(--widget-radius) space-y-2">
-            <p className="text-xs text-(--widget-muted)">Transaction Hash</p>
-            <p className="text-sm font-mono text-(--widget-fg) break-all">
-              {txResult.txHash}
-            </p>
-          </div>
-
-          {explorerUrl && (
-            <a
-              href={`${explorerUrl}/tx/${txResult.txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-sm text-(--widget-accent) hover:underline"
-            >
-              View on Explorer
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          )}
-
-          <Button
-            variant="secondary"
-            className="w-full"
-            onClick={navigation.goToDashboard}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Wallets
-          </Button>
-        </div>
-      </WidgetCard>
+      />
     );
   }
 
@@ -171,7 +277,7 @@ export function SendTxScreen({
         />
       }
       title="Send Transaction"
-      subtitle={`From ${truncateAddress(walletAddress)}`}
+      subtitle={<AddressSubtitle address={walletAddress} />}
       onClose={navigation.goToDashboard}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
