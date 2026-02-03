@@ -13,12 +13,14 @@ function GeoBlockedContent() {
   return (
     <div className="min-h-screen bg-[#0a0b0f] flex items-center justify-center px-4">
       <div className="max-w-2xl w-full">
+        {/* Decorative background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/5 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl" />
         </div>
 
         <div className="relative bg-linear-to-b from-[#12131a] to-[#0d0e14] border border-[#1f2937] rounded-3xl p-8 md:p-12 shadow-2xl">
+          {/* Warning Icon */}
           <div className="flex justify-center mb-8">
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-linear-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center">
@@ -37,14 +39,17 @@ function GeoBlockedContent() {
                   />
                 </svg>
               </div>
+              {/* Pulsing ring */}
               <div className="absolute inset-0 w-24 h-24 rounded-full border-2 border-red-400/30 animate-ping" />
             </div>
           </div>
 
+          {/* Main Heading */}
           <h1 className="font-['Clash_Display',sans-serif] text-3xl md:text-4xl font-bold text-center text-white mb-4">
             Access Restricted
           </h1>
 
+          {/* Country Badge */}
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#1a1b23] border border-[#2a2b33] rounded-full">
               <svg
@@ -70,14 +75,17 @@ function GeoBlockedContent() {
             </div>
           </div>
 
+          {/* Description */}
           <p className="text-center text-[rgba(221,226,246,0.6)] text-base md:text-lg leading-relaxed mb-8 max-w-lg mx-auto">
             We&apos;re sorry, but this service is not available in{" "}
             <span className="text-white font-medium">{countryName}</span> due to
             regulatory requirements and legal restrictions in your jurisdiction.
           </p>
 
+          {/* Divider */}
           <div className="w-full h-px bg-linear-to-r from-transparent via-[#2a2b33] to-transparent mb-8" />
 
+          {/* Additional Information */}
           <div className="space-y-4 text-sm text-[rgba(221,226,246,0.4)]">
             <div className="flex items-start gap-3">
               <svg
@@ -121,6 +129,7 @@ function GeoBlockedContent() {
             </div>
           </div>
 
+          {/* Footer Link */}
           <div className="mt-10 pt-6 border-t border-[#1f2937] text-center">
             <p className="text-xs text-[rgba(221,226,246,0.3)]">
               Powered by{" "}

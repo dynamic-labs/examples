@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Market } from "@/lib/types/market";
 
+// Re-export Market type for consumers
 export type { Market };
 
+// Calculate time remaining on client side
 export function calculateTimeRemaining(endDate: string): string {
   try {
     const end = new Date(endDate).getTime();
@@ -29,18 +31,23 @@ export function calculateTimeRemaining(endDate: string): string {
   }
 }
 
-async function fetchMarkets(): Promise<Market[]> {
-  const response = await fetch("/api/kalshi?limit=100&active=true");
+async function fetchMarkets(category?: string): Promise<Market[]> {
+  const params = new URLSearchParams({ limit: "100", active: "true" });
+  if (category && category !== "All") {
+    params.set("category", category);
+  }
+
+  const response = await fetch(`/api/kalshi?${params.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to fetch markets");
   }
   return response.json();
 }
 
-export function useKalshiMarkets() {
+export function useKalshiMarkets(category?: string) {
   return useQuery({
-    queryKey: ["kalshi-markets"],
-    queryFn: fetchMarkets,
+    queryKey: ["kalshi-markets", category],
+    queryFn: () => fetchMarkets(category),
     staleTime: 60000,
     refetchInterval: 60000,
   });
