@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "../../styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "Access Restricted | Dynamic Kalshi Demo",
+  title: "Access Restricted | Dynamic Predictions Demo",
   description: "This service is not available in your region.",
 };
 

@@ -3,8 +3,8 @@ import "../styles/globals.css";
 import Providers from "@/lib/providers";
 
 export const metadata: Metadata = {
-  title: "Dynamic: Kalshi Predictions Demo",
-  description: "Kalshi Predictions Market Demo on Solana by Dynamic",
+  title: "Dynamic: Predictions Market Demo",
+  description: "Predictions Market Demo by Dynamic",
 };
 
 export default function RootLayout({

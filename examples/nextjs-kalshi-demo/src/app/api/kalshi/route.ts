@@ -2,7 +2,68 @@ import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { DFLOW_METADATA_API_URL, USDC_MINT } from "@/lib/constants";
 import { checkGeoBlocking } from "@/lib/api-geo-blocking";
-import type { DFlowMarket, Market } from "@/lib/types/market";
+
+const CATEGORY_MAP: Record<string, string> = {
+  politics: "Politics",
+  economics: "Economics",
+  science: "Science",
+  sports: "Sports",
+  entertainment: "Entertainment",
+  crypto: "Crypto",
+  weather: "Weather",
+  culture: "Culture",
+  technology: "Technology",
+  finance: "Finance",
+  news: "News",
+  pop_culture: "Pop Culture",
+};
+
+interface DFlowMarketAccount {
+  yesMint: string;
+  noMint: string;
+  marketLedger: string;
+  redemptionStatus: string;
+  scalarOutcomePct?: number;
+}
+
+interface DFlowMarket {
+  id: string;
+  title: string;
+  subtitle?: string;
+  ticker: string;
+  category: string;
+  status: string;
+  result: string;
+  accounts: Record<string, DFlowMarketAccount>;
+  yesBid?: string | null;
+  yesAsk?: string | null;
+  noBid?: string | null;
+  noAsk?: string | null;
+  volume?: number;
+  openInterest?: number;
+  openTime?: number;
+  closeTime?: number;
+  expirationTime?: number;
+  imageUrl?: string;
+}
+
+interface TransformedMarket {
+  id: string;
+  question: string;
+  endDate: string;
+  yesPrice: string;
+  noPrice: string;
+  category: string;
+  imageUrl: string;
+  yesTraders: number;
+  noTraders: number;
+  ticker: string;
+  yesTokenMint?: string;
+  noTokenMint?: string;
+  tags: string[];
+  volume: number;
+  status: "open" | "closed" | "settled";
+}
 
 function getDFlowHeaders(): HeadersInit {
   const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -18,51 +79,108 @@ function parsePrice(price: string | null | undefined): number | null {
   return isNaN(parsed) ? null : parsed * 100;
 }
 
-function transformMarket(market: DFlowMarket, now: number): Market | null {
-  const usdcAccount = market.accounts?.[USDC_MINT];
-  const firstAccount = usdcAccount || Object.values(market.accounts || {})[0];
-  if (!firstAccount) return null;
+function transformDFlowMarket(
+  market: DFlowMarket,
+  now: number
+): TransformedMarket | null {
+  try {
+    const usdcAccount = market.accounts?.[USDC_MINT];
+    const firstAccount = usdcAccount || Object.values(market.accounts || {})[0];
 
-  const yesPrice = parsePrice(market.yesAsk) ?? parsePrice(market.yesBid) ?? 50;
-  const noPrice =
-    parsePrice(market.noAsk) ?? parsePrice(market.noBid) ?? 100 - yesPrice;
+    if (!firstAccount) return null;
 
-  const openInterest = market.openInterest || 0;
-  const volume = market.volume || 0;
-  const endTime = market.expirationTime
-    ? market.expirationTime * 1000
-    : now + 30 * 24 * 60 * 60 * 1000;
+    const yesPrice =
+      parsePrice(market.yesAsk) ?? parsePrice(market.yesBid) ?? 50;
+    const noPrice =
+      parsePrice(market.noAsk) ?? parsePrice(market.noBid) ?? 100 - yesPrice;
 
-  return {
-    id: market.id || market.ticker,
-    question: market.title + (market.subtitle ? ` - ${market.subtitle}` : ""),
-    endDate: new Date(endTime).toISOString(),
-    yesPrice: yesPrice.toFixed(1),
-    noPrice: noPrice.toFixed(1),
-    imageUrl: market.imageUrl || "",
-    yesTraders: Math.floor(openInterest * 0.45),
-    noTraders: Math.floor(openInterest * 0.35),
-    volume,
-  };
+    const category =
+      CATEGORY_MAP[market.category?.toLowerCase()] || market.category || "All";
+
+    const openInterest = market.openInterest || 0;
+    const yesTraders = Math.floor(openInterest * 0.45);
+    const noTraders = Math.floor(openInterest * 0.35);
+
+    const tags: string[] = [];
+    const endTime = market.expirationTime
+      ? market.expirationTime * 1000
+      : now + 30 * 24 * 60 * 60 * 1000;
+    const hoursUntilEnd = (endTime - now) / (1000 * 60 * 60);
+
+    if (hoursUntilEnd > 0 && hoursUntilEnd < 24) tags.push("ending soon");
+
+    const volume = market.volume || 0;
+    if (volume > 10000) tags.push("hot");
+    if (volume > 50000) tags.push("trending");
+    if (openInterest > 100000) tags.push("high stakes");
+
+    const priceDiff = Math.abs(yesPrice - noPrice);
+    if (priceDiff < 10) tags.push("close call");
+
+    let status: "open" | "closed" | "settled" = "open";
+    if (market.result && market.result !== "") {
+      status = "settled";
+    } else if (
+      market.status === "closed" ||
+      market.status === "determined" ||
+      market.status === "finalized"
+    ) {
+      status = "closed";
+    }
+
+    return {
+      id: market.id || market.ticker,
+      question: market.title + (market.subtitle ? ` - ${market.subtitle}` : ""),
+      endDate: market.expirationTime
+        ? new Date(market.expirationTime * 1000).toISOString()
+        : new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      yesPrice: yesPrice.toFixed(1),
+      noPrice: noPrice.toFixed(1),
+      category,
+      imageUrl: market.imageUrl || "",
+      yesTraders,
+      noTraders,
+      ticker: market.ticker || market.id,
+      yesTokenMint: firstAccount.yesMint,
+      noTokenMint: firstAccount.noMint,
+      tags,
+      volume,
+      status,
+    };
+  } catch {
+    return null;
+  }
 }
 
-async function fetchMarkets(activeOnly = false): Promise<DFlowMarket[]> {
-  const url = new URL(`${DFLOW_METADATA_API_URL}/api/v1/markets`);
-  if (activeOnly) url.searchParams.append("status", "active");
-  url.searchParams.append("limit", "100");
+async function fetchDFlowMarkets(activeOnly = false): Promise<DFlowMarket[]> {
+  try {
+    const url = new URL(`${DFLOW_METADATA_API_URL}/api/v1/markets`);
+    if (activeOnly) {
+      url.searchParams.append("status", "active");
+    }
+    url.searchParams.append("limit", "100");
 
-  const response = await fetch(url.toString(), {
-    method: "GET",
-    headers: getDFlowHeaders(),
-    next: { revalidate: 60 },
-  });
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: getDFlowHeaders(),
+      next: { revalidate: 60 },
+    });
 
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.markets || [];
+    if (!response.ok) {
+      console.error("[Markets] DFlow API error:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.markets || [];
+  } catch (error) {
+    console.error("[Markets] Fetch error:", error);
+    return [];
+  }
 }
 
 export async function GET(request: Request) {
+  // Check geo-blocking (fallback - middleware should handle most cases)
   const geoBlockResponse = checkGeoBlocking(request);
   if (geoBlockResponse) return geoBlockResponse;
 
@@ -70,9 +188,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "100");
     const active = searchParams.get("active") !== "false";
+    const category = searchParams.get("category");
 
     const now = Date.now();
-    let markets = await fetchMarkets(active);
+    let markets = await fetchDFlowMarkets(active);
+
+    if (category && category !== "All") {
+      markets = markets.filter(
+        (m) => m.category?.toLowerCase() === category.toLowerCase()
+      );
+    }
 
     if (active) {
       const activeMarkets = markets.filter(
@@ -84,16 +209,18 @@ export async function GET(request: Request) {
             m.result !== "yes" &&
             m.result !== "no")
       );
-      if (activeMarkets.length > 0) markets = activeMarkets;
+      if (activeMarkets.length > 0) {
+        markets = activeMarkets;
+      }
     }
 
-    const transformed = markets
-      .map((m) => transformMarket(m, now))
-      .filter((m): m is Market => m !== null)
+    const transformedMarkets = markets
+      .map((market) => transformDFlowMarket(market, now))
+      .filter((market): market is TransformedMarket => market !== null)
       .sort((a, b) => b.volume - a.volume)
       .slice(0, limit);
 
-    return NextResponse.json(transformed, {
+    return NextResponse.json(transformedMarkets, {
       headers: {
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
       },

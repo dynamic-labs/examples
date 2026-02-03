@@ -1,8 +1,13 @@
 "use client";
 
-import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
-import { ChevronDown, Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  useDynamicContext,
+  useIsLoggedIn,
+} from "@dynamic-labs/sdk-react-core";
+import { ChevronDown, Loader2, PieChart, Wallet } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useKalshiTrading } from "@/lib/hooks/useKalshiTrading";
+import { PortfolioModal } from "./positions/PortfolioModal";
 import Logo from "./LogoIcon";
 
 function AuthButton() {
@@ -118,18 +123,92 @@ function AuthButton() {
   );
 }
 
+function PortfolioButton() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        className="bg-[#1a1b23] box-border flex h-[41px] items-center justify-center gap-[6px] px-[12px] py-[8px] relative rounded-[8px] shrink-0 cursor-pointer hover:bg-[#252630] transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.90] border border-[#262a34]"
+      >
+        <PieChart
+          className="w-[16px] h-[16px] text-[#8b5cf6]"
+          strokeWidth={2}
+        />
+        <span className="font-['Clash_Display',sans-serif] text-[16px] text-[#8b5cf6] leading-[100%] hidden sm:block font-medium">
+          Portfolio
+        </span>
+      </button>
+      <PortfolioModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
+  );
+}
+
+function BalanceButton() {
+  const { getSolBalance } = useKalshiTrading();
+  const [balance, setBalance] = useState<number | null>(null);
+  const isLoggedIn = useIsLoggedIn();
+
+  const fetchBalance = useCallback(async () => {
+    if (!isLoggedIn) return;
+    const bal = await getSolBalance();
+    setBalance(bal);
+  }, [isLoggedIn, getSolBalance]);
+
+  useEffect(() => {
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBalance]);
+
+  const displayText =
+    balance !== null && balance > 0 ? `${balance.toFixed(3)} SOL` : "Deposit";
+
+  return (
+    <button
+      type="button"
+      className="bg-[#1a1b23] box-border flex h-[41px] items-center justify-center gap-[6px] pl-[12px] pr-[12px] py-[8px] relative rounded-[8px] shrink-0 w-[125px] cursor-pointer hover:bg-[#252630] transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.90] border border-[#262a34]"
+    >
+      <Wallet className="w-[16px] h-[16px] text-[#14b8a6]" />
+      <div className="flex flex-col font-['Clash_Display',sans-serif] justify-center leading-[100%] not-italic relative shrink-0 text-[#14b8a6] text-[16px] text-nowrap tracking-[0%] text-right font-medium">
+        <p className="leading-[100%] whitespace-pre">{displayText}</p>
+      </div>
+    </button>
+  );
+}
+
+function HeaderContent() {
+  const isLoggedIn = useIsLoggedIn();
+
+  return (
+    <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full">
+      <Logo />
+      <div className="flex items-center gap-[8px] ml-auto">
+        {isLoggedIn && (
+          <>
+            <PortfolioButton />
+            <BalanceButton />
+          </>
+        )}
+        <AuthButton />
+      </div>
+    </div>
+  );
+}
+
 export function Header() {
   return (
     <div className="content-stretch flex flex-col gap-[19px] items-start pt-[21px] w-full">
-      <div className="content-stretch flex items-center gap-[16px] relative shrink-0 w-full">
-        <Logo />
-        <div className="flex items-center gap-[8px] ml-auto">
-          <AuthButton />
-        </div>
-      </div>
+      <HeaderContent />
       <div className="flex h-px items-center justify-center relative shrink-0 w-full">
         <div className="w-full h-px bg-linear-to-r from-transparent via-[#8b5cf6]/20 to-transparent" />
       </div>
     </div>
   );
 }
+
