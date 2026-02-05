@@ -1,31 +1,77 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Check, Send } from "lucide-react";
-import { cn, truncateAddress, copyToClipboard } from "@/lib/utils";
+import { Send, Shield, Zap } from "lucide-react";
+import { cn, truncateAddress } from "@/lib/utils";
+import { Tooltip } from "@/components/ui/tooltip";
+import { CopyButton } from "@/components/ui/copy-button";
 import { useActiveNetwork } from "@/hooks/use-active-network";
-import type { WalletAccount } from "@/lib/dynamic-client";
+import { use7702Authorization } from "@/hooks/use-7702-authorization";
+import { useGasSponsorship } from "@/hooks/use-gas-sponsorship";
+import { useMfaStatus } from "@/hooks/use-mfa-status";
+import { useWalletAccounts } from "@/hooks/use-wallet-accounts";
+import { isEvmWalletAccount, type WalletAccount } from "@/lib/dynamic-client";
 
 interface WalletRowProps {
   walletAccount: WalletAccount;
+  chain: string;
   onSend: () => void;
+  onAuthorize?: () => void;
+  onSetupMfa?: (address: string, chain: string) => void;
 }
 
 /**
  * Wallet row component displaying address and actions
  * Uses SDK data for all display info
+ *
+ * Action button scenarios:
+ * 1. MFA setup needed (Shield) - if MFA required but no device
+ * 2. Smart account needed (Zap) - if MFA enabled AND sponsored network AND not authorized
+ *    (Without MFA, SDK handles authorization automatically during transaction)
+ * 3. Send transaction (Send) - all other cases
  */
-export function WalletRow({ walletAccount, onSend }: WalletRowProps) {
-  const [copied, setCopied] = useState(false);
+export function WalletRow({
+  walletAccount,
+  chain,
+  onSend,
+  onAuthorize,
+  onSetupMfa,
+}: WalletRowProps) {
   const { networkData } = useActiveNetwork(walletAccount);
+  const { needsSetup: needsMfaSetup, requiresMfa } = useMfaStatus();
+  const { walletAccounts } = useWalletAccounts();
 
-  const handleCopy = async () => {
-    const success = await copyToClipboard(walletAccount.address);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  const isEvm = isEvmWalletAccount(walletAccount);
+
+  // Check gas sponsorship availability on current network
+  const {
+    isSponsored,
+    isLoading: sponsorLoading,
+    zerodevWallet,
+  } = useGasSponsorship(
+    isEvm ? walletAccount.address : undefined,
+    walletAccounts,
+    networkData,
+  );
+
+  // Check 7702 authorization status for EVM wallets
+  // Note: Check authorization independently of sponsorship to avoid race conditions
+  const { isAuthorized, isLoading: authLoading } = use7702Authorization(
+    isEvm ? walletAccount.address : undefined,
+    networkData,
+  );
+
+  // Derived state for action button logic
+  const isLoading = sponsorLoading || authLoading;
+  // Only show authorize button when MFA is enabled - without MFA, SDK handles auth automatically
+  // Note: zerodevWallet existence implies EVM (hook filters by isEvmWalletAccount)
+  const canAuthorize =
+    !!zerodevWallet && isSponsored && !isAuthorized && requiresMfa;
+
+  // Determine which action button to show (priority order)
+  const showMfaSetup = needsMfaSetup && onSetupMfa;
+  const showAuthorize =
+    !showMfaSetup && !isLoading && canAuthorize && onAuthorize;
+  const showSend = !showMfaSetup && !showAuthorize;
 
   return (
     <div
@@ -67,34 +113,57 @@ export function WalletRow({ walletAccount, onSend }: WalletRowProps) {
       {/* Right: Actions */}
       <div className="flex items-center gap-1 shrink-0">
         {/* Copy button */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          className={cn(
-            "p-2 rounded-full transition-colors cursor-pointer",
-            "text-(--widget-muted) hover:text-(--widget-fg) hover:bg-black/5",
-          )}
-          aria-label="Copy address"
-        >
-          {copied ? (
-            <Check className="w-4 h-4 text-(--widget-success)" />
-          ) : (
-            <Copy className="w-4 h-4" />
-          )}
-        </button>
+        <CopyButton
+          text={walletAccount.address}
+          label="Copy address"
+          showTooltip
+          className="rounded-full"
+        />
 
-        {/* Send button */}
-        <button
-          type="button"
-          onClick={onSend}
-          className={cn(
-            "p-2 rounded-full transition-colors cursor-pointer",
-            "text-(--widget-muted) hover:text-(--widget-fg) hover:bg-black/5",
-          )}
-          aria-label="Send transaction"
-        >
-          <Send className="w-4 h-4" />
-        </button>
+        {/* Primary action button - changes based on what's needed */}
+        {showMfaSetup ? (
+          <Tooltip content="Set up authenticator">
+            <button
+              type="button"
+              onClick={() => onSetupMfa?.(walletAccount.address, chain)}
+              className={cn(
+                "p-2 rounded-full transition-colors cursor-pointer",
+                "text-(--widget-accent) hover:bg-(--widget-accent)/10",
+              )}
+              aria-label="Set up authenticator"
+            >
+              <Shield className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        ) : showAuthorize ? (
+          <Tooltip content="Enable smart account">
+            <button
+              type="button"
+              onClick={onAuthorize}
+              className={cn(
+                "p-2 rounded-full transition-colors cursor-pointer",
+                "text-(--widget-accent) hover:bg-(--widget-accent)/10",
+              )}
+              aria-label="Enable smart account"
+            >
+              <Zap className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        ) : showSend ? (
+          <Tooltip content="Send transaction">
+            <button
+              type="button"
+              onClick={onSend}
+              className={cn(
+                "p-2 rounded-full transition-colors cursor-pointer",
+                "text-(--widget-muted) hover:text-(--widget-fg) hover:bg-black/5",
+              )}
+              aria-label="Send transaction"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </Tooltip>
+        ) : null}
       </div>
     </div>
   );

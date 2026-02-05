@@ -11,7 +11,22 @@ export type Screen =
   | { type: "auth" }
   | { type: "otp-verify"; email: string; otpVerification: OTPVerification }
   | { type: "dashboard" }
-  | { type: "send-tx"; walletAddress: string; chain: string }
+  | {
+      type: "authorize-7702";
+      walletAddress: string;
+      returnTo: "dashboard" | "send-tx" | "setup-mfa";
+    }
+  | {
+      type: "setup-mfa";
+      walletAddress: string;
+      chain: string;
+    }
+  | {
+      type: "send-tx";
+      walletAddress: string;
+      chain: string;
+      fromMfaSetup?: boolean;
+    }
   | { type: "tx-result"; txHash: string; networkData: NetworkData };
 
 // =============================================================================
@@ -26,7 +41,16 @@ export interface NavigationReturn {
   goToAuth: () => void;
   goToOtpVerify: (email: string, otpVerification: OTPVerification) => void;
   goToDashboard: () => void;
-  goToSendTx: (walletAddress: string, chain: string) => void;
+  goToAuthorize7702: (
+    walletAddress: string,
+    returnTo: "dashboard" | "send-tx" | "setup-mfa",
+  ) => void;
+  goToSetupMfa: (walletAddress: string, chain: string) => void;
+  goToSendTx: (
+    walletAddress: string,
+    chain: string,
+    fromMfaSetup?: boolean,
+  ) => void;
   goToTxResult: (txHash: string, networkData: NetworkData) => void;
 }
 
@@ -94,9 +118,26 @@ export function useNavigation(isLoggedIn: boolean): NavigationReturn {
     transitionTo({ type: "dashboard" });
   }, [transitionTo]);
 
-  const goToSendTx = useCallback(
+  const goToAuthorize7702 = useCallback(
+    (
+      walletAddress: string,
+      returnTo: "dashboard" | "send-tx" | "setup-mfa",
+    ) => {
+      transitionTo({ type: "authorize-7702", walletAddress, returnTo });
+    },
+    [transitionTo],
+  );
+
+  const goToSetupMfa = useCallback(
     (walletAddress: string, chain: string) => {
-      transitionTo({ type: "send-tx", walletAddress, chain });
+      transitionTo({ type: "setup-mfa", walletAddress, chain });
+    },
+    [transitionTo],
+  );
+
+  const goToSendTx = useCallback(
+    (walletAddress: string, chain: string, fromMfaSetup?: boolean) => {
+      transitionTo({ type: "send-tx", walletAddress, chain, fromMfaSetup });
     },
     [transitionTo],
   );
@@ -121,6 +162,8 @@ export function useNavigation(isLoggedIn: boolean): NavigationReturn {
     goToAuth,
     goToOtpVerify,
     goToDashboard,
+    goToAuthorize7702,
+    goToSetupMfa,
     goToSendTx,
     goToTxResult,
   };

@@ -26,6 +26,10 @@ import {
   sendTransaction,
   type SendTransactionParams,
 } from "@/lib/transactions/send-transaction";
+import {
+  sign7702Authorization,
+  type Sign7702Params,
+} from "@/lib/transactions/sign-7702-authorization";
 
 // =============================================================================
 // AUTH MUTATIONS
@@ -169,5 +173,37 @@ export function useCreateWallet() {
 export function useSendTransaction() {
   return useMutation({
     mutationFn: (params: SendTransactionParams) => sendTransaction(params),
+  });
+}
+
+// =============================================================================
+// EIP-7702 AUTHORIZATION SIGNING
+// =============================================================================
+
+/**
+ * Sign EIP-7702 authorization to enable smart account features
+ *
+ * This ONLY signs the authorization - no transaction is sent.
+ * The signed authorization should be passed to sendTransaction
+ * when sending the first transaction on this network.
+ *
+ * Requires only 1 MFA code (singleUse: true).
+ *
+ * @returns The signed authorization
+ *
+ * @example
+ * ```tsx
+ * const sign = useSign7702();
+ * const auth = await sign.mutateAsync({
+ *   walletAccount: zerodevWallet,
+ *   networkData,
+ *   mfaCode: "123456",
+ * });
+ * // Pass auth to sendEvmTransaction
+ * ```
+ */
+export function useSign7702() {
+  return useMutation({
+    mutationFn: (params: Sign7702Params) => sign7702Authorization(params),
   });
 }

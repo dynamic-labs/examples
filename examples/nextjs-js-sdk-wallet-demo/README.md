@@ -9,6 +9,8 @@ A Next.js example demonstrating embedded wallet (WaaS) functionality using the [
 - **Embedded Wallets (WaaS)** - Create EVM and Solana wallets tied to user accounts
 - **Multi-Network Support** - Switch between enabled networks (Ethereum, Base, Sepolia, etc.)
 - **Gas Sponsorship** - ZeroDev integration for sponsored transactions on supported networks
+- **EIP-7702 Smart Accounts** - One-time authorization for gasless transactions on EVM chains
+- **MFA/TOTP Support** - Multi-factor authentication with authenticator apps (Google Authenticator, Authy, etc.)
 - **Send Transactions** - Transfer native tokens with automatic wallet selection
 
 ## Architecture
@@ -27,25 +29,36 @@ A Next.js example demonstrating embedded wallet (WaaS) functionality using the [
 │   │   ├── auth-screen.tsx
 │   │   ├── otp-verify-screen.tsx
 │   │   ├── dashboard-screen.tsx
-│   │   └── send-tx-screen.tsx
+│   │   ├── send-tx-screen.tsx
+│   │   ├── setup-mfa-screen.tsx      # TOTP authenticator setup
+│   │   └── authorize-7702-screen.tsx # EIP-7702 smart account authorization
 │   ├── wallet/               # Wallet-specific components
 │   │   ├── wallet-row.tsx
 │   │   ├── scrollable-wallet-list.tsx
 │   │   ├── create-wallet-buttons.tsx
-│   │   └── network-selector.tsx
+│   │   ├── network-selector.tsx
+│   │   └── network-selector-section.tsx
 │   └── ui/                   # Reusable UI primitives
+│       ├── mfa-code-input.tsx
+│       ├── copy-button.tsx
+│       ├── tooltip.tsx
+│       └── ...
 ├── hooks/
 │   ├── use-auth.ts           # Auth state subscription
 │   ├── use-gas-sponsorship.ts # Sponsorship check & wallet selection
+│   ├── use-mfa-status.ts     # MFA enabled/device status
+│   ├── use-7702-authorization.ts # On-chain authorization check
 │   ├── use-navigation.ts     # Screen routing state machine
 │   ├── use-mutations.ts      # React Query mutations
 │   └── use-*.ts              # Other data hooks
 ├── lib/
 │   ├── dynamic-client.ts     # SDK singleton with SSR-safe wrappers
+│   ├── viem-chain.ts         # NetworkData to viem chain conversion
 │   ├── transactions/         # Chain-specific transaction logic
 │   │   ├── send-transaction.ts
 │   │   ├── send-evm-transaction.ts
-│   │   └── send-solana-transaction.ts
+│   │   ├── send-solana-transaction.ts
+│   │   └── sign-7702-authorization.ts
 │   └── wallet-utils.ts       # Helper functions
 ```
 
@@ -137,6 +150,47 @@ await Promise.all(
 );
 ```
 
+### 6. MFA (Multi-Factor Authentication)
+
+The app supports TOTP-based MFA using authenticator apps. The `useMfaStatus` hook checks if MFA is enabled and whether a device is registered:
+
+```typescript
+// hooks/use-mfa-status.ts
+export function useMfaStatus() {
+  // Check MFA settings and registered devices
+  return {
+    isMfaEnabled, // MFA enabled in environment
+    hasDevice, // User has registered authenticator
+    needsSetup, // MFA enabled but no device (show setup prompt)
+    requiresMfa, // MFA required for transactions (enabled + device exists)
+  };
+}
+```
+
+When MFA is required, users must enter a 6-digit TOTP code from their authenticator app to sign transactions.
+
+### 7. EIP-7702 Smart Account Authorization
+
+For gasless transactions on EVM chains, the wallet must be authorized as a smart account via EIP-7702. This is a one-time on-chain authorization per network:
+
+```typescript
+// hooks/use-7702-authorization.ts
+export function use7702Authorization(address, networkData) {
+  // Check if address has 7702 delegation prefix (0xef0100)
+  const code = await client.getCode({ address });
+  const isAuthorized = code?.startsWith("0xef0100") ?? false;
+
+  return { isAuthorized, invalidate };
+}
+```
+
+The authorization flow:
+
+1. User signs EIP-7702 authorization (with MFA code if required)
+2. Signed authorization is attached to the first transaction
+3. Transaction is sent, which also broadcasts the authorization on-chain
+4. Future transactions on that network don't need re-authorization
+
 ## Setup
 
 1. **Install dependencies:**
@@ -172,6 +226,7 @@ In your [Dynamic Dashboard](https://app.dynamic.xyz):
 4. **Allow Multiple Wallets** - Settings → Embedded Wallets → Enable "Allow multiple embedded wallets per chain"
 5. **Configure Networks** - Settings → Chains & Networks → Enable desired networks
 6. **Configure ZeroDev (optional)** - Settings → Embedded Wallets → ZeroDev for gas sponsorship
+7. **Configure MFA (optional)** - Settings → Account Security → Enable MFA and set to "Action Based" for Waas Sign
 
 ## Dependencies
 
@@ -179,9 +234,11 @@ In your [Dynamic Dashboard](https://app.dynamic.xyz):
 - `@dynamic-labs-sdk/evm` - EVM chain support
 - `@dynamic-labs-sdk/solana` - Solana chain support
 - `@dynamic-labs-sdk/zerodev` - Account abstraction & gas sponsorship
+- `@zerodev/sdk` - ZeroDev kernel client for EIP-7702
 - `viem` - EVM utilities
 - `@solana/web3.js` - Solana utilities
 - `@tanstack/react-query` - Data fetching & mutations
+- `qrcode.react` - QR code generation for MFA setup
 
 ## Webhooks
 

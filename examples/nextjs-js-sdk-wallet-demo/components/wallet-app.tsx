@@ -26,6 +26,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AuthScreen } from "@/components/screens/auth-screen";
 import { OtpVerifyScreen } from "@/components/screens/otp-verify-screen";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
+import { Authorize7702Screen } from "@/components/screens/authorize-7702-screen";
+import { SetupMfaScreen } from "@/components/screens/setup-mfa-screen";
 import { SendTxScreen } from "@/components/screens/send-tx-screen";
 
 export function WalletApp() {
@@ -65,11 +67,48 @@ export function WalletApp() {
         <DashboardScreen navigation={navigation} />
       )}
 
+      {screen.type === "authorize-7702" && (
+        <Authorize7702Screen
+          walletAddress={screen.walletAddress}
+          fromMfaSetup={screen.returnTo === "setup-mfa"}
+          onSuccess={() => {
+            if (
+              screen.returnTo === "send-tx" ||
+              screen.returnTo === "setup-mfa"
+            ) {
+              // Pass fromMfaSetup if coming from MFA setup flow
+              navigation.goToSendTx(
+                screen.walletAddress,
+                "EVM",
+                screen.returnTo === "setup-mfa",
+              );
+            } else {
+              navigation.goToDashboard();
+            }
+          }}
+          onCancel={navigation.goToDashboard}
+          onNeedsMfaSetup={() => {
+            navigation.goToSetupMfa(screen.walletAddress, "EVM");
+          }}
+        />
+      )}
+
+      {screen.type === "setup-mfa" && (
+        <SetupMfaScreen
+          onSuccess={() => {
+            // Always go to send-tx - it will handle authorization internally if needed
+            navigation.goToSendTx(screen.walletAddress, screen.chain, true);
+          }}
+          onCancel={navigation.goToDashboard}
+        />
+      )}
+
       {(screen.type === "send-tx" || screen.type === "tx-result") && (
         <SendTxScreen
           walletAddress={screen.type === "send-tx" ? screen.walletAddress : ""}
           chain={screen.type === "send-tx" ? screen.chain : ""}
           navigation={navigation}
+          fromMfaSetup={screen.type === "send-tx" ? screen.fromMfaSetup : false}
           txResult={
             screen.type === "tx-result"
               ? { txHash: screen.txHash, networkData: screen.networkData }

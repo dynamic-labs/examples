@@ -30,6 +30,15 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
     navigation.goToSendTx(address, chain);
   };
 
+  const handleAuthorize = (address: string) => {
+    // Go directly to send-tx - it handles authorization if needed
+    navigation.goToSendTx(address, "EVM");
+  };
+
+  const handleSetupMfa = (address: string, chain: string) => {
+    navigation.goToSetupMfa(address, chain);
+  };
+
   return (
     <WidgetCard
       icon={
@@ -47,7 +56,12 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
             <LoadingSpinner size="lg" />
           </div>
         ) : (
-          <ScrollableWalletList wallets={uniqueWallets} onSend={handleSend} />
+          <ScrollableWalletList
+            wallets={uniqueWallets}
+            onSend={handleSend}
+            onAuthorize={handleAuthorize}
+            onSetupMfa={handleSetupMfa}
+          />
         )}
 
         <div className="h-px bg-(--widget-border)" />
