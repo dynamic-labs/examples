@@ -17,7 +17,6 @@
  * Each action requires only 1 MFA code.
  */
 
-import { createPublicClient, http } from "viem";
 import type { SignAuthorizationReturnType } from "viem/accounts";
 import { constants } from "@zerodev/sdk";
 import {
@@ -104,27 +103,17 @@ export async function sign7702Authorization({
       walletAccount: baseWallet as EvmWalletAccount,
     });
 
-    const account = walletClient.account;
-    if (!account?.signAuthorization) {
+    if (!walletClient.signAuthorization) {
       throw new Error(
         "signAuthorization not available. Only WaaS wallets support EIP-7702.",
       );
     }
 
-    // Get current nonce for the authorization
-    const publicClient = createPublicClient({
-      chain: walletClient.chain,
-      transport: http(),
-    });
-
-    const nonce = await publicClient.getTransactionCount({
-      address: walletAccount.address as `0x${string}`,
-    });
-
-    const signedAuth = await account.signAuthorization({
-      address: constants.KERNEL_7702_DELEGATION_ADDRESS,
+    // Use viem's signAuthorization - it handles nonce fetching automatically
+    const signedAuth = await walletClient.signAuthorization({
+      account: walletClient.account,
+      contractAddress: constants.KERNEL_7702_DELEGATION_ADDRESS,
       chainId,
-      nonce,
     });
 
     return signedAuth;
