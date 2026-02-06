@@ -110,7 +110,6 @@ export function Authorize7702Screen({
       const signedAuth = await sign.mutateAsync({
         walletAccount: zerodevWallet,
         networkData,
-        allWalletAccounts: walletAccounts,
         mfaCode: requiresMfaCode ? mfaCode : undefined,
       });
       onSuccess(signedAuth);
