@@ -1,5 +1,6 @@
 "use client";
 
+import type { SignAuthorizationReturnType } from "viem/accounts";
 import {
   type WalletAccount,
   type NetworkData,
@@ -18,6 +19,10 @@ export interface SendTransactionParams {
   amount: string;
   recipient: string;
   networkData: NetworkData;
+  /** TOTP code for MFA-protected transactions (all WaaS wallets) */
+  mfaCode?: string;
+  /** EIP-7702 authorization (for first tx after signing smart account, EVM only) */
+  eip7702Auth?: SignAuthorizationReturnType;
 }
 
 // =============================================================================
@@ -35,6 +40,8 @@ export async function sendTransaction({
   amount,
   recipient,
   networkData,
+  mfaCode,
+  eip7702Auth,
 }: SendTransactionParams): Promise<string> {
   // EVM Chain
   if (isEvmWalletAccount(walletAccount)) {
@@ -43,6 +50,8 @@ export async function sendTransaction({
       amount,
       recipient,
       networkData,
+      mfaCode,
+      eip7702Auth,
     });
   }
 
@@ -56,6 +65,7 @@ export async function sendTransaction({
       amount,
       recipient,
       rpcUrl,
+      mfaCode,
     });
   }
 

@@ -1,4 +1,3 @@
-/* eslint-disable no-console -- Intentional logging for webhook demo */
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 

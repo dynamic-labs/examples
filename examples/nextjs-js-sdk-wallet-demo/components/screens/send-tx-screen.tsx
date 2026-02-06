@@ -1,28 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import {
-  ExternalLink,
-  CheckCircle,
-  ArrowLeft,
-  Send,
-  AlertCircle,
-  Zap,
-  Copy,
-  Check,
-} from "lucide-react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ExternalLink, CheckCircle, ArrowLeft, Send, Zap } from "lucide-react";
 import { WidgetCard } from "@/components/ui/widget-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LoadingCard } from "@/components/ui/loading-card";
+import { ErrorCard } from "@/components/ui/error-card";
+import { MfaCodeInput } from "@/components/ui/mfa-code-input";
+import { CopyButton } from "@/components/ui/copy-button";
 import { ErrorMessage } from "@/components/error-message";
-import { NetworkSelector } from "@/components/wallet/network-selector";
+import { NetworkSelectorSection } from "@/components/wallet/network-selector-section";
+import { Authorize7702Screen } from "@/components/screens/authorize-7702-screen";
 import { useSendTransaction } from "@/hooks/use-mutations";
 import { useWalletAccounts } from "@/hooks/use-wallet-accounts";
 import { useActiveNetwork } from "@/hooks/use-active-network";
 import { useGasSponsorship } from "@/hooks/use-gas-sponsorship";
-import { truncateAddress, copyToClipboard } from "@/lib/utils";
-import type { NetworkData } from "@/lib/dynamic-client";
+import { use7702Authorization } from "@/hooks/use-7702-authorization";
+import { truncateAddress } from "@/lib/utils";
+import {
+  type NetworkData,
+  getBalance,
+  isSvmGasSponsorshipEnabled,
+} from "@/lib/dynamic-client";
 import type { NavigationReturn } from "@/hooks/use-navigation";
+import { useMfaStatus, isMfaRequiredError } from "@/hooks/use-mfa-status";
+import { SetupMfaScreen } from "@/components/screens/setup-mfa-screen";
+import type { SignAuthorizationReturnType } from "@/lib/transactions/sign-7702-authorization";
 
 interface SendTxScreenProps {
   walletAddress: string;
@@ -32,6 +37,7 @@ interface SendTxScreenProps {
     txHash: string;
     networkData: NetworkData;
   };
+  fromMfaSetup?: boolean;
 }
 
 /**
@@ -48,17 +54,6 @@ function TransactionResultView({
   explorerUrl?: string;
   onClose: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    const success = await copyToClipboard(txHash);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  // Truncate hash for display
   const truncatedHash = `${txHash.slice(0, 10)}...${txHash.slice(-8)}`;
 
   return (
@@ -104,18 +99,11 @@ function TransactionResultView({
                 {truncatedHash}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="p-2 rounded-full hover:bg-black/5 text-(--widget-muted) hover:text-(--widget-fg) transition-colors cursor-pointer shrink-0"
-              aria-label="Copy transaction hash"
-            >
-              {copied ? (
-                <Check className="w-4 h-4 text-(--widget-success)" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </button>
+            <CopyButton
+              text={txHash}
+              label="Copy transaction hash"
+              className="shrink-0 rounded-full"
+            />
           </div>
         </div>
 
@@ -147,40 +135,33 @@ function TransactionResultView({
  * Address subtitle with copy button
  */
 function AddressSubtitle({ address }: { address: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const success = await copyToClipboard(address);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   return (
     <span className="inline-flex items-center gap-1">
       From {truncateAddress(address)}
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="p-0.5 rounded hover:bg-black/5 text-(--widget-muted) hover:text-(--widget-fg) transition-colors cursor-pointer"
-        aria-label="Copy address"
-      >
-        {copied ? (
-          <Check className="w-3 h-3 text-(--widget-success)" />
-        ) : (
-          <Copy className="w-3 h-3" />
-        )}
-      </button>
+      <CopyButton text={address} size="sm" label="Copy address" />
     </span>
   );
 }
 
 /**
+ * Screen state for the send transaction flow
+ */
+type ScreenState =
+  | { view: "loading"; message: string }
+  | { view: "authorize" }
+  | { view: "mfa-setup" }
+  | { view: "result" }
+  | { view: "error"; message: string }
+  | { view: "form" };
+
+/**
  * Send transaction screen with form and result display
  *
- * For EVM: Uses useGasSponsorship to determine wallet selection
+ * For EVM:
+ * - Checks 7702 authorization, redirects to authorize if needed
+ * - Uses useGasSponsorship to determine wallet selection
+ * - Requires MFA code for ZeroDev transactions (if MFA device configured)
+ *
  * For Solana: Standard transaction flow
  */
 export function SendTxScreen({
@@ -188,54 +169,149 @@ export function SendTxScreen({
   chain,
   navigation,
   txResult,
+  fromMfaSetup = false,
 }: SendTxScreenProps) {
+  // Form state
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [showMfaSetup, setShowMfaSetup] = useState(false);
+  // Track when user just completed MFA setup (internally or from navigation)
+  const [justCompletedMfaSetup, setJustCompletedMfaSetup] =
+    useState(fromMfaSetup);
+  // Signed EIP-7702 authorization (passed from Authorize7702Screen)
+  const [signedAuth, setSignedAuth] =
+    useState<SignAuthorizationReturnType | null>(null);
 
+  // Hooks
   const { walletAccounts } = useWalletAccounts();
   const sendTx = useSendTransaction();
+  const {
+    requiresMfa,
+    needsSetup: mfaNeedsSetup,
+    isLoading: mfaLoading,
+    refetch: refetchMfaStatus,
+  } = useMfaStatus();
 
-  // Find a wallet for this address (used for network queries and Solana)
-  const walletForAddress =
+  const isEvm = chain === "EVM";
+
+  // Find any wallet for this address (for network queries)
+  const anyWallet =
     walletAccounts.find(
       (w) => w.address.toLowerCase() === walletAddress.toLowerCase(),
     ) || null;
 
   // Get active network
-  const { networkData, refetch: refetchNetwork } =
-    useActiveNetwork(walletForAddress);
+  const { networkData, refetch: refetchNetwork } = useActiveNetwork(anyWallet);
 
-  // For EVM: Check sponsorship and get the appropriate wallet
-  const { isSponsored, isLoading, walletToUse, zerodevWallet } =
-    useGasSponsorship(
-      chain === "EVM" ? walletAddress : undefined,
-      walletAccounts,
-      networkData,
-    );
+  // For EVM: Get the right wallet based on sponsorship
+  const {
+    isSponsored,
+    isLoading: sponsorshipLoading,
+    walletToUse,
+    zerodevWallet,
+  } = useGasSponsorship(
+    isEvm ? walletAddress : undefined,
+    walletAccounts,
+    networkData,
+  );
 
-  // The wallet to use for transactions
-  const walletAccount =
-    chain === "EVM" ? walletToUse || walletForAddress : walletForAddress;
+  // Check if EIP-7702 authorization is needed (EVM only)
+  const hasZerodevWallet = !!zerodevWallet;
+  const {
+    isAuthorized,
+    isLoading: authLoading,
+    invalidate: invalidateAuth,
+  } = use7702Authorization(
+    hasZerodevWallet ? walletAddress : undefined,
+    networkData,
+  );
 
-  // Transaction Result View
-  if (txResult) {
-    const explorerUrl = txResult.networkData.blockExplorerUrls?.[0];
+  // The wallet account to use for transactions
+  const walletAccount = isEvm ? walletToUse || anyWallet : anyWallet;
 
-    return (
-      <TransactionResultView
-        txHash={txResult.txHash}
-        networkData={txResult.networkData}
-        explorerUrl={explorerUrl}
-        onClose={navigation.goToDashboard}
-      />
-    );
-  }
+  // Fetch balance for the wallet
+  const { data: balanceData } = useQuery({
+    queryKey: ["balance", walletAccount?.address, networkData?.networkId],
+    queryFn: async () => {
+      if (!walletAccount) return { balance: null };
+      return getBalance({ walletAccount });
+    },
+    enabled: !!walletAccount,
+  });
 
-  // Send Form View
+  // Check for SVM gas sponsorship (Solana)
+  const svmSponsored = !isEvm && isSvmGasSponsorshipEnabled();
+
+  // Determine EVM sponsorship status for display
+  const evmSponsorshipStatus = useMemo(() => {
+    if (sponsorshipLoading) return { type: "loading" as const };
+    if (isSponsored && zerodevWallet) return { type: "sponsored" as const };
+    return { type: "standard" as const };
+  }, [sponsorshipLoading, isSponsored, zerodevWallet]);
+
+  // Authorization is ready if already authorized on-chain OR we have a signed auth
+  const isAuthReady = isAuthorized || !!signedAuth;
+
+  // Determine screen state
+  const screenState = ((): ScreenState => {
+    // Show result if transaction completed
+    if (txResult) {
+      return { view: "result" };
+    }
+
+    // Show MFA setup if user requested it
+    if (showMfaSetup) {
+      return { view: "mfa-setup" };
+    }
+
+    // Loading states
+    if (mfaLoading) {
+      return { view: "loading", message: "Checking MFA status..." };
+    }
+    if (sponsorshipLoading) {
+      return { view: "loading", message: "Checking gas sponsorship..." };
+    }
+    if (isEvm && hasZerodevWallet && isSponsored && authLoading) {
+      return { view: "loading", message: "Checking authorization..." };
+    }
+
+    // Error state if wallet not found
+    if (!walletAccount) {
+      return { view: "error", message: "Wallet not found" };
+    }
+
+    // EVM authorization needed ONLY when MFA is enabled
+    // Without MFA, the SDK handles authorization automatically during transaction
+    // With MFA, we pre-sign to avoid double MFA prompts (one for auth, one for tx)
+    const needsAuthorization =
+      isEvm && hasZerodevWallet && isSponsored && !isAuthReady && requiresMfa;
+    if (needsAuthorization) return { view: "authorize" };
+
+    // Default: show the send form
+    return { view: "form" };
+  })();
+
+  // Handle network change
+  const handleNetworkChange = () => {
+    refetchNetwork();
+    setMfaCode("");
+    setSignedAuth(null); // Clear auth when network changes
+  };
+
+  // Handle authorization success
+  const handleAuthSuccess = (auth: SignAuthorizationReturnType) => {
+    setSignedAuth(auth);
+    setMfaCode(""); // Clear MFA code - user needs a new one for the transaction
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recipient.trim() || !amount.trim() || !walletAccount || !networkData)
+    if (!recipient.trim() || !amount.trim() || !walletAccount || !networkData) {
       return;
+    }
+    if (requiresMfa && !mfaCode.trim()) return;
 
     try {
       const txHash = await sendTx.mutateAsync({
@@ -243,108 +319,213 @@ export function SendTxScreen({
         amount,
         recipient,
         networkData,
+        mfaCode: requiresMfa ? mfaCode : undefined,
+        eip7702Auth: signedAuth ?? undefined,
       });
 
+      // Clear signed auth after successful transaction
+      setSignedAuth(null);
+      // Invalidate auth cache so dashboard shows updated status
+      invalidateAuth();
       navigation.goToTxResult(txHash, networkData);
-    } catch {
-      // Error handled by mutation
+    } catch (error) {
+      // If MFA required but not set up, show setup screen
+      if (isMfaRequiredError(error)) {
+        setShowMfaSetup(true);
+        return;
+      }
+      // Clear MFA code on failure so user can try again
+      setMfaCode("");
     }
   };
 
-  if (!walletAccount) {
-    return (
-      <WidgetCard
-        icon={
-          <AlertCircle
-            className="w-[18px] h-[18px] text-(--widget-error)"
-            strokeWidth={1.5}
-          />
-        }
-        title="Error"
-        onClose={navigation.goToDashboard}
-      >
-        <p className="text-sm text-(--widget-error)">Wallet not found</p>
-      </WidgetCard>
-    );
-  }
-
-  return (
-    <WidgetCard
-      icon={
-        <Send
-          className="w-[18px] h-[18px] text-(--widget-fg)"
-          strokeWidth={1.5}
+  // Render based on screen state
+  switch (screenState.view) {
+    case "loading":
+      return (
+        <LoadingCard
+          icon={
+            <Send
+              className="w-[18px] h-[18px] text-(--widget-fg)"
+              strokeWidth={1.5}
+            />
+          }
+          title="Send Transaction"
+          subtitle={screenState.message}
+          onClose={navigation.goToDashboard}
         />
-      }
-      title="Send Transaction"
-      subtitle={<AddressSubtitle address={walletAddress} />}
-      onClose={navigation.goToDashboard}
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Network Selector (EVM only) */}
-        {chain === "EVM" && (
-          <div className="p-3 bg-(--widget-row-bg) border border-(--widget-border) rounded-(--widget-radius)">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-(--widget-fg) tracking-[-0.14px]">
-                  Network
-                </span>
-                {zerodevWallet &&
-                  (isLoading ? (
-                    <span className="text-[10px] text-(--widget-muted)">
-                      Checking gas...
-                    </span>
-                  ) : isSponsored ? (
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-(--widget-accent)">
-                      <Zap className="w-3 h-3" />
-                      Gas Sponsored
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-(--widget-muted)">
-                      Standard transaction
-                    </span>
-                  ))}
-              </div>
-              <NetworkSelector
-                walletAccount={walletAccount}
-                onNetworkChange={refetchNetwork}
-              />
-            </div>
-          </div>
-        )}
+      );
 
-        {/* Recipient Address */}
-        <Input
-          label="Recipient Address"
-          type="text"
-          value={recipient}
-          onChange={(e) => setRecipient(e.target.value)}
-          placeholder={chain === "EVM" ? "0x..." : "Enter address"}
-          disabled={sendTx.isPending}
+    case "authorize":
+      return (
+        <Authorize7702Screen
+          walletAddress={walletAddress}
+          fromMfaSetup={justCompletedMfaSetup}
+          onSuccess={(auth) => {
+            setJustCompletedMfaSetup(false);
+            handleAuthSuccess(auth);
+          }}
+          onCancel={navigation.goToDashboard}
+          onNeedsMfaSetup={() => setShowMfaSetup(true)}
         />
+      );
 
-        {/* Amount */}
-        <Input
-          label={`Amount (${networkData?.nativeCurrency?.symbol || chain})`}
-          type="text"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="0.001"
-          pattern="^[0-9]*\.?[0-9]*$"
-          disabled={sendTx.isPending}
+    case "mfa-setup":
+      return (
+        <SetupMfaScreen
+          onSuccess={() => {
+            refetchMfaStatus();
+            setShowMfaSetup(false);
+            setJustCompletedMfaSetup(true);
+          }}
+          onCancel={() => setShowMfaSetup(false)}
         />
+      );
 
-        <Button
-          type="submit"
-          className="w-full"
-          loading={sendTx.isPending}
-          disabled={!recipient.trim() || !amount.trim() || !networkData}
+    case "result":
+      if (!txResult) return null;
+      return (
+        <TransactionResultView
+          txHash={txResult.txHash}
+          networkData={txResult.networkData}
+          explorerUrl={txResult.networkData.blockExplorerUrls?.[0]}
+          onClose={navigation.goToDashboard}
+        />
+      );
+
+    case "error":
+      return (
+        <ErrorCard
+          icon={
+            <Send
+              className="w-[18px] h-[18px] text-(--widget-error)"
+              strokeWidth={1.5}
+            />
+          }
+          message={screenState.message}
+          onClose={navigation.goToDashboard}
+        />
+      );
+
+    case "form":
+      return (
+        <WidgetCard
+          icon={
+            <Send
+              className="w-[18px] h-[18px] text-(--widget-fg)"
+              strokeWidth={1.5}
+            />
+          }
+          title="Send Transaction"
+          subtitle={<AddressSubtitle address={walletAddress} />}
+          onClose={navigation.goToDashboard}
         >
-          Send Transaction
-        </Button>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Network Selector (EVM only) */}
+            {isEvm && walletAccount && (
+              <NetworkSelectorSection
+                walletAccount={walletAccount}
+                onNetworkChange={handleNetworkChange}
+                sponsorship={evmSponsorshipStatus}
+              />
+            )}
 
-        <ErrorMessage error={sendTx.error} />
-      </form>
-    </WidgetCard>
-  );
+            {/* Solana network info */}
+            {!isEvm && networkData && (
+              <div className="p-3 bg-(--widget-row-bg) border border-(--widget-border) rounded-(--widget-radius)">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-(--widget-fg) tracking-[-0.14px]">
+                      Network
+                    </span>
+                    {svmSponsored && (
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-(--widget-accent)">
+                        <Zap className="w-3 h-3" />
+                        Gas Sponsored
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {networkData.iconUrl && (
+                      <img
+                        src={networkData.iconUrl}
+                        alt={networkData.displayName}
+                        className="w-5 h-5 rounded"
+                      />
+                    )}
+                    <span className="text-sm font-medium text-(--widget-fg)">
+                      {networkData.displayName}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Recipient Address */}
+            <Input
+              label="Recipient Address"
+              type="text"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder={isEvm ? "0x..." : "Enter address"}
+              disabled={sendTx.isPending}
+            />
+
+            {/* Amount with balance display */}
+            <Input
+              label={
+                <span className="flex items-center justify-between w-full">
+                  <span>
+                    Amount ({networkData?.nativeCurrency?.symbol || chain})
+                  </span>
+                  {balanceData?.balance && (
+                    <span className="text-xs text-(--widget-muted) font-normal">
+                      Balance: {balanceData.balance}
+                    </span>
+                  )}
+                </span>
+              }
+              type="text"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.001"
+              pattern="^[0-9]*\.?[0-9]*$"
+              disabled={sendTx.isPending}
+            />
+
+            {/* MFA Code Input */}
+            {requiresMfa && (
+              <MfaCodeInput
+                value={mfaCode}
+                onChange={setMfaCode}
+                disabled={sendTx.isPending}
+                autoFocus={!!signedAuth}
+                contained
+                helperMessage={
+                  signedAuth
+                    ? "Enter a new MFA code to send the transaction."
+                    : undefined
+                }
+              />
+            )}
+
+            <Button
+              type="submit"
+              className="w-full"
+              loading={sendTx.isPending}
+              disabled={
+                !recipient.trim() ||
+                !amount.trim() ||
+                !networkData ||
+                (requiresMfa && mfaCode.length !== 6)
+              }
+            >
+              Send Transaction
+            </Button>
+
+            <ErrorMessage error={sendTx.error} />
+          </form>
+        </WidgetCard>
+      );
+  }
 }

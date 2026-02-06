@@ -105,7 +105,7 @@ export function NetworkSelector({
           disabled={isLoading}
           className={cn(
             "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer",
-            "bg-(--widget-row-bg) rounded-(--widget-radius)",
+            "bg-(--widget-bg) rounded-(--widget-radius)",
             "border border-(--widget-border)",
             "hover:bg-(--widget-row-hover) transition-colors",
             "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -132,7 +132,7 @@ export function NetworkSelector({
         {isOpen && (
           <div
             className={cn(
-              "absolute top-full left-0 right-0 mt-1 z-10",
+              "absolute top-full right-0 mt-1 z-10 min-w-full w-max",
               "bg-(--widget-bg) border border-(--widget-border)",
               "rounded-(--widget-radius) shadow-lg overflow-hidden",
             )}
@@ -143,7 +143,7 @@ export function NetworkSelector({
                 type="button"
                 onClick={() => handleSelectNetwork(network.networkId)}
                 className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2 text-sm text-left cursor-pointer",
+                  "w-full flex items-center gap-2 px-3 py-2 text-sm text-left cursor-pointer whitespace-nowrap",
                   "hover:bg-(--widget-row-hover) transition-colors",
                   network.networkId === networkData?.networkId &&
                     "bg-(--widget-row-bg)",
@@ -153,7 +153,7 @@ export function NetworkSelector({
                   <img
                     src={network.iconUrl}
                     alt={network.displayName}
-                    className="w-4 h-4 rounded"
+                    className="w-4 h-4 rounded shrink-0"
                   />
                 )}
                 <span className="text-(--widget-fg)">
