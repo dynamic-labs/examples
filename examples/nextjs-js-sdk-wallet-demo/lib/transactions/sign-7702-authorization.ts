@@ -18,17 +18,13 @@
  */
 
 import type { SignAuthorizationReturnType } from "viem/accounts";
-import { constants } from "@zerodev/sdk";
 import {
   authenticateTotpMfaDevice,
-  createWalletClientForWalletAccount,
   getMfaDevices,
-  switchActiveNetwork,
+  signEip7702Authorization,
   type EvmWalletAccount,
   type NetworkData,
-  type WalletAccount,
 } from "@/lib/dynamic-client";
-import { getBaseWalletForAddress } from "@/lib/wallet-utils";
 
 // Re-export the type for consumers
 export type { SignAuthorizationReturnType };
@@ -38,12 +34,10 @@ export type { SignAuthorizationReturnType };
 // =============================================================================
 
 export interface Sign7702Params {
-  /** The ZeroDev wallet account to sign for */
+  /** The ZeroDev smart wallet account to sign for */
   walletAccount: EvmWalletAccount;
   /** The network to sign for */
   networkData: NetworkData;
-  /** All wallet accounts (needed to find the base WaaS wallet for signing) */
-  allWalletAccounts: WalletAccount[];
   /** TOTP code from authenticator app */
   mfaCode?: string;
 }
@@ -62,23 +56,8 @@ export interface Sign7702Params {
 export async function sign7702Authorization({
   walletAccount,
   networkData,
-  allWalletAccounts,
   mfaCode,
 }: Sign7702Params): Promise<SignAuthorizationReturnType> {
-  const chainId = Number(networkData.networkId);
-
-  // Find the base WaaS wallet (required for signing - ZeroDev wallet can't sign directly)
-  const baseWallet = getBaseWalletForAddress(
-    walletAccount.address,
-    allWalletAccounts,
-  );
-
-  if (!baseWallet) {
-    throw new Error(
-      "Base WaaS wallet not found. Cannot sign EIP-7702 authorization.",
-    );
-  }
-
   try {
     // 1. Authenticate MFA if provided (singleUse: true - only 1 signature needed)
     if (mfaCode) {
@@ -92,28 +71,10 @@ export async function sign7702Authorization({
       }
     }
 
-    // 2. Ensure we're on the correct network (use base wallet for network switching)
-    await switchActiveNetwork({
+    // 2. Sign the EIP-7702 authorization using the SDK abstraction
+    const signedAuth = await signEip7702Authorization({
+      smartWalletAccount: walletAccount,
       networkId: networkData.networkId,
-      walletAccount: baseWallet,
-    });
-
-    // 3. Sign the EIP-7702 authorization using the base WaaS wallet
-    const walletClient = await createWalletClientForWalletAccount({
-      walletAccount: baseWallet as EvmWalletAccount,
-    });
-
-    if (!walletClient.signAuthorization) {
-      throw new Error(
-        "signAuthorization not available. Only WaaS wallets support EIP-7702.",
-      );
-    }
-
-    // Use viem's signAuthorization - it handles nonce fetching automatically
-    const signedAuth = await walletClient.signAuthorization({
-      account: walletClient.account,
-      contractAddress: constants.KERNEL_7702_DELEGATION_ADDRESS,
-      chainId,
     });
 
     return signedAuth;

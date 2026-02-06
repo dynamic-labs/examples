@@ -92,6 +92,7 @@ import {
   createKernelClientForWalletAccount as sdkCreateKernelClientForWalletAccount,
   isGasSponsorshipError as sdkIsGasSponsorshipError,
   canSponsorTransaction as sdkCanSponsorTransaction,
+  signEip7702Authorization as sdkSignEip7702Authorization,
 } from "@dynamic-labs-sdk/zerodev";
 
 // =============================================================================
@@ -421,67 +422,32 @@ export const isGasSponsorshipError = sdkIsGasSponsorshipError;
 export const canSponsorTransaction = sdkCanSponsorTransaction;
 
 /**
- * Sign an EIP-7702 authorization for a wallet account.
+ * Sign an EIP-7702 authorization for a smart wallet account.
  *
- * This signs the authorization that allows an EOA to delegate to a smart contract.
- * The signed authorization can then be included in a transaction's authorizationList
- * to execute the delegation on-chain.
+ * The SDK handles finding the underlying WaaS wallet, creating the wallet client,
+ * and signing the authorization for ZeroDev kernel delegation.
  *
- * This is a single MFA action - only one signature is required.
+ * The signed authorization can then be passed to `createKernelClientForWalletAccount`
+ * via the `eip7702Auth` parameter.
  *
- * @param walletAccount - The EVM wallet account to sign with
- * @param contractAddress - The smart contract implementation to delegate to
- * @param networkData - The network to scope the authorization to
+ * @param smartWalletAccount - The ZeroDev smart wallet account to sign for
+ * @param networkId - The network ID to scope the authorization to
  * @returns The signed authorization object
  *
  * @example
  * ```ts
  * const auth = await signEip7702Authorization({
- *   walletAccount,
- *   contractAddress: kernelImplementationAddress,
- *   networkData,
+ *   smartWalletAccount: zerodevWallet,
+ *   networkId: networkData.networkId,
  * });
- * // Pass to kernel client or include in transaction
+ * // Pass to kernel client
  * ```
+ *
+ * @see https://www.dynamic.xyz/docs/javascript/reference/zerodev
  */
-export async function signEip7702Authorization({
-  walletAccount,
-  contractAddress,
-  networkData,
-}: {
-  walletAccount: EvmWalletAccount;
-  contractAddress: `0x${string}`;
-  networkData: NetworkData;
-}) {
-  const walletClient = await sdkCreateWalletClientForWalletAccount({
-    walletAccount,
-  });
-
-  // The viem wallet client for WaaS wallets has signAuthorization
-  if (!("signAuthorization" in walletClient.account)) {
-    throw new Error(
-      "signAuthorization is not available on this wallet. Only WaaS wallets support EIP-7702.",
-    );
-  }
-
-  const signAuth = walletClient.account.signAuthorization as (params: {
-    address: `0x${string}`;
-    chainId: number;
-  }) => Promise<{
-    address: `0x${string}`;
-    chainId: number;
-    nonce: number;
-    r: `0x${string}`;
-    s: `0x${string}`;
-    v?: bigint;
-    yParity: number;
-  }>;
-
-  return signAuth({
-    address: contractAddress,
-    chainId: Number(networkData.networkId),
-  });
-}
+export const signEip7702Authorization = createAsyncSafeWrapper(
+  sdkSignEip7702Authorization,
+);
 
 // =============================================================================
 // SOLANA TRANSACTIONS
