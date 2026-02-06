@@ -2,10 +2,12 @@ import { ShieldCheck } from "lucide-react";
 
 interface DelegationStatusHeaderProps {
   isEnabled: boolean;
+  requiresDelegation?: boolean;
 }
 
 export default function DelegationStatusHeader({
   isEnabled,
+  requiresDelegation,
 }: DelegationStatusHeaderProps) {
   return (
     <div
@@ -27,12 +29,23 @@ export default function DelegationStatusHeader({
             </p>
           </div>
         </div>
-        <div
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-            isEnabled ? "bg-white text-green-600" : "bg-white/20 text-white/80"
-          }`}
-        >
-          {isEnabled ? "● Enabled" : "○ Disabled"}
+        <div className="flex items-center gap-2">
+          <div
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+              requiresDelegation
+                ? "bg-amber-100 text-amber-700"
+                : "bg-white/20 text-white"
+            }`}
+          >
+            {requiresDelegation ? "Required" : "Optional"}
+          </div>
+          <div
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+              isEnabled ? "bg-white text-green-600" : "bg-white/20 text-white/80"
+            }`}
+          >
+            {isEnabled ? "● Enabled" : "○ Disabled"}
+          </div>
         </div>
       </div>
     </div>

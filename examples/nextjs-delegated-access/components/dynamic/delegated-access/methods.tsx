@@ -66,11 +66,10 @@ export default function DelegatedAccessMethods() {
       setError(null);
       setResult("");
 
-      const response = await revokeDelegation([
+      await revokeDelegation([
         { accountAddress: address, chainName: ChainEnum.Evm },
       ]);
 
-      console.log("Revocation response:", response);
       setResult("Delegation revoked successfully");
       setLastAction("revoke");
     } catch (err) {

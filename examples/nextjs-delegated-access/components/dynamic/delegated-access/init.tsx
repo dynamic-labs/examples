@@ -1,34 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Zap, Loader2, AlertCircle } from "lucide-react";
+import { Lock, Zap, Loader2, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  useDynamicContext,
-  useWalletDelegation,
-} from "@dynamic-labs/sdk-react-core";
+import { useDynamicContext, useWalletDelegation } from "@/lib/dynamic";
 
-const INIT_STEPS = [
-  {
-    number: 1,
-    title: "Secure Key Generation",
-    description: "A secure MPC key share will be created and encrypted",
-    bgClass: "bg-dynamic/15",
-  },
-  {
-    number: 2,
-    title: "Server Storage",
-    description: "Your encrypted share is stored securely on the server",
-    bgClass: "bg-dynamic/20",
-  },
-  {
-    number: 3,
-    title: "Ready to Sign",
-    description: "Server can now sign transactions on your behalf",
-    bgClass: "bg-dynamic/25",
-  },
-];
-
+/**
+ * DelegatedAccessInit - Delegation with Dynamic's Built-in Modal UI
+ *
+ * This component demonstrates using initDelegationProcess() which:
+ * - Opens Dynamic's pre-built delegation modal
+ * - Handles the entire user flow automatically
+ * - Shows consent screens and progress indicators
+ * - Best for: Quick integration with minimal custom UI work
+ */
 export default function DelegatedAccessInit() {
   const { primaryWallet } = useDynamicContext();
   const { initDelegationProcess } = useWalletDelegation();
@@ -59,79 +44,74 @@ export default function DelegatedAccessInit() {
   return (
     <div className="w-full">
       <div className="rounded-xl border bg-card overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b bg-dynamic/5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-dynamic/15">
-              <Lock className="w-5 h-5 text-dynamic" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Enable Delegation</h3>
-              <p className="text-xs text-muted-foreground">
-                One-time setup to allow server-side signing
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
         <div className="p-6 space-y-4">
-          {/* Steps */}
-          <div className="space-y-3">
-            {INIT_STEPS.map((step) => (
-              <InitStep key={step.number} {...step} />
-            ))}
-          </div>
+          {/* Method Explanation */}
+          <div className="rounded-lg border border-dynamic/20 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-dynamic/10 flex items-center justify-center shrink-0">
+                <Lock className="w-4 h-4 text-dynamic" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-sm">
+                  initDelegationProcess()
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Opens Dynamic&apos;s modal to guide users through delegation.
+                  Handles consent, key generation, and success/error states automatically.
+                </p>
+              </div>
+            </div>
 
-          {/* Action Button */}
-          <Button
-            onClick={handleInitDelegation}
-            className="w-full bg-dynamic hover:bg-dynamic/90 text-white"
-            disabled={isLoading || !primaryWallet}
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Initializing Delegation...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Enable Delegation
-              </span>
-            )}
-          </Button>
+            {/* What happens */}
+            <div className="space-y-2 pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground">
+                When triggered, the modal will:
+              </p>
+              <div className="space-y-1.5">
+                <FlowStep number={1} text="Display delegation consent to user" />
+                <FlowStep number={2} text="Generate and encrypt MPC key share" />
+                <FlowStep number={3} text="Store encrypted share on server" />
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <Button
+              onClick={handleInitDelegation}
+              className="w-full bg-dynamic hover:bg-dynamic/90 text-white"
+              disabled={isLoading || !primaryWallet}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Opening Modal...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Open Delegation Modal
+                </span>
+              )}
+            </Button>
+          </div>
 
           {/* Error Display */}
           {error && <ErrorMessage message={error} />}
+
+          {/* Code Example */}
+          <CodeExample />
         </div>
       </div>
     </div>
   );
 }
 
-function InitStep({
-  number,
-  title,
-  description,
-  bgClass,
-}: {
-  number: number;
-  title: string;
-  description: string;
-  bgClass: string;
-}) {
+function FlowStep({ number, text }: { number: number; text: string }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-      <div
-        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${bgClass} text-dynamic`}
-      >
+    <div className="flex items-center gap-2">
+      <div className="w-5 h-5 rounded-full bg-dynamic/15 flex items-center justify-center text-xs font-bold text-dynamic shrink-0">
         {number}
       </div>
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-      </div>
+      <p className="text-xs text-muted-foreground">{text}</p>
     </div>
   );
 }
@@ -143,6 +123,35 @@ function ErrorMessage({ message }: { message: string }) {
         <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
         <p className="text-xs text-red-600 dark:text-red-400">{message}</p>
       </div>
+    </div>
+  );
+}
+
+function CodeExample() {
+  return (
+    <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <Info className="w-4 h-4 text-muted-foreground" />
+        <h4 className="text-xs font-medium text-muted-foreground">
+          Usage Example
+        </h4>
+      </div>
+      <pre className="text-xs bg-background rounded-lg p-3 overflow-x-auto border">
+        <code className="text-muted-foreground">{`const { initDelegationProcess } = useWalletDelegation();
+
+// Opens Dynamic's modal UI for delegation
+const handleDelegate = async () => {
+  try {
+    await initDelegationProcess();
+    console.log('Delegation completed!');
+  } catch (error) {
+    console.error('User cancelled or error:', error);
+  }
+};
+
+// Or delegate specific wallets only
+await initDelegationProcess({ wallets: [primaryWallet] });`}</code>
+      </pre>
     </div>
   );
 }
