@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Wallet } from "lucide-react";
 import { WalletRow } from "./wallet-row";
+import { ScrollableWithFade } from "@/components/ui/scrollable-with-fade";
 import { cn } from "@/lib/utils";
 import type { WalletAccount } from "@/lib/dynamic";
 
@@ -34,11 +35,6 @@ export function ScrollableWalletList({
   onRowClick,
 }: ScrollableWalletListProps) {
   const [filter, setFilter] = useState<ChainFilter>("all");
-  const [scrollState, setScrollState] = useState({
-    canScrollUp: false,
-    canScrollDown: false,
-  });
-  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Build available chains from actual wallet data
   const availableChains = useMemo(() => {
@@ -60,40 +56,6 @@ export function ScrollableWalletList({
 
   // Only show tabs if we have wallets on multiple chains
   const showTabs = availableChains.length > 1;
-
-  // Check scroll state helper
-  const checkScrollState = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    const canScrollUp = el.scrollTop > 0;
-    const canScrollDown =
-      el.scrollHeight > el.clientHeight &&
-      el.scrollTop < el.scrollHeight - el.clientHeight - 1;
-    setScrollState({ canScrollUp, canScrollDown });
-  }, []);
-
-  // Ref callback - store ref and check initial scroll state
-  const scrollRefCallback = useCallback(
-    (el: HTMLDivElement | null) => {
-      scrollRef.current = el;
-      checkScrollState(el);
-    },
-    [checkScrollState],
-  );
-
-  // Re-check scroll state when filtered wallets change
-  useEffect(() => {
-    // Use requestAnimationFrame to wait for the DOM to update
-    const id = requestAnimationFrame(() => checkScrollState(scrollRef.current));
-    return () => cancelAnimationFrame(id);
-  }, [filteredWallets, checkScrollState]);
-
-  // Update scroll state on scroll
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      checkScrollState(e.currentTarget);
-    },
-    [checkScrollState],
-  );
 
   if (wallets.length === 0) {
     return (
@@ -135,48 +97,21 @@ export function ScrollableWalletList({
       )}
 
       {/* Wallet list */}
-      <div className="relative">
-        {/* Top scroll indicator */}
-        <div
-          className={cn(
-            "absolute top-0 left-0 right-0 h-6 pointer-events-none z-10",
-            "bg-linear-to-b from-(--widget-bg) to-transparent",
-            "transition-opacity duration-200",
-            scrollState.canScrollUp ? "opacity-100" : "opacity-0",
-          )}
-        />
-
-        {/* Scrollable list */}
-        <div
-          ref={scrollRefCallback}
-          onScroll={handleScroll}
-          className="max-h-80 overflow-y-auto -mx-1 px-1 space-y-2 scrollbar-thin"
-        >
-          {filteredWallets.map((wallet) => (
-            <WalletRow
-              key={wallet.address}
-              walletAccount={wallet.walletAccount}
-              chain={wallet.chain}
-              onSend={() => onSend(wallet.address, wallet.chain)}
-              onAuthorize={
-                onAuthorize ? () => onAuthorize(wallet.address) : undefined
-              }
-              onSetupMfa={onSetupMfa}
-              onRowClick={onRowClick}
-            />
-          ))}
-        </div>
-
-        {/* Bottom scroll indicator */}
-        <div
-          className={cn(
-            "absolute bottom-0 left-0 right-0 h-6 pointer-events-none z-10",
-            "bg-linear-to-t from-(--widget-bg) to-transparent",
-            "transition-opacity duration-200",
-            scrollState.canScrollDown ? "opacity-100" : "opacity-0",
-          )}
-        />
-      </div>
+      <ScrollableWithFade contentClassName="space-y-2">
+        {filteredWallets.map((wallet) => (
+          <WalletRow
+            key={wallet.address}
+            walletAccount={wallet.walletAccount}
+            chain={wallet.chain}
+            onSend={() => onSend(wallet.address, wallet.chain)}
+            onAuthorize={
+              onAuthorize ? () => onAuthorize(wallet.address) : undefined
+            }
+            onSetupMfa={onSetupMfa}
+            onRowClick={onRowClick}
+          />
+        ))}
+      </ScrollableWithFade>
     </div>
   );
 }
