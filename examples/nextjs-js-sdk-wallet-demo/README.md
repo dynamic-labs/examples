@@ -5,7 +5,8 @@ A Next.js example demonstrating embedded wallet (WaaS) functionality using the [
 ## Features
 
 - **Email OTP Authentication** - Passwordless login via email one-time password
-- **Google OAuth** - Social login with Google
+- **Social OAuth** - Login with any dashboard-enabled social provider (Google, Discord, etc.)
+- **External JWT Auth** - Sign in with a third-party JWT token ([setup guide](docs/external-jwt-auth.md))
 - **Embedded Wallets (WaaS)** - Create EVM and Solana wallets tied to user accounts
 - **Multi-Network Support** - Switch between enabled networks (Ethereum, Base, Sepolia, etc.)
 - **Gas Sponsorship** - ZeroDev integration for sponsored transactions on supported networks
@@ -20,12 +21,22 @@ A Next.js example demonstrating embedded wallet (WaaS) functionality using the [
 ├── app/
 │   ├── page.tsx              # Server component entry point
 │   ├── globals.css           # Theme variables and global styles
+│   ├── jwt/
+│   │   └── page.tsx          # JWT generator (dev utility)
 │   └── api/
+│       ├── dev/              # Dev-only API routes
+│       │   ├── jwt/route.ts  # JWT signing endpoint
+│       │   ├── jwks/route.ts # JWKS public key endpoint
+│       │   └── ngrok/route.ts# Ngrok tunnel detection
 │       └── webhooks/
 │           └── dynamic/
 │               └── route.ts  # Webhook endpoint for Dynamic events
 ├── components/
 │   ├── wallet-app.tsx        # Main client component (SDK-dependent logic)
+│   ├── auth/                 # Auth method sections
+│   │   ├── email-otp-section.tsx
+│   │   ├── social-providers-section.tsx
+│   │   └── jwt-auth-section.tsx
 │   ├── screens/              # Full-page screen components
 │   │   ├── auth-screen.tsx
 │   │   ├── otp-verify-screen.tsx
@@ -59,6 +70,7 @@ A Next.js example demonstrating embedded wallet (WaaS) functionality using the [
 │   │   ├── auth.ts           # Sign in / sign out
 │   │   ├── auth-email.ts     # Email OTP authentication
 │   │   ├── auth-social.ts    # OAuth social providers
+│   │   ├── auth-jwt.ts       # External JWT authentication
 │   │   ├── wallets.ts        # Wallet accounts & type guards
 │   │   ├── networks.ts       # Network queries & switching
 │   │   ├── balance.ts        # Wallet balance
@@ -78,6 +90,10 @@ A Next.js example demonstrating embedded wallet (WaaS) functionality using the [
 │   │   └── sign-7702-authorization.ts
 │   ├── viem-chain.ts         # NetworkData to viem chain conversion
 │   └── wallet-utils.ts       # Helper functions
+├── scripts/
+│   └── generate-keypair.ts   # RSA key pair generation for JWT auth
+└── docs/
+    └── external-jwt-auth.md  # External JWT auth setup guide
 ```
 
 ### SDK Reference Files
@@ -89,6 +105,7 @@ Each file in `lib/dynamic/` is a self-contained reference for one SDK feature. Y
 | Authentication      | [`auth.ts`](lib/dynamic/auth.ts)                               | `isSignedIn`, `logout`                                           |
 | Email OTP           | [`auth-email.ts`](lib/dynamic/auth-email.ts)                   | `sendEmailOTP`, `verifyOTP`                                      |
 | Social OAuth        | [`auth-social.ts`](lib/dynamic/auth-social.ts)                 | `authenticateWithSocial`, `detectOAuthRedirect`                  |
+| External JWT Auth   | [`auth-jwt.ts`](lib/dynamic/auth-jwt.ts)                       | `signInWithExternalJwt`, `isExternalAuthEnabled`                 |
 | Wallets             | [`wallets.ts`](lib/dynamic/wallets.ts)                         | `getWalletAccounts`, `createWaasWalletAccounts`                  |
 | Networks            | [`networks.ts`](lib/dynamic/networks.ts)                       | `getNetworksData`, `switchActiveNetwork`                         |
 | Balance             | [`balance.ts`](lib/dynamic/balance.ts)                         | `getBalance`                                                     |
@@ -274,12 +291,13 @@ The authorization flow:
 In your [Dynamic Dashboard](https://app.dynamic.xyz):
 
 1. **Enable Email Authentication** - Settings → Authentication → Email
-2. **Enable Google OAuth** - Settings → Authentication → Social → Google
-3. **Enable Embedded Wallets** - Settings → Embedded Wallets → Enable for EVM and/or Solana
-4. **Allow Multiple Wallets** - Settings → Embedded Wallets → Enable "Allow multiple embedded wallets per chain"
-5. **Configure Networks** - Settings → Chains & Networks → Enable desired networks
-6. **Configure ZeroDev (optional)** - Settings → Embedded Wallets → ZeroDev for gas sponsorship
-7. **Configure MFA (optional)** - Settings → Account Security → Enable MFA and set to "Action Based" for Waas Sign
+2. **Enable Social Providers** - Settings → Authentication → Social → Enable desired providers
+3. **Enable External JWT Auth (optional)** - See [setup guide](docs/external-jwt-auth.md)
+4. **Enable Embedded Wallets** - Settings → Embedded Wallets → Enable for EVM and/or Solana
+5. **Allow Multiple Wallets** - Settings → Embedded Wallets → Enable "Allow multiple embedded wallets per chain"
+6. **Configure Networks** - Settings → Chains & Networks → Enable desired networks
+7. **Configure ZeroDev (optional)** - Settings → Embedded Wallets → ZeroDev for gas sponsorship
+8. **Configure MFA (optional)** - Settings → Account Security → Enable MFA and set to "Action Based" for Waas Sign
 
 ## Dependencies
 
@@ -287,7 +305,8 @@ In your [Dynamic Dashboard](https://app.dynamic.xyz):
 - `@dynamic-labs-sdk/evm` - EVM chain support
 - `@dynamic-labs-sdk/solana` - Solana chain support
 - `@dynamic-labs-sdk/zerodev` - Account abstraction & gas sponsorship
-- `@zerodev/sdk` - ZeroDev kernel client for EIP-7702
+- `@dynamic-labs/iconic` - Social provider icons
+- `jose` - JWT signing for dev utilities
 - `viem` - EVM utilities
 - `@solana/web3.js` - Solana utilities
 - `@tanstack/react-query` - Data fetching & mutations
@@ -315,8 +334,8 @@ This demo includes a webhook endpoint at `/api/webhooks/dynamic` for receiving e
 
 To test webhooks locally, you need to expose your local server to the internet. Options:
 
-- **[ngrok](https://ngrok.com/)** - `ngrok http 3000` → use the generated URL
-- **[localtunnel](https://localtunnel.github.io/www/)** - `npx localtunnel --port 3000`
+- **[ngrok](https://ngrok.com/)** - `ngrok http <port>` → use the generated URL
+- **[localtunnel](https://localtunnel.github.io/www/)** - `npx localtunnel --port <port>`
 - **[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)**
 
 Example with ngrok:
@@ -325,9 +344,9 @@ Example with ngrok:
 # Terminal 1: Start your app
 pnpm dev
 
-# Terminal 2: Expose to internet
-ngrok http 3000
-# Output: https://abc123.ngrok.io → http://localhost:3000
+# Terminal 2: Expose to internet (use your dev server port)
+ngrok http 3001
+# Output: https://abc123.ngrok-free.app → http://localhost:3001
 
 # Use https://abc123.ngrok.io/api/webhooks/dynamic as your webhook URL
 ```

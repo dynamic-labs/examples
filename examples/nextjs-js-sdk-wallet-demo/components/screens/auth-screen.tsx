@@ -1,141 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Mail } from "lucide-react";
+/**
+ * Authentication screen — orchestrates available sign-in methods
+ *
+ * Each auth method is a self-contained section that checks its own
+ * dashboard configuration and returns null if not enabled.
+ *
+ * @see https://www.dynamic.xyz/docs/javascript/authentication-methods/email
+ * @see https://www.dynamic.xyz/docs/javascript/authentication-methods/social
+ * @see https://www.dynamic.xyz/docs/javascript/external-auth/third-party-auth-usage
+ */
+
+import { useState } from "react";
 import { WidgetCard } from "@/components/ui/widget-card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { ErrorMessage } from "@/components/error-message";
-import { GoogleIcon } from "@/components/icons/google-icon";
-import { useSendEmailOTP, useGoogleAuth } from "@/hooks/use-mutations";
+import { EmailOtpSection } from "@/components/auth/email-otp-section";
 import {
-  detectOAuthRedirect,
-  completeSocialAuthentication,
-} from "@/lib/dynamic";
+  SocialProvidersSection,
+  SocialAuthCompletingCard,
+} from "@/components/auth/social-providers-section";
+import { JwtAuthSection } from "@/components/auth/jwt-auth-section";
 import type { NavigationReturn } from "@/hooks/use-navigation";
 
 interface AuthScreenProps {
   navigation: NavigationReturn;
 }
 
-// Module-level guard — survives Strict Mode unmount/remount
-let oauthHandled = false;
-
 /**
- * Authentication screen with email OTP and Google OAuth options
+ * Authentication screen with conditional email OTP, social OAuth, and external JWT options
  */
 export function AuthScreen({ navigation }: AuthScreenProps) {
-  const [email, setEmail] = useState("");
   const [isCompletingOAuth, setIsCompletingOAuth] = useState(false);
-  const [oauthError, setOauthError] = useState<Error | null>(null);
 
-  const sendOTP = useSendEmailOTP();
-  const googleAuth = useGoogleAuth();
-
-  useEffect(() => {
-    if (oauthHandled) return;
-    oauthHandled = true;
-
-    const handleOAuthRedirect = async () => {
-      try {
-        const url = new URL(window.location.href);
-        const isReturning = await detectOAuthRedirect({ url });
-
-        if (isReturning) {
-          setIsCompletingOAuth(true);
-          await completeSocialAuthentication({ url });
-
-          // Clean OAuth params from URL to prevent re-processing on refresh
-          const cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete("dynamicOauthCode");
-          cleanUrl.searchParams.delete("dynamicOauthState");
-          window.history.replaceState({}, "", cleanUrl.toString());
-        }
-      } catch (error) {
-        console.error("OAuth redirect error:", error);
-        setOauthError(error as Error);
-      } finally {
-        setIsCompletingOAuth(false);
-      }
-    };
-
-    handleOAuthRedirect();
-  }, []);
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    try {
-      const otpVerification = await sendOTP.mutateAsync(email);
-      navigation.goToOtpVerify(email, otpVerification);
-    } catch {
-      // Error handled by mutation
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      await googleAuth.mutateAsync();
-    } catch {
-      // Error handled by mutation
-    }
-  };
-
-  if (isCompletingOAuth) {
-    return (
-      <WidgetCard title="Signing In" subtitle="Completing authentication...">
-        <div className="flex items-center justify-center py-8">
-          <LoadingSpinner size="lg" />
-        </div>
-      </WidgetCard>
-    );
-  }
+  if (isCompletingOAuth) return <SocialAuthCompletingCard />;
 
   return (
     <WidgetCard title="Sign In" subtitle="Choose how to authenticate">
       <div className="space-y-4">
-        {/* Email OTP Form */}
-        <form onSubmit={handleEmailSubmit} className="space-y-3">
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            disabled={sendOTP.isPending}
-          />
-          <Button
-            type="submit"
-            className="w-full"
-            loading={sendOTP.isPending}
-            disabled={!email.trim()}
-          >
-            <Mail className="w-4 h-4" />
-            Continue with Email
-          </Button>
-          <ErrorMessage error={sendOTP.error} />
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-(--widget-border)" />
-          <span className="text-xs text-(--widget-muted)">or</span>
-          <div className="flex-1 h-px bg-(--widget-border)" />
-        </div>
-
-        {/* Google OAuth */}
-        <Button
-          variant="secondary"
-          className="w-full"
-          onClick={handleGoogleSignIn}
-          loading={googleAuth.isPending}
-        >
-          <GoogleIcon className="w-4 h-4" />
-          Continue with Google
-        </Button>
-        <ErrorMessage error={googleAuth.error || oauthError} />
+        <EmailOtpSection navigation={navigation} />
+        <SocialProvidersSection onCompletingOAuth={setIsCompletingOAuth} />
+        <JwtAuthSection />
       </div>
     </WidgetCard>
   );

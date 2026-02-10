@@ -13,11 +13,13 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { SocialProvider } from "@dynamic-labs-sdk/client";
 import {
   createWaasWalletAccounts,
   sendEmailOTP,
   verifyOTP,
   authenticateWithSocial,
+  signInWithExternalJwt,
   logout,
   type OTPVerification,
   type Chain,
@@ -85,18 +87,52 @@ export function useVerifyOTP() {
 }
 
 /**
- * Initiate Google OAuth flow
- * Redirects user to Google, then back to the app
+ * Initiate social OAuth flow for a given provider
+ * Redirects user to the provider, then back to the app
  *
- * Note: OAuth completion is handled in AuthScreen via completeSocialAuthentication
+ * Note: OAuth completion is handled in SocialProvidersSection via completeSocialAuthentication
+ *
+ * @see https://www.dynamic.xyz/docs/javascript/authentication-methods/social
+ *
+ * @example
+ * ```tsx
+ * const socialAuth = useSocialAuth();
+ * await socialAuth.mutateAsync("google");
+ * ```
  */
-export function useGoogleAuth() {
+export function useSocialAuth() {
   return useMutation({
-    mutationFn: () =>
+    mutationFn: (provider: SocialProvider) =>
       authenticateWithSocial({
-        provider: "google",
+        provider,
         redirectUrl: window.location.href,
       }),
+  });
+}
+
+/**
+ * Sign in with an external JWT token
+ * Used to authenticate via a third-party auth provider
+ *
+ * Note: Requires External Authentication to be configured in the Dynamic dashboard
+ *
+ * @see https://www.dynamic.xyz/docs/javascript/external-auth/third-party-auth-setup
+ * @see https://www.dynamic.xyz/docs/javascript/external-auth/third-party-auth-usage
+ *
+ * @example
+ * ```tsx
+ * const jwtAuth = useJwtAuth();
+ * await jwtAuth.mutateAsync("eyJhbG...");
+ * ```
+ */
+export function useJwtAuth() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jwt: string) => signInWithExternalJwt({ externalJwt: jwt }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["walletAccounts"] });
+    },
   });
 }
 
