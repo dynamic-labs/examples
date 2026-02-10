@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Wallet } from "lucide-react";
 import { WalletRow } from "./wallet-row";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ export function ScrollableWalletList({
     canScrollUp: false,
     canScrollDown: false,
   });
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Build available chains from actual wallet data
   const availableChains = useMemo(() => {
@@ -60,21 +61,39 @@ export function ScrollableWalletList({
   // Only show tabs if we have wallets on multiple chains
   const showTabs = availableChains.length > 1;
 
-  // Ref callback - check initial scroll state on mount
-  const scrollRefCallback = useCallback((el: HTMLDivElement | null) => {
-    if (el) {
-      const canScrollDown = el.scrollHeight > el.clientHeight;
-      setScrollState({ canScrollUp: false, canScrollDown });
-    }
-  }, []);
-
-  // Update scroll state on scroll
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
+  // Check scroll state helper
+  const checkScrollState = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
     const canScrollUp = el.scrollTop > 0;
-    const canScrollDown = el.scrollTop < el.scrollHeight - el.clientHeight - 1;
+    const canScrollDown =
+      el.scrollHeight > el.clientHeight &&
+      el.scrollTop < el.scrollHeight - el.clientHeight - 1;
     setScrollState({ canScrollUp, canScrollDown });
   }, []);
+
+  // Ref callback - store ref and check initial scroll state
+  const scrollRefCallback = useCallback(
+    (el: HTMLDivElement | null) => {
+      scrollRef.current = el;
+      checkScrollState(el);
+    },
+    [checkScrollState],
+  );
+
+  // Re-check scroll state when filtered wallets change
+  useEffect(() => {
+    // Use requestAnimationFrame to wait for the DOM to update
+    const id = requestAnimationFrame(() => checkScrollState(scrollRef.current));
+    return () => cancelAnimationFrame(id);
+  }, [filteredWallets, checkScrollState]);
+
+  // Update scroll state on scroll
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      checkScrollState(e.currentTarget);
+    },
+    [checkScrollState],
+  );
 
   if (wallets.length === 0) {
     return (
