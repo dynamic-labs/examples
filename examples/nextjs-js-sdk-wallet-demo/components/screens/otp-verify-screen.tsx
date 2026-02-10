@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorMessage } from "@/components/error-message";
 import { useVerifyOTP } from "@/hooks/use-mutations";
-import type { OTPVerification } from "@/lib/dynamic-client";
+import type { OTPVerification } from "@/lib/dynamic";
 import type { NavigationReturn } from "@/hooks/use-navigation";
 
 interface OtpVerifyScreenProps {

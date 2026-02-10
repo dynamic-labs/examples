@@ -14,7 +14,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { getMfaDevices, getMfaSettings } from "@/lib/dynamic-client";
+import { getMfaDevices, getMfaSettings } from "@/lib/dynamic";
 
 export interface UseMfaStatusResult {
   /** Whether MFA is enabled in the environment (session or action-based) */

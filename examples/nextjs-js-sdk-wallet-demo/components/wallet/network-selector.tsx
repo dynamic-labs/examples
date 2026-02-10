@@ -6,16 +6,17 @@ import { cn } from "@/lib/utils";
 import { useNetworks } from "@/hooks/use-networks";
 import { useActiveNetwork } from "@/hooks/use-active-network";
 import { useWalletAccounts } from "@/hooks/use-wallet-accounts";
-import { switchActiveNetwork, type WalletAccount } from "@/lib/dynamic-client";
+import { switchActiveNetwork, type WalletAccount } from "@/lib/dynamic";
 import { getBaseWalletForAddress } from "@/lib/wallet-utils";
 
 interface NetworkSelectorProps {
   walletAccount: WalletAccount;
   onNetworkChange?: () => void;
+  align?: "left" | "right";
 }
 
 /**
- * Network selector dropdown for EVM wallets.
+ * Network selector dropdown.
  *
  * When switching networks, all wallets with the same address
  * (base + ZeroDev) are updated to maintain consistency.
@@ -23,6 +24,7 @@ interface NetworkSelectorProps {
 export function NetworkSelector({
   walletAccount,
   onNetworkChange,
+  align = "right",
 }: NetworkSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +90,7 @@ export function NetworkSelector({
   if (availableNetworks.length <= 1) return null;
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className={cn("flex flex-col gap-1", align === "right" ? "items-end" : "items-start")}>
       <div className="relative">
         {/* Backdrop to close dropdown */}
         {isOpen && (
@@ -104,7 +106,7 @@ export function NetworkSelector({
           onClick={() => setIsOpen(!isOpen)}
           disabled={isLoading}
           className={cn(
-            "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer",
+            "flex items-center gap-1.5 px-2 py-1.5 text-xs cursor-pointer",
             "bg-(--widget-bg) rounded-(--widget-radius)",
             "border border-(--widget-border)",
             "hover:bg-(--widget-row-hover) transition-colors",
@@ -115,7 +117,7 @@ export function NetworkSelector({
             <img
               src={networkData.iconUrl}
               alt={networkData.displayName}
-              className="w-4 h-4 rounded"
+              className="w-3.5 h-3.5 rounded"
             />
           )}
           <span className="text-(--widget-fg)">
@@ -123,7 +125,7 @@ export function NetworkSelector({
           </span>
           <ChevronDown
             className={cn(
-              "w-4 h-4 text-(--widget-muted) transition-transform",
+              "w-3 h-3 text-(--widget-muted) transition-transform",
               isOpen && "rotate-180",
             )}
           />
@@ -132,7 +134,8 @@ export function NetworkSelector({
         {isOpen && (
           <div
             className={cn(
-              "absolute top-full right-0 mt-1 z-10 min-w-full w-max",
+              "absolute top-full mt-1 z-10 min-w-full w-max",
+              align === "right" ? "right-0" : "left-0",
               "bg-(--widget-bg) border border-(--widget-border)",
               "rounded-(--widget-radius) shadow-lg overflow-hidden",
             )}

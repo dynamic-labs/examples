@@ -6,7 +6,7 @@ import {
   type NetworkData,
   isEvmWalletAccount,
   isSolanaWalletAccount,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import { sendEvmTransaction } from "./send-evm-transaction";
 import { sendSolanaTransaction } from "./send-solana-transaction";
 

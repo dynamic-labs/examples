@@ -12,7 +12,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createPublicClient, http } from "viem";
 import { networkDataToViemChain } from "@/lib/viem-chain";
-import type { NetworkData } from "@/lib/dynamic-client";
+import type { NetworkData } from "@/lib/dynamic";
 
 export interface Use7702AuthorizationResult {
   /** Whether the account has been authorized via 7702 on this network */

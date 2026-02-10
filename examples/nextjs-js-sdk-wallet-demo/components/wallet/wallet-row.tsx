@@ -9,7 +9,11 @@ import { use7702Authorization } from "@/hooks/use-7702-authorization";
 import { useGasSponsorship } from "@/hooks/use-gas-sponsorship";
 import { useMfaStatus } from "@/hooks/use-mfa-status";
 import { useWalletAccounts } from "@/hooks/use-wallet-accounts";
-import { isEvmWalletAccount, type WalletAccount } from "@/lib/dynamic-client";
+import {
+  isEvmWalletAccount,
+  isSolanaWalletAccount,
+  type WalletAccount,
+} from "@/lib/dynamic";
 
 interface WalletRowProps {
   walletAccount: WalletAccount;
@@ -17,6 +21,7 @@ interface WalletRowProps {
   onSend: () => void;
   onAuthorize?: () => void;
   onSetupMfa?: (address: string, chain: string) => void;
+  onRowClick?: (address: string, chain: string, networkId: number) => void;
 }
 
 /**
@@ -35,12 +40,14 @@ export function WalletRow({
   onSend,
   onAuthorize,
   onSetupMfa,
+  onRowClick,
 }: WalletRowProps) {
   const { networkData } = useActiveNetwork(walletAccount);
   const { needsSetup: needsMfaSetup, requiresMfa } = useMfaStatus();
   const { walletAccounts } = useWalletAccounts();
 
   const isEvm = isEvmWalletAccount(walletAccount);
+  const isSvm = isSolanaWalletAccount(walletAccount);
 
   // Check gas sponsorship availability on current network
   const {
@@ -73,13 +80,35 @@ export function WalletRow({
     !showMfaSetup && !isLoading && canAuthorize && onAuthorize;
   const showSend = !showMfaSetup && !showAuthorize;
 
+  const isRowClickable = isSvm && !!onRowClick && !!networkData;
+
+  const handleRowClick = () => {
+    if (isRowClickable && networkData) {
+      onRowClick(walletAccount.address, chain, Number(networkData.networkId));
+    }
+  };
+
   return (
     <div
+      role={isRowClickable ? "button" : undefined}
+      tabIndex={isRowClickable ? 0 : undefined}
+      onClick={handleRowClick}
+      onKeyDown={
+        isRowClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleRowClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "flex items-center justify-between",
         "px-3 py-2.5",
         "bg-(--widget-row-bg) rounded-(--widget-radius)",
         "transition-colors hover:bg-(--widget-row-hover)",
+        isRowClickable && "cursor-pointer",
       )}
     >
       {/* Left: Chain icon + Address */}
@@ -110,8 +139,13 @@ export function WalletRow({
         </div>
       </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      {/* Right: Actions — stopPropagation prevents row click when clicking buttons */}
+      <div
+        className="flex items-center gap-1 shrink-0"
+        role="group"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         {/* Copy button */}
         <CopyButton
           text={walletAccount.address}

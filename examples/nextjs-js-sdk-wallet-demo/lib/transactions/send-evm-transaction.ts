@@ -24,7 +24,7 @@ import {
   switchActiveNetwork,
   authenticateTotpMfaDevice,
   getMfaDevices,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 
 // =============================================================================
 // TYPES

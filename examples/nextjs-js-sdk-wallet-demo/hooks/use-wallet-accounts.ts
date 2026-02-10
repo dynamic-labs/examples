@@ -1,7 +1,7 @@
 "use client";
 
 import { useSdkQuery } from "./use-sdk-query";
-import { getWalletAccounts, type WalletAccount } from "@/lib/dynamic-client";
+import { getWalletAccounts, type WalletAccount } from "@/lib/dynamic";
 
 /**
  * Hook to get wallet accounts with reactive updates

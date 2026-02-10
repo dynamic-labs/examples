@@ -17,7 +17,7 @@ import {
   onEvent,
   waitForClientInitialized,
   type InitStatus,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 
 let cachedStatus: InitStatus = "uninitialized";
 const listeners = new Set<() => void>();

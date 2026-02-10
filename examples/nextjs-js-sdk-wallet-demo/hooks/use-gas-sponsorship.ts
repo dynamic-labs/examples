@@ -18,7 +18,7 @@ import {
   type WalletAccount,
   type NetworkData,
   type EvmWalletAccount,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import { getBaseWalletForAddress } from "@/lib/wallet-utils";
 
 export interface UseGasSponsorshipResult {
