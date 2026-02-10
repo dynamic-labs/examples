@@ -17,12 +17,15 @@
 
 // Auth
 export { isSignedIn, logout } from "./auth";
-export { sendEmailOTP, verifyOTP } from "./auth-email";
+export { isEmailAuthEnabled, sendEmailOTP, verifyOTP } from "./auth-email";
 export {
   authenticateWithSocial,
   detectOAuthRedirect,
   completeSocialAuthentication,
+  getEnabledSocialProviders,
+  isSocialAuthEnabled,
 } from "./auth-social";
+export { signInWithExternalJwt, isExternalAuthEnabled } from "./auth-jwt";
 
 // Wallets
 export {

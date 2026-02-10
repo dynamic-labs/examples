@@ -20,6 +20,20 @@ import {
 import { getClient } from "./client";
 
 /**
+ * Check if email OTP authentication should be shown.
+ *
+ * Controlled by the `NEXT_PUBLIC_ENABLE_EMAIL_AUTH` environment variable.
+ * Set to "true" to show the email login option.
+ *
+ * @returns true if email authentication is enabled
+ *
+ * @see https://www.dynamic.xyz/docs/javascript/authentication-methods/email
+ */
+export function isEmailAuthEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_EMAIL_AUTH === "true";
+}
+
+/**
  * Send OTP code to user's email.
  * Waits for client initialization before sending.
  */
