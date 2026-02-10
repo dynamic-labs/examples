@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn, truncateAddress } from "@/lib/utils";
 import { WidgetCard } from "@/components/ui/widget-card";
+import { ScrollableWithFade } from "@/components/ui/scrollable-with-fade";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -231,11 +232,11 @@ export function TxHistoryScreen({
 
         {/* Transaction list */}
         {!isLoading && transactions.length > 0 && (
-          <div className="space-y-1.5 max-h-80 overflow-y-auto -mx-1 px-1 scrollbar-thin">
+          <ScrollableWithFade contentClassName="space-y-1.5">
             {transactions.map((tx) => (
               <TransactionRow key={tx.transactionHash} tx={tx} chain={chain} />
             ))}
-          </div>
+          </ScrollableWithFade>
         )}
 
         {nextOffset && !isLoading && transactions.length >= PAGE_SIZE && (
