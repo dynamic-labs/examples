@@ -7,7 +7,7 @@ import { useNetworks } from "@/hooks/use-networks";
 import type {
   EvmWalletAccount,
   SolanaWalletAccount,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 
 type SponsorshipStatus =
   | { type: "loading" }

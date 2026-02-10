@@ -7,7 +7,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import type { SolanaWalletAccount } from "@/lib/dynamic-client";
+import type { SolanaWalletAccount } from "@/lib/dynamic";
 
 // =============================================================================
 // TYPES

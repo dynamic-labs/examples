@@ -12,12 +12,15 @@ import { useSendEmailOTP, useGoogleAuth } from "@/hooks/use-mutations";
 import {
   detectOAuthRedirect,
   completeSocialAuthentication,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import type { NavigationReturn } from "@/hooks/use-navigation";
 
 interface AuthScreenProps {
   navigation: NavigationReturn;
 }
+
+// Module-level guard — survives Strict Mode unmount/remount
+let oauthHandled = false;
 
 /**
  * Authentication screen with email OTP and Google OAuth options
@@ -30,20 +33,24 @@ export function AuthScreen({ navigation }: AuthScreenProps) {
   const sendOTP = useSendEmailOTP();
   const googleAuth = useGoogleAuth();
 
-  // Handle OAuth redirect on mount
   useEffect(() => {
+    if (oauthHandled) return;
+    oauthHandled = true;
+
     const handleOAuthRedirect = async () => {
       try {
-        const isReturning = await detectOAuthRedirect({
-          url: new URL(window.location.href),
-        });
+        const url = new URL(window.location.href);
+        const isReturning = await detectOAuthRedirect({ url });
 
         if (isReturning) {
           setIsCompletingOAuth(true);
-          await completeSocialAuthentication({
-            url: new URL(window.location.href),
-          });
-          // Auth successful - useNavigation will redirect to dashboard
+          await completeSocialAuthentication({ url });
+
+          // Clean OAuth params from URL to prevent re-processing on refresh
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete("dynamicOauthCode");
+          cleanUrl.searchParams.delete("dynamicOauthState");
+          window.history.replaceState({}, "", cleanUrl.toString());
         }
       } catch (error) {
         console.error("OAuth redirect error:", error);

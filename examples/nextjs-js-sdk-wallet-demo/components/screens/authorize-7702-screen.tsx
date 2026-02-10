@@ -31,7 +31,7 @@ import {
   isEvmWalletAccount,
   isNetworkSponsored,
   type EvmWalletAccount,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import { truncateAddress } from "@/lib/utils";
 import type { SignAuthorizationReturnType } from "@/lib/transactions/sign-7702-authorization";
 

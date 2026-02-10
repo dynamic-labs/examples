@@ -24,7 +24,7 @@ import {
   signEip7702Authorization,
   type EvmWalletAccount,
   type NetworkData,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 
 // Re-export the type for consumers
 export type { SignAuthorizationReturnType };

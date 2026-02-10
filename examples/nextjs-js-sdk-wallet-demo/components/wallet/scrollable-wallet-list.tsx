@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Wallet } from "lucide-react";
 import { WalletRow } from "./wallet-row";
 import { cn } from "@/lib/utils";
-import type { WalletAccount } from "@/lib/dynamic-client";
+import type { WalletAccount } from "@/lib/dynamic";
 
 interface UniqueWallet {
   address: string;
@@ -18,6 +18,7 @@ interface ScrollableWalletListProps {
   onSend: (address: string, chain: string) => void;
   onAuthorize?: (address: string) => void;
   onSetupMfa?: (address: string, chain: string) => void;
+  onRowClick?: (address: string, chain: string, networkId: number) => void;
 }
 
 type ChainFilter = "all" | string;
@@ -30,6 +31,7 @@ export function ScrollableWalletList({
   onSend,
   onAuthorize,
   onSetupMfa,
+  onRowClick,
 }: ScrollableWalletListProps) {
   const [filter, setFilter] = useState<ChainFilter>("all");
   const [scrollState, setScrollState] = useState({
@@ -141,6 +143,7 @@ export function ScrollableWalletList({
                 onAuthorize ? () => onAuthorize(wallet.address) : undefined
               }
               onSetupMfa={onSetupMfa}
+              onRowClick={onRowClick}
             />
           ))}
         </div>

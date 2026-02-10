@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { onEvent } from "@/lib/dynamic-client";
+import { onEvent } from "@/lib/dynamic";
 
 type DynamicEvent =
   | "userChanged"

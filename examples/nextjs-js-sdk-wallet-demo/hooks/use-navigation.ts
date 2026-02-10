@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { OTPVerification, NetworkData } from "@/lib/dynamic-client";
+import type { OTPVerification, NetworkData } from "@/lib/dynamic";
 
 // =============================================================================
 // SCREEN TYPES (Single Source of Truth)
@@ -26,8 +26,15 @@ export type Screen =
       walletAddress: string;
       chain: string;
       fromMfaSetup?: boolean;
+      returnToTxHistory?: { networkId: number };
     }
-  | { type: "tx-result"; txHash: string; networkData: NetworkData };
+  | { type: "tx-result"; txHash: string; networkData: NetworkData }
+  | {
+      type: "tx-history";
+      walletAddress: string;
+      chain: string;
+      networkId: number;
+    };
 
 // =============================================================================
 // NAVIGATION HOOK
@@ -50,8 +57,14 @@ export interface NavigationReturn {
     walletAddress: string,
     chain: string,
     fromMfaSetup?: boolean,
+    returnToTxHistory?: { networkId: number },
   ) => void;
   goToTxResult: (txHash: string, networkData: NetworkData) => void;
+  goToTxHistory: (
+    walletAddress: string,
+    chain: string,
+    networkId: number,
+  ) => void;
 }
 
 const TRANSITION_DURATION = 150;
@@ -136,8 +149,19 @@ export function useNavigation(isLoggedIn: boolean): NavigationReturn {
   );
 
   const goToSendTx = useCallback(
-    (walletAddress: string, chain: string, fromMfaSetup?: boolean) => {
-      transitionTo({ type: "send-tx", walletAddress, chain, fromMfaSetup });
+    (
+      walletAddress: string,
+      chain: string,
+      fromMfaSetup?: boolean,
+      returnToTxHistory?: { networkId: number },
+    ) => {
+      transitionTo({
+        type: "send-tx",
+        walletAddress,
+        chain,
+        fromMfaSetup,
+        returnToTxHistory,
+      });
     },
     [transitionTo],
   );
@@ -145,6 +169,13 @@ export function useNavigation(isLoggedIn: boolean): NavigationReturn {
   const goToTxResult = useCallback(
     (txHash: string, networkData: NetworkData) => {
       transitionTo({ type: "tx-result", txHash, networkData });
+    },
+    [transitionTo],
+  );
+
+  const goToTxHistory = useCallback(
+    (walletAddress: string, chain: string, networkId: number) => {
+      transitionTo({ type: "tx-history", walletAddress, chain, networkId });
     },
     [transitionTo],
   );
@@ -166,5 +197,6 @@ export function useNavigation(isLoggedIn: boolean): NavigationReturn {
     goToSetupMfa,
     goToSendTx,
     goToTxResult,
+    goToTxHistory,
   };
 }

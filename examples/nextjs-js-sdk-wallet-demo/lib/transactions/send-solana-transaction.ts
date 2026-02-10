@@ -19,7 +19,7 @@ import {
   signAndSendTransaction,
   getMfaDevices,
   authenticateTotpMfaDevice,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import { createSolanaTransaction } from "./create-solana-transaction";
 
 // =============================================================================

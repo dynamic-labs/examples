@@ -1,7 +1,7 @@
 "use client";
 
 import { useSdkQuery } from "./use-sdk-query";
-import { getNetworksData, type NetworkData } from "@/lib/dynamic-client";
+import { getNetworksData, type NetworkData } from "@/lib/dynamic";
 
 /**
  * Hook to get all available networks

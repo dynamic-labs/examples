@@ -5,7 +5,7 @@ import {
   getActiveNetworkData,
   type WalletAccount,
   type NetworkData,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 
 /**
  * Hook to get active network for a wallet with reactive updates

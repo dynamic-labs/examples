@@ -18,7 +18,7 @@
  */
 
 import { useSyncExternalStore } from "react";
-import { isSignedIn, onEvent } from "@/lib/dynamic-client";
+import { isSignedIn, onEvent } from "@/lib/dynamic";
 
 /** Events that indicate potential auth state changes */
 const AUTH_EVENTS = [

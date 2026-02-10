@@ -7,7 +7,7 @@ import { ErrorMessage } from "@/components/error-message";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useCreateWallet } from "@/hooks/use-mutations";
 import { useChainOptions } from "@/hooks/use-chain-options";
-import type { Chain } from "@/lib/dynamic-client";
+import type { Chain } from "@/lib/dynamic";
 
 interface CreateWalletButtonsProps {
   className?: string;

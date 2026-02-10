@@ -21,7 +21,7 @@ import {
   logout,
   type OTPVerification,
   type Chain,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import {
   sendTransaction,
   type SendTransactionParams,
@@ -88,7 +88,7 @@ export function useVerifyOTP() {
  * Initiate Google OAuth flow
  * Redirects user to Google, then back to the app
  *
- * Note: OAuth completion is handled in AuthScreen via detectOAuthRedirect
+ * Note: OAuth completion is handled in AuthScreen via completeSocialAuthentication
  */
 export function useGoogleAuth() {
   return useMutation({

@@ -29,7 +29,7 @@ import {
   registerTotpMfaDevice,
   authenticateTotpMfaDevice,
   getMfaDevices,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import { useMfaStatus } from "@/hooks/use-mfa-status";
 
 type SetupStep = "loading" | "scan" | "verify" | "error";

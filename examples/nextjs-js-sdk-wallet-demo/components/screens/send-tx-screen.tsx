@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, CheckCircle, ArrowLeft, Send, Zap } from "lucide-react";
+import { ExternalLink, CheckCircle, ArrowLeft, Send } from "lucide-react";
 import { WidgetCard } from "@/components/ui/widget-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import {
   type NetworkData,
   getBalance,
   isSvmGasSponsorshipEnabled,
-} from "@/lib/dynamic-client";
+} from "@/lib/dynamic";
 import type { NavigationReturn } from "@/hooks/use-navigation";
 import { useMfaStatus, isMfaRequiredError } from "@/hooks/use-mfa-status";
 import { SetupMfaScreen } from "@/components/screens/setup-mfa-screen";
@@ -38,6 +38,14 @@ interface SendTxScreenProps {
     networkData: NetworkData;
   };
   fromMfaSetup?: boolean;
+  onBack?: () => void;
+}
+
+/** Build a block explorer link, preserving query params (e.g. ?cluster=devnet) */
+function buildExplorerTxUrl(explorerUrl: string, txHash: string): string {
+  const url = new URL(explorerUrl);
+  url.pathname = `${url.pathname.replace(/\/$/, "")}/tx/${txHash}`;
+  return url.toString();
 }
 
 /**
@@ -111,7 +119,7 @@ function TransactionResultView({
         <div className="flex flex-col gap-2 pt-1">
           {explorerUrl && (
             <a
-              href={`${explorerUrl}/tx/${txHash}`}
+              href={buildExplorerTxUrl(explorerUrl, txHash)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 h-9 px-3 text-xs font-medium text-(--widget-accent) bg-(--widget-accent)/5 rounded-(--widget-radius) hover:bg-(--widget-accent)/10 transition-colors"
@@ -170,7 +178,10 @@ export function SendTxScreen({
   navigation,
   txResult,
   fromMfaSetup = false,
+  onBack,
 }: SendTxScreenProps) {
+  const handleClose = onBack ?? navigation.goToDashboard;
+
   // Form state
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
@@ -243,12 +254,15 @@ export function SendTxScreen({
   // Check for SVM gas sponsorship (Solana)
   const svmSponsored = !isEvm && isSvmGasSponsorshipEnabled();
 
-  // Determine EVM sponsorship status for display
-  const evmSponsorshipStatus = useMemo(() => {
-    if (sponsorshipLoading) return { type: "loading" as const };
-    if (isSponsored && zerodevWallet) return { type: "sponsored" as const };
-    return { type: "standard" as const };
-  }, [sponsorshipLoading, isSponsored, zerodevWallet]);
+  // Determine sponsorship status for display (EVM and Solana)
+  const sponsorshipStatus = useMemo(() => {
+    if (isEvm) {
+      if (sponsorshipLoading) return { type: "loading" as const };
+      if (isSponsored && zerodevWallet) return { type: "sponsored" as const };
+      return { type: "standard" as const };
+    }
+    return svmSponsored ? { type: "sponsored" as const } : undefined;
+  }, [isEvm, sponsorshipLoading, isSponsored, zerodevWallet, svmSponsored]);
 
   // Authorization is ready if already authorized on-chain OR we have a signed auth
   const isAuthReady = isAuthorized || !!signedAuth;
@@ -352,7 +366,7 @@ export function SendTxScreen({
           }
           title="Send Transaction"
           subtitle={screenState.message}
-          onClose={navigation.goToDashboard}
+          onClose={handleClose}
         />
       );
 
@@ -365,7 +379,7 @@ export function SendTxScreen({
             setJustCompletedMfaSetup(false);
             handleAuthSuccess(auth);
           }}
-          onCancel={navigation.goToDashboard}
+          onCancel={handleClose}
           onNeedsMfaSetup={() => setShowMfaSetup(true)}
         />
       );
@@ -389,7 +403,7 @@ export function SendTxScreen({
           txHash={txResult.txHash}
           networkData={txResult.networkData}
           explorerUrl={txResult.networkData.blockExplorerUrls?.[0]}
-          onClose={navigation.goToDashboard}
+          onClose={handleClose}
         />
       );
 
@@ -403,7 +417,7 @@ export function SendTxScreen({
             />
           }
           message={screenState.message}
-          onClose={navigation.goToDashboard}
+          onClose={handleClose}
         />
       );
 
@@ -418,47 +432,16 @@ export function SendTxScreen({
           }
           title="Send Transaction"
           subtitle={<AddressSubtitle address={walletAddress} />}
-          onClose={navigation.goToDashboard}
+          onClose={handleClose}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Network Selector (EVM only) */}
-            {isEvm && walletAccount && (
+            {/* Network Selector (EVM and Solana) */}
+            {walletAccount && (
               <NetworkSelectorSection
                 walletAccount={walletAccount}
                 onNetworkChange={handleNetworkChange}
-                sponsorship={evmSponsorshipStatus}
+                sponsorship={sponsorshipStatus}
               />
-            )}
-
-            {/* Solana network info */}
-            {!isEvm && networkData && (
-              <div className="p-3 bg-(--widget-row-bg) border border-(--widget-border) rounded-(--widget-radius)">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-(--widget-fg) tracking-[-0.14px]">
-                      Network
-                    </span>
-                    {svmSponsored && (
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-(--widget-accent)">
-                        <Zap className="w-3 h-3" />
-                        Gas Sponsored
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {networkData.iconUrl && (
-                      <img
-                        src={networkData.iconUrl}
-                        alt={networkData.displayName}
-                        className="w-5 h-5 rounded"
-                      />
-                    )}
-                    <span className="text-sm font-medium text-(--widget-fg)">
-                      {networkData.displayName}
-                    </span>
-                  </div>
-                </div>
-              </div>
             )}
 
             {/* Recipient Address */}

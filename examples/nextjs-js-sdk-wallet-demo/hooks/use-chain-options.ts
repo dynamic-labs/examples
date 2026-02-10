@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useNetworks } from "./use-networks";
-import type { Chain } from "@/lib/dynamic-client";
+import type { Chain } from "@/lib/dynamic";
 
 /**
  * Chain option for wallet creation

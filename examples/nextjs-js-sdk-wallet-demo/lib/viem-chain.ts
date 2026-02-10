@@ -6,7 +6,7 @@
  */
 
 import { type Chain } from "viem";
-import type { NetworkData } from "@/lib/dynamic-client";
+import type { NetworkData } from "@/lib/dynamic";
 
 /**
  * Parse chain ID from Dynamic's networkId string

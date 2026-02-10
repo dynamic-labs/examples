@@ -39,6 +39,14 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
     navigation.goToSetupMfa(address, chain);
   };
 
+  const handleRowClick = (
+    address: string,
+    chain: string,
+    networkId: number,
+  ) => {
+    navigation.goToTxHistory(address, chain, networkId);
+  };
+
   return (
     <WidgetCard
       icon={
@@ -61,6 +69,7 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
             onSend={handleSend}
             onAuthorize={handleAuthorize}
             onSetupMfa={handleSetupMfa}
+            onRowClick={handleRowClick}
           />
         )}
 

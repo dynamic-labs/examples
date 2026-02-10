@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 // Import dynamic client to initialize it
-import "@/lib/dynamic-client";
+import "@/lib/dynamic";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
