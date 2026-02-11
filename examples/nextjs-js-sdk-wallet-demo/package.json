@@ -10,11 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dynamic-labs-sdk/client": "0.7.0",
-    "@dynamic-labs-sdk/evm": "0.7.0",
-    "@dynamic-labs-sdk/solana": "0.7.0",
-    "@dynamic-labs-sdk/zerodev": "0.7.0",
+    "@dynamic-labs-sdk/client": "0.8.0",
+    "@dynamic-labs-sdk/evm": "0.8.0",
+    "@dynamic-labs-sdk/solana": "0.8.0",
+    "@dynamic-labs-sdk/zerodev": "0.8.0",
     "@dynamic-labs/iconic": "^4.60.1",
+    "@solana/spl-token": "0.4.13",
     "@solana/web3.js": "1.98.4",
     "@tanstack/react-query": "5.90.16",
     "clsx": "2.1.1",

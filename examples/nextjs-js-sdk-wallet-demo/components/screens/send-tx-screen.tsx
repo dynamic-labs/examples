@@ -12,16 +12,18 @@ import { MfaCodeInput } from "@/components/ui/mfa-code-input";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ErrorMessage } from "@/components/error-message";
 import { NetworkSelectorSection } from "@/components/wallet/network-selector-section";
+import { AssetSelector } from "@/components/wallet/asset-selector";
 import { Authorize7702Screen } from "@/components/screens/authorize-7702-screen";
 import { useSendTransaction } from "@/hooks/use-mutations";
 import { useWalletAccounts } from "@/hooks/use-wallet-accounts";
 import { useActiveNetwork } from "@/hooks/use-active-network";
 import { useGasSponsorship } from "@/hooks/use-gas-sponsorship";
 import { use7702Authorization } from "@/hooks/use-7702-authorization";
-import { truncateAddress } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 import {
   type NetworkData,
-  getBalance,
+  type TokenBalanceInfo,
+  getTokenBalances,
   isSvmGasSponsorshipEnabled,
 } from "@/lib/dynamic";
 import type { NavigationReturn } from "@/hooks/use-navigation";
@@ -187,6 +189,13 @@ export function SendTxScreen({
   const [amount, setAmount] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [showMfaSetup, setShowMfaSetup] = useState(false);
+  // Asset selection — stores the address of the user-picked asset (null = use default)
+  const [pickedAssetAddress, setPickedAssetAddress] = useState<string | null>(
+    null,
+  );
+  const [useManualEntry, setUseManualEntry] = useState(false);
+  const [tokenAddress, setTokenAddress] = useState("");
+  const [tokenDecimals, setTokenDecimals] = useState("");
   // Track when user just completed MFA setup (internally or from navigation)
   const [justCompletedMfaSetup, setJustCompletedMfaSetup] =
     useState(fromMfaSetup);
@@ -199,7 +208,6 @@ export function SendTxScreen({
   const sendTx = useSendTransaction();
   const {
     requiresMfa,
-    needsSetup: mfaNeedsSetup,
     isLoading: mfaLoading,
     refetch: refetchMfaStatus,
   } = useMfaStatus();
@@ -241,15 +249,63 @@ export function SendTxScreen({
   // The wallet account to use for transactions
   const walletAccount = isEvm ? walletToUse || anyWallet : anyWallet;
 
-  // Fetch balance for the wallet
-  const { data: balanceData } = useQuery({
-    queryKey: ["balance", walletAccount?.address, networkData?.networkId],
+  // Fetch all balances (native + tokens) for the asset selector
+  const { data: tokenBalances, isLoading: tokensLoading } = useQuery({
+    queryKey: [
+      "tokenBalances",
+      walletAccount?.address,
+      chain,
+      networkData?.networkId,
+    ],
     queryFn: async () => {
-      if (!walletAccount) return { balance: null };
-      return getBalance({ walletAccount });
+      if (!walletAccount || !networkData) return [];
+      return getTokenBalances({
+        address: walletAccount.address,
+        chain,
+        networkId: Number(networkData.networkId),
+      });
     },
-    enabled: !!walletAccount,
+    enabled: !!walletAccount && !!networkData,
   });
+
+  // Derive the selected token from query data:
+  // - If user picked one, find it by address
+  // - Otherwise default: native token (if multiple) or the only asset
+  const selectedToken = useMemo(() => {
+    if (!tokenBalances?.length) return null;
+    if (pickedAssetAddress != null) {
+      return (
+        tokenBalances.find((t) => t.address === pickedAssetAddress) ?? null
+      );
+    }
+    if (tokenBalances.length === 1) return tokenBalances[0];
+    return tokenBalances.find((t) => t.isNative) ?? tokenBalances[0];
+  }, [tokenBalances, pickedAssetAddress]);
+
+  // Effective token address and decimals — derived from selectedToken for the
+  // dropdown path, or from manual state for the manual entry path.
+  const effectiveTokenAddress = useManualEntry
+    ? tokenAddress
+    : selectedToken?.isNative
+      ? ""
+      : (selectedToken?.address ?? "");
+  const effectiveTokenDecimals = useManualEntry
+    ? tokenDecimals
+    : selectedToken?.isNative
+      ? ""
+      : String(selectedToken?.decimals ?? "");
+
+  // Handle asset selection from the dropdown
+  const handleSelectToken = (token: TokenBalanceInfo) => {
+    setPickedAssetAddress(token.address);
+    if (token.isNative) {
+      setTokenAddress("");
+      setTokenDecimals("");
+    } else {
+      setTokenAddress(token.address);
+      setTokenDecimals(String(token.decimals));
+    }
+  };
 
   // Check for SVM gas sponsorship (Solana)
   const svmSponsored = !isEvm && isSvmGasSponsorshipEnabled();
@@ -310,7 +366,10 @@ export function SendTxScreen({
   const handleNetworkChange = () => {
     refetchNetwork();
     setMfaCode("");
-    setSignedAuth(null); // Clear auth when network changes
+    setSignedAuth(null);
+    setPickedAssetAddress(null);
+    setTokenAddress("");
+    setTokenDecimals("");
   };
 
   // Handle authorization success
@@ -319,12 +378,19 @@ export function SendTxScreen({
     setMfaCode(""); // Clear MFA code - user needs a new one for the transaction
   };
 
+  // A token transfer is any non-native asset
+  const isTokenTransfer = effectiveTokenAddress.trim() !== "";
+  const tokenFieldsValid =
+    !isTokenTransfer ||
+    (effectiveTokenAddress.trim() && effectiveTokenDecimals.trim());
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recipient.trim() || !amount.trim() || !walletAccount || !networkData) {
       return;
     }
+    if (!tokenFieldsValid) return;
     if (requiresMfa && !mfaCode.trim()) return;
 
     try {
@@ -335,6 +401,12 @@ export function SendTxScreen({
         networkData,
         mfaCode: requiresMfa ? mfaCode : undefined,
         eip7702Auth: signedAuth ?? undefined,
+        tokenAddress: isTokenTransfer
+          ? effectiveTokenAddress.trim()
+          : undefined,
+        tokenDecimals: isTokenTransfer
+          ? parseInt(effectiveTokenDecimals, 10)
+          : undefined,
       });
 
       // Clear signed auth after successful transaction
@@ -435,7 +507,7 @@ export function SendTxScreen({
           onClose={handleClose}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Network Selector (EVM and Solana) */}
+            {/* Network Selector */}
             {walletAccount && (
               <NetworkSelectorSection
                 walletAccount={walletAccount}
@@ -454,27 +526,92 @@ export function SendTxScreen({
               disabled={sendTx.isPending}
             />
 
-            {/* Amount with balance display */}
-            <Input
-              label={
-                <span className="flex items-center justify-between w-full">
-                  <span>
-                    Amount ({networkData?.nativeCurrency?.symbol || chain})
-                  </span>
-                  {balanceData?.balance && (
-                    <span className="text-xs text-(--widget-muted) font-normal">
-                      Balance: {balanceData.balance}
+            {/* Amount + inline asset selector */}
+            {!useManualEntry ? (
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center justify-between text-xs font-medium text-(--widget-muted) tracking-[-0.12px]">
+                  <span>Amount</span>
+                  {selectedToken && (
+                    <span className="font-normal">
+                      Balance: {selectedToken.balance}
                     </span>
                   )}
-                </span>
-              }
-              type="text"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.001"
-              pattern="^[0-9]*\.?[0-9]*$"
-              disabled={sendTx.isPending}
-            />
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                    pattern="^[0-9]*\.?[0-9]*$"
+                    disabled={sendTx.isPending}
+                    className={cn(
+                      "w-full h-10 pl-3 pr-[7.5rem] text-sm",
+                      "bg-(--widget-bg) text-(--widget-fg)",
+                      "border border-(--widget-border) rounded-(--widget-radius)",
+                      "placeholder:text-(--widget-muted)",
+                      "focus:outline-none focus:ring-2 focus:ring-(--widget-accent) focus:border-transparent",
+                      "disabled:opacity-50 disabled:cursor-not-allowed",
+                    )}
+                  />
+                  <AssetSelector
+                    assets={tokenBalances ?? []}
+                    selected={selectedToken}
+                    onSelect={handleSelectToken}
+                    loading={tokensLoading}
+                    disabled={sendTx.isPending}
+                    onManualEntry={() => {
+                      setUseManualEntry(true);
+                      setPickedAssetAddress(null);
+                      setTokenAddress("");
+                      setTokenDecimals("");
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              /* Manual token entry — replaces the amount row */
+              <div className="space-y-3 p-3 bg-(--widget-row-bg) border border-(--widget-border) rounded-(--widget-radius)">
+                <Input
+                  label="Token Address"
+                  type="text"
+                  value={tokenAddress}
+                  onChange={(e) => setTokenAddress(e.target.value)}
+                  placeholder="Enter address"
+                  disabled={sendTx.isPending}
+                />
+                <Input
+                  label="Token Decimals"
+                  type="text"
+                  value={tokenDecimals}
+                  onChange={(e) => setTokenDecimals(e.target.value)}
+                  placeholder={isEvm ? "18" : "9"}
+                  pattern="^[0-9]*$"
+                  disabled={sendTx.isPending}
+                />
+                <Input
+                  label="Amount"
+                  type="text"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  pattern="^[0-9]*\.?[0-9]*$"
+                  disabled={sendTx.isPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseManualEntry(false);
+                    setTokenAddress("");
+                    setTokenDecimals("");
+                  }}
+                  className="flex items-center gap-1 text-[10px] text-(--widget-muted) hover:text-(--widget-fg) transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                  Back to asset list
+                </button>
+              </div>
+            )}
 
             {/* MFA Code Input */}
             {requiresMfa && (
@@ -500,6 +637,7 @@ export function SendTxScreen({
                 !recipient.trim() ||
                 !amount.trim() ||
                 !networkData ||
+                !tokenFieldsValid ||
                 (requiresMfa && mfaCode.length !== 6)
               }
             >

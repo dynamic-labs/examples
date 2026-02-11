@@ -44,7 +44,8 @@ export {
 } from "./networks";
 
 // Balance
-export { getBalance } from "./balance";
+export { getBalance, getTokenBalances } from "./balance";
+export type { TokenBalanceInfo } from "./balance";
 
 // Transaction History
 export { getTransactionHistory } from "./transaction-history";
