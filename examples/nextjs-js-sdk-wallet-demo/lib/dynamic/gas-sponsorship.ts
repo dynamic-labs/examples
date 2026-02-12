@@ -52,9 +52,9 @@ export function isNetworkSponsored(networkId: string): boolean {
 /**
  * Check if SVM (Solana) gas sponsorship is enabled.
  *
- * When enabled, Dynamic automatically sponsors Solana transaction fees
- * for embedded wallet users. No code changes required - transactions
- * are intercepted and sponsored automatically.
+ * When enabled, use `signAndSendSponsoredTransaction` from `@/lib/dynamic`
+ * to explicitly send sponsored Solana transactions. The function sends the
+ * transaction to Dynamic's backend, replaces the fee payer, and broadcasts.
  *
  * @returns true if SVM gas sponsorship is enabled in the dashboard
  *

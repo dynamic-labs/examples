@@ -27,6 +27,8 @@ export interface SendTransactionParams {
   tokenAddress?: string;
   /** Token decimals for token transfers (e.g., 6 for USDC, 18 for most ERC-20) */
   tokenDecimals?: number;
+  /** Use SVM gas sponsorship to cover Solana transaction fees (Solana only) */
+  sponsored?: boolean;
 }
 
 // =============================================================================
@@ -48,6 +50,7 @@ export async function sendTransaction({
   eip7702Auth,
   tokenAddress,
   tokenDecimals,
+  sponsored,
 }: SendTransactionParams): Promise<string> {
   // EVM Chain
   if (isEvmWalletAccount(walletAccount)) {
@@ -76,6 +79,7 @@ export async function sendTransaction({
       mfaCode,
       tokenAddress,
       tokenDecimals,
+      sponsored,
     });
   }
 

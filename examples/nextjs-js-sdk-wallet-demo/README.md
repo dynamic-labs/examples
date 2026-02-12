@@ -163,7 +163,7 @@ export function useGasSponsorship(
 ) {
   // 1. Find ZeroDev and base wallets for this address
   // 2. Switch ZeroDev wallet to target network
-  // 3. Call canSponsorTransaction to check availability
+  // 3. Check isNetworkSponsored(networkId) or canSponsorUserOperation for availability
   // 4. Return walletToUse (ZeroDev if sponsored, base otherwise)
 
   return { isSponsored, isLoading, walletToUse, zerodevWallet, baseWallet };

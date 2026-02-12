@@ -57,13 +57,17 @@ export { getWalletProviderDataByKey } from "./wallet-provider";
 export { createWalletClientForWalletAccount } from "./evm";
 
 // Solana
-export { signAndSendTransaction } from "./solana";
+export {
+  signAndSendTransaction,
+  signAndSendSponsoredTransaction,
+  SponsorTransactionError,
+} from "./solana";
 
 // ZeroDev (Account Abstraction)
 export {
   createKernelClientForWalletAccount,
   isGasSponsorshipError,
-  canSponsorTransaction,
+  canSponsorUserOperation,
   signEip7702Authorization,
 } from "./zerodev";
 

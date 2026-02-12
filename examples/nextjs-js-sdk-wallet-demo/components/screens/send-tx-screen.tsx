@@ -407,6 +407,7 @@ export function SendTxScreen({
         tokenDecimals: isTokenTransfer
           ? parseInt(effectiveTokenDecimals, 10)
           : undefined,
+        sponsored: svmSponsored || undefined,
       });
 
       // Clear signed auth after successful transaction
@@ -546,7 +547,7 @@ export function SendTxScreen({
                     pattern="^[0-9]*\.?[0-9]*$"
                     disabled={sendTx.isPending}
                     className={cn(
-                      "w-full h-10 pl-3 pr-[7.5rem] text-sm",
+                      "w-full h-10 pl-3 pr-30 text-sm",
                       "bg-(--widget-bg) text-(--widget-fg)",
                       "border border-(--widget-border) rounded-(--widget-radius)",
                       "placeholder:text-(--widget-muted)",

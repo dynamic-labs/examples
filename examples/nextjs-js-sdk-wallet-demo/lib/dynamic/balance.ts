@@ -125,7 +125,6 @@ export async function getTokenBalances({
         ],
       },
     });
-    console.log("chainBalances", chainBalances);
 
     return (
       chainBalances?.flatMap((cb) =>
