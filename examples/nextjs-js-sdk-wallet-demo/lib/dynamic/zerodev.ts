@@ -12,7 +12,7 @@
 import {
   createKernelClientForWalletAccount as sdkCreateKernelClientForWalletAccount,
   isGasSponsorshipError as sdkIsGasSponsorshipError,
-  canSponsorTransaction as sdkCanSponsorTransaction,
+  canSponsorUserOperation as sdkCanSponsorUserOperation,
   signEip7702Authorization as sdkSignEip7702Authorization,
 } from "@dynamic-labs-sdk/zerodev";
 import { createAsyncSafeWrapper } from "./client";
@@ -32,14 +32,15 @@ export const createKernelClientForWalletAccount =
 export const isGasSponsorshipError = sdkIsGasSponsorshipError;
 
 /**
- * Check if a transaction can be sponsored by the configured paymaster.
+ * Check if a user operation can be sponsored by the configured paymaster.
  *
  * Use this to determine if the user will need to pay gas fees
  * or if the transaction qualifies for gas sponsorship.
+ * Requires wallet account and the calls to be sponsored.
  *
- * @see https://www.dynamic.xyz/docs/javascript/reference/zerodev/can-sponsor-transaction
+ * @see https://www.dynamic.xyz/docs/javascript/reference/zerodev
  */
-export const canSponsorTransaction = sdkCanSponsorTransaction;
+export const canSponsorUserOperation = sdkCanSponsorUserOperation;
 
 /**
  * Sign an EIP-7702 authorization for a smart wallet account.

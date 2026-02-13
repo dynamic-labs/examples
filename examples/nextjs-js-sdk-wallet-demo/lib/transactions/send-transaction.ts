@@ -23,6 +23,12 @@ export interface SendTransactionParams {
   mfaCode?: string;
   /** EIP-7702 authorization (for first tx after signing smart account, EVM only) */
   eip7702Auth?: SignAuthorizationReturnType;
+  /** Token contract/mint address for token transfers (omit for native transfers) */
+  tokenAddress?: string;
+  /** Token decimals for token transfers (e.g., 6 for USDC, 18 for most ERC-20) */
+  tokenDecimals?: number;
+  /** Use SVM gas sponsorship to cover Solana transaction fees (Solana only) */
+  sponsored?: boolean;
 }
 
 // =============================================================================
@@ -42,6 +48,9 @@ export async function sendTransaction({
   networkData,
   mfaCode,
   eip7702Auth,
+  tokenAddress,
+  tokenDecimals,
+  sponsored,
 }: SendTransactionParams): Promise<string> {
   // EVM Chain
   if (isEvmWalletAccount(walletAccount)) {
@@ -52,6 +61,8 @@ export async function sendTransaction({
       networkData,
       mfaCode,
       eip7702Auth,
+      tokenAddress,
+      tokenDecimals,
     });
   }
 
@@ -66,6 +77,9 @@ export async function sendTransaction({
       recipient,
       rpcUrl,
       mfaCode,
+      tokenAddress,
+      tokenDecimals,
+      sponsored,
     });
   }
 

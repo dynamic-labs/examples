@@ -44,7 +44,8 @@ export {
 } from "./networks";
 
 // Balance
-export { getBalance } from "./balance";
+export { getBalance, getTokenBalances } from "./balance";
+export type { TokenBalanceInfo } from "./balance";
 
 // Transaction History
 export { getTransactionHistory } from "./transaction-history";
@@ -56,13 +57,17 @@ export { getWalletProviderDataByKey } from "./wallet-provider";
 export { createWalletClientForWalletAccount } from "./evm";
 
 // Solana
-export { signAndSendTransaction } from "./solana";
+export {
+  signAndSendTransaction,
+  signAndSendSponsoredTransaction,
+  SponsorTransactionError,
+} from "./solana";
 
 // ZeroDev (Account Abstraction)
 export {
   createKernelClientForWalletAccount,
   isGasSponsorshipError,
-  canSponsorTransaction,
+  canSponsorUserOperation,
   signEip7702Authorization,
 } from "./zerodev";
 

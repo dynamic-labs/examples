@@ -4,6 +4,7 @@ import {
   WalletAccountNotSelectedError,
 } from "@dynamic-labs-sdk/client";
 import { isGasSponsorshipError } from "@dynamic-labs-sdk/zerodev";
+import { SponsorTransactionError } from "@/lib/dynamic";
 
 /**
  * Parsed error with title and description
@@ -64,6 +65,14 @@ export function parseError(
       title: "Gas sponsorship unavailable",
       description:
         "This transaction doesn't qualify for gas sponsorship. You'll need to pay gas fees.",
+    };
+  }
+
+  if (error instanceof SponsorTransactionError) {
+    return {
+      title: "Solana gas sponsorship failed",
+      description:
+        "Unable to sponsor this Solana transaction. The transaction was not sent.",
     };
   }
 

@@ -22,15 +22,22 @@ import { getClient } from "./client";
 /**
  * Check if email OTP authentication should be shown.
  *
- * Controlled by the `NEXT_PUBLIC_ENABLE_EMAIL_AUTH` environment variable.
- * Set to "true" to show the email login option.
+ * Reads from `projectSettings.providers` for the entry with `provider === 'dynamic'`
+ * and checks that `enabledAt` is not null (the provider is always present, but
+ * `enabledAt` is only set when email auth is enabled in the dashboard).
  *
- * @returns true if email authentication is enabled
+ * @returns true if the dynamic (email) provider is enabled in the project
  *
  * @see https://www.dynamic.xyz/docs/javascript/authentication-methods/email
  */
 export function isEmailAuthEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ENABLE_EMAIL_AUTH === "true";
+  const client = getClient();
+  if (!client?.projectSettings) return false;
+
+  const dynamicProvider = client.projectSettings.providers?.find(
+    (p) => p.provider === "dynamic",
+  );
+  return dynamicProvider?.enabledAt != null;
 }
 
 /**
