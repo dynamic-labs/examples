@@ -12,6 +12,7 @@
     "@dynamic-labs/sdk-react-core": "^4.52.2",
     "@dynamic-labs/solana": "^4.52.2",
     "@dynamic-labs/solana-core": "^4.52.2",
+    "@lifi/sdk": "^3.14.1",
     "@solana/buffer-layout-utils": "^0.3.0",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
@@ -24,6 +25,7 @@
     "next": "^15.5.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "viem": "^2.42.1",
     "zod": "^4.2.1"
   },
   "devDependencies": {

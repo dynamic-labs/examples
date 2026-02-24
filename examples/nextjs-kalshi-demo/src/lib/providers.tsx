@@ -9,6 +9,7 @@ import {
 } from "@/lib/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/components/ui/Toast";
+import { LiFiProvider } from "./lifi-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -22,10 +23,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          {children}
-          <DynamicUserProfile />
-        </ToastProvider>
+        <LiFiProvider>
+          <ToastProvider>
+            {children}
+            <DynamicUserProfile />
+          </ToastProvider>
+        </LiFiProvider>
       </QueryClientProvider>
     </DynamicContextProvider>
   );
