@@ -3,12 +3,13 @@
 import {
   useDynamicContext,
   useTokenBalances,
+  ChainEnum,
 } from "@dynamic-labs/sdk-react-core";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useLiFi } from "@/lib/hooks/useLiFi";
 import { loadLiFiTokens } from "@/lib/lifi";
 import type { Token } from "@lifi/sdk";
-import { USDC_MINT, WSOL_MINT } from "@/lib/constants";
+import { WSOL_MINT } from "@/lib/constants";
 
 interface LiFiViewProps {
   embeddedWalletAddress: string;
@@ -34,33 +35,36 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
   const { primaryWallet } = useDynamicContext();
   const [view, setView] = useState<View>("select");
   const [solanaTokens, setSolanaTokens] = useState<Token[]>([]);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(true);
   const [selectedFromToken, setSelectedFromToken] = useState<Token | null>(null);
   const [selectedToToken, setSelectedToToken] = useState<Token | null>(null);
   const [tokenAmount, setTokenAmount] = useState("");
 
+  // chainName: "SOL" tells Dynamic to fetch Solana balances (networkId would be wrong here)
+  // filterSpamTokens: false so real tokens aren't filtered out
   const { tokenBalances, isLoading: isLoadingBalances } = useTokenBalances({
     accountAddress: primaryWallet?.address,
-    networkId: SOLANA_CHAIN_ID,
+    chainName: ChainEnum.Sol,
     includeNativeBalance: true,
     includeFiat: false,
-    filterSpamTokens: true,
+    filterSpamTokens: false,
   });
 
   const { getRoutesForSwap, executeSwap, isLoading, error, clearError } =
     useLiFi();
 
-  // Load all Solana tokens
+  // Load all Solana tokens from LiFi
   useEffect(() => {
+    setIsLoadingTokens(true);
     loadLiFiTokens(SOLANA_CHAIN_ID).then((tokens) => {
       setSolanaTokens(tokens);
-      // Default to native SOL as source
+      setIsLoadingTokens(false);
+      // Default to native SOL as destination (trading uses wSOL, auto-wrapped from SOL)
+      const nativeSol = tokens.find((t) => t.address === NATIVE_SOL_ADDRESS);
+      if (nativeSol) setSelectedToToken(nativeSol);
+      // Default to native SOL as source too (user can change)
       const sol = tokens.find((t) => isSolNativeToken(t.address));
       if (sol && !selectedFromToken) setSelectedFromToken(sol);
-      // Default USDC as destination
-      const usdc = tokens.find(
-        (t) => t.address.toLowerCase() === USDC_MINT.toLowerCase()
-      );
-      if (usdc) setSelectedToToken(usdc);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,7 +75,7 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
     return tokenBalances.filter((b) => b.balance > 0);
   }, [tokenBalances]);
 
-  // Filter to tokens with balance
+  // Filter LiFi token list to only tokens the user holds
   const fromTokens = useMemo(() => {
     return solanaTokens.filter((token) => {
       if (isSolNativeToken(token.address)) {
@@ -93,6 +97,12 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
     );
   }, [selectedFromToken, userTokensWithBalance]);
 
+  // True when FROM and TO are both native SOL (no swap needed)
+  const isSameToken = useMemo(() => {
+    if (!selectedFromToken || !selectedToToken) return false;
+    return isSolNativeToken(selectedFromToken.address) && isSolNativeToken(selectedToToken.address);
+  }, [selectedFromToken, selectedToToken]);
+
   const handleExecute = useCallback(async () => {
     if (
       !primaryWallet?.address ||
@@ -110,6 +120,7 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
         fromChainId: SOLANA_CHAIN_ID,
         toChainId: SOLANA_CHAIN_ID,
         fromTokenAddress: selectedFromToken.address,
+        fromTokenDecimals: selectedFromToken.decimals,
         toTokenAddress: selectedToToken.address,
         fromAmount: tokenAmount,
         fromAddress: primaryWallet.address,
@@ -163,11 +174,16 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
 
   // Select View
   if (view === "select") {
+    const isLoading = isLoadingBalances || isLoadingTokens;
+
     return (
       <div className="p-[16px]">
         <div className="mb-[16px]">
-          <p className="font-['Clash_Display',sans-serif] text-[16px] text-white mb-[8px]">
-            Swap Solana tokens to USDC
+          <p className="font-['Clash_Display',sans-serif] text-[16px] text-white mb-[4px]">
+            Swap tokens to SOL
+          </p>
+          <p className="text-xs font-['Clash_Display',sans-serif] text-[rgba(139,92,246,0.6)]">
+            SOL is used for trading on Kalshi
           </p>
         </div>
 
@@ -176,13 +192,17 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
             <label className="block text-sm font-medium font-['Clash_Display',sans-serif] text-white mb-[8px]">
               From Token
             </label>
-            {isLoadingBalances ? (
-              <div className="w-full p-[12px] bg-[#1a1b23] border border-[#262a34] rounded-[8px] text-white text-center font-['Clash_Display',sans-serif]">
-                Loading tokens...
+            {isLoading ? (
+              <div className="w-full p-[12px] bg-[#1a1b23] border border-[#262a34] rounded-[8px] text-white text-center font-['Clash_Display',sans-serif] flex items-center justify-center gap-[8px]">
+                <div className="w-[14px] h-[14px] border-2 border-[#8b5cf6] border-t-transparent rounded-full animate-spin" />
+                <span className="opacity-75">Loading tokens...</span>
               </div>
             ) : fromTokens.length === 0 ? (
-              <div className="w-full p-[12px] bg-[#1a1b23] border border-[#262a34] rounded-[8px] text-white text-center opacity-75 font-['Clash_Display',sans-serif]">
-                No tokens with balance found
+              <div className="w-full p-[12px] bg-[#1a1b23] border border-[#262a34] rounded-[8px] text-center font-['Clash_Display',sans-serif] space-y-[4px]">
+                <p className="text-white opacity-75">No tokens with balance found</p>
+                <p className="text-xs text-[rgba(139,92,246,0.6)]">
+                  Fund your wallet first, or use the QR code to receive SOL
+                </p>
               </div>
             ) : (
               <select
@@ -219,10 +239,18 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
                 To
               </span>
               <span className="font-['Clash_Display',sans-serif] text-white">
-                {selectedToToken?.symbol || "USDC"} on Solana
+                SOL on Solana
               </span>
             </div>
           </div>
+
+          {isSameToken && (
+            <div className="p-[10px] bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.2)] rounded-[8px]">
+              <p className="text-xs font-['Clash_Display',sans-serif] text-[rgba(139,92,246,0.8)] text-center">
+                You already have SOL — use the QR code to deposit it directly
+              </p>
+            </div>
+          )}
         </div>
 
         <button
@@ -231,7 +259,7 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
             setView("amount");
             clearError();
           }}
-          disabled={!selectedFromToken || !selectedToToken}
+          disabled={!selectedFromToken || !selectedToToken || isSameToken || isLoading}
           className="w-full bg-linear-to-r from-[#8b5cf6] to-[#06b6d4] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-['Clash_Display',sans-serif] font-semibold py-[12px] rounded-[8px]"
         >
           Continue
@@ -270,7 +298,7 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
             Enter amount
           </p>
           <p className="text-xs font-['Clash_Display',sans-serif] text-[rgba(139,92,246,0.6)]">
-            {selectedFromToken?.symbol} → {selectedToToken?.symbol}
+            {selectedFromToken?.symbol} → SOL
           </p>
         </div>
 
@@ -304,7 +332,7 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
           disabled={!tokenAmount || parseFloat(tokenAmount) <= 0 || isLoading}
           className="w-full bg-linear-to-r from-[#8b5cf6] to-[#06b6d4] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-['Clash_Display',sans-serif] font-semibold py-[12px] rounded-[8px]"
         >
-          {isLoading ? "Processing..." : "Swap"}
+          {isLoading ? "Processing..." : "Swap to SOL"}
         </button>
 
         {error && (
@@ -350,8 +378,11 @@ export function LiFiView({ embeddedWalletAddress, onBack }: LiFiViewProps) {
             />
           </svg>
         </div>
-        <p className="font-['Clash_Display',sans-serif] text-[16px] text-white mb-[16px]">
+        <p className="font-['Clash_Display',sans-serif] text-[16px] text-white mb-[4px]">
           Swap Successful!
+        </p>
+        <p className="text-sm font-['Clash_Display',sans-serif] text-[rgba(139,92,246,0.6)] mb-[16px]">
+          SOL has been deposited to your wallet
         </p>
         <button
           type="button"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import type { Position, Order } from "@/lib/types/market";
 
 interface PositionsResponse {

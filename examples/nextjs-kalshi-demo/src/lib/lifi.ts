@@ -11,8 +11,17 @@ import {
 } from "@lifi/sdk";
 import { env } from "@/env";
 
+// LiFi's Solana chain ID
+const SOL_CHAIN_ID = 1151111081099710;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const initializeLiFiConfig = (getWalletAdapter: () => Promise<any> | any) => {
+  // Provide our configured Solana RPC so LiFi uses it for balance checks
+  // instead of the default public endpoint (which is rate-limited and unreliable)
+  const rpcUrls = env.NEXT_PUBLIC_SOLANA_RPC_URL
+    ? { [SOL_CHAIN_ID]: [env.NEXT_PUBLIC_SOLANA_RPC_URL] }
+    : {};
+
   return createConfig({
     integrator: "dynamic-kalshi-demo",
     providers: [
@@ -21,6 +30,7 @@ export const initializeLiFiConfig = (getWalletAdapter: () => Promise<any> | any)
       }),
     ],
     apiKey: env.NEXT_PUBLIC_LIFI_API_KEY,
+    rpcUrls,
   });
 };
 

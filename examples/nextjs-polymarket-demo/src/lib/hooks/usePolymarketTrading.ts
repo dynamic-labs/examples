@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { useDynamicContext, isEthereumWallet } from "@/lib/dynamic";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { isEthereumWallet } from "@dynamic-labs/ethereum";
 import { ClobClient, Side, OrderType } from "@polymarket/clob-client";
 import type { UserOrder, UserMarketOrder } from "@polymarket/clob-client";
 import { Contract, providers, BigNumber } from "ethers";

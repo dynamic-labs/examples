@@ -1,6 +1,6 @@
 "use client";
 
-import { getRoutes, executeRoute, type Route, type Token, type ExchangeRateUpdateParams } from "@lifi/sdk";
+import { getRoutes, executeRoute, type Route, type ExchangeRateUpdateParams } from "@lifi/sdk";
 import { useCallback, useState } from "react";
 import { parseUnits, formatUnits } from "viem";
 
@@ -8,6 +8,7 @@ export interface LiFiSwapParams {
   fromChainId: number;
   toChainId: number;
   fromTokenAddress: string;
+  fromTokenDecimals: number;
   toTokenAddress: string;
   fromAmount: string;
   fromAddress: string;
@@ -47,19 +48,7 @@ export function useLiFi(): UseLiFiReturn {
       setError(null);
 
       try {
-        const res = await fetch(
-          `https://li.quest/v1/tokens?chainIds=${params.fromChainId}`
-        );
-        const data = await res.json();
-        const tokens = data.tokens[params.fromChainId] || [];
-        const fromToken = tokens.find(
-          (t: Token) =>
-            t.address.toLowerCase() === params.fromTokenAddress.toLowerCase()
-        );
-
-        if (!fromToken) throw new Error("Token not found");
-
-        const amountInUnits = parseUnits(params.fromAmount, fromToken.decimals);
+        const amountInUnits = parseUnits(params.fromAmount, params.fromTokenDecimals);
 
         const result = await getRoutes({
           fromChainId: params.fromChainId,

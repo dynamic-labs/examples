@@ -13,14 +13,11 @@ import {
 } from "lucide-react";
 import { useUserPositions } from "@/lib/hooks/useUserPositions";
 import { useKalshiTrading } from "@/lib/hooks/useKalshiTrading";
-import {
-  useIsLoggedIn,
-  useDynamicContext,
-  isSolanaWallet,
-} from "@/lib/dynamic";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
+import { useIsLoggedIn, useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { isSolanaWallet } from "@dynamic-labs/solana";
+import { VersionedTransaction } from "@solana/web3.js";
 import type { Position } from "@/lib/types/market";
-import { USDC_MINT, SOLANA_RPC_URL } from "@/lib/constants";
+import { USDC_MINT } from "@/lib/constants";
 
 interface PortfolioModalProps {
   isOpen: boolean;
@@ -128,8 +125,8 @@ export function PortfolioModal({ isOpen, onClose }: PortfolioModalProps) {
         transaction as unknown as Parameters<typeof signer.signTransaction>[0]
       );
 
-      // Send the transaction
-      const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+      // Send the transaction using Dynamic's RPC connection
+      const connection = await primaryWallet.getConnection();
 
       const signature = await connection.sendRawTransaction(
         signedTx.serialize(),

@@ -7,11 +7,10 @@ import { env } from "@/env";
 import {
   DynamicContextProvider,
   DynamicUserProfile,
-  EthereumWalletConnectors,
   useDynamicContext,
   useSwitchNetwork,
-  isEthereumWallet,
-} from "@/lib/dynamic";
+} from "@dynamic-labs/sdk-react-core";
+import { EthereumWalletConnectors, isEthereumWallet } from "@dynamic-labs/ethereum";
 import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
