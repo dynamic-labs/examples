@@ -28,6 +28,11 @@
     "viem": "^2.42.1",
     "zod": "^4.2.1"
   },
+  "pnpm": {
+    "overrides": {
+      "@solana/web3.js": "1.98.4"
+    }
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@tailwindcss/postcss": "^4.1.18",
