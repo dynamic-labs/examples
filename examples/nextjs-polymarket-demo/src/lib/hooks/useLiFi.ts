@@ -1,6 +1,7 @@
 "use client";
 
-import { isEthereumWallet, type Wallet } from "@/lib/dynamic";
+import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import { type Wallet } from "@dynamic-labs/sdk-react-core";
 import { getRoutes, executeRoute, type Route, type Token } from "@lifi/sdk";
 import { useCallback, useState } from "react";
 import { parseUnits, formatUnits } from "viem";

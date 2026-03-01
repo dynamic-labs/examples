@@ -5,10 +5,19 @@ import {
   useIsLoggedIn,
 } from "@dynamic-labs/sdk-react-core";
 import { ChevronDown, Loader2, PieChart, Wallet } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useKalshiTrading } from "@/lib/hooks/useKalshiTrading";
 import { PortfolioModal } from "./positions/PortfolioModal";
 import Logo from "./LogoIcon";
+
+// Lazy load the deposit modal
+const DepositModal = dynamic(
+  () => import("./DepositModal").then((mod) => ({ default: mod.DepositModal })),
+  {
+    ssr: false,
+  }
+);
 
 function AuthButton() {
   const isLoggedIn = useIsLoggedIn();
@@ -149,9 +158,10 @@ function PortfolioButton() {
   );
 }
 
-function BalanceButton() {
+function DepositButton() {
   const { getSolBalance } = useKalshiTrading();
   const [balance, setBalance] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const isLoggedIn = useIsLoggedIn();
 
   const fetchBalance = useCallback(async () => {
@@ -163,22 +173,42 @@ function BalanceButton() {
   useEffect(() => {
     fetchBalance();
     const interval = setInterval(fetchBalance, 30000);
-    return () => clearInterval(interval);
+
+    // Listen for deposit events to refresh balance
+    const handleDeposit = () => {
+      setTimeout(() => {
+        fetchBalance();
+      }, 2000);
+    };
+
+    window.addEventListener("depositComplete", handleDeposit);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("depositComplete", handleDeposit);
+    };
   }, [fetchBalance]);
 
   const displayText =
     balance !== null && balance > 0 ? `${balance.toFixed(3)} SOL` : "Deposit";
 
   return (
-    <button
-      type="button"
-      className="bg-[#1a1b23] box-border flex h-[41px] items-center justify-center gap-[6px] pl-[12px] pr-[12px] py-[8px] relative rounded-[8px] shrink-0 w-[125px] cursor-pointer hover:bg-[#252630] transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.90] border border-[#262a34]"
-    >
-      <Wallet className="w-[16px] h-[16px] text-[#14b8a6]" />
-      <div className="flex flex-col font-['Clash_Display',sans-serif] justify-center leading-[100%] not-italic relative shrink-0 text-[#14b8a6] text-[16px] text-nowrap tracking-[0%] text-right font-medium">
-        <p className="leading-[100%] whitespace-pre">{displayText}</p>
-      </div>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        className="bg-[#1a1b23] box-border flex h-[41px] items-center justify-center gap-[6px] pl-[12px] pr-[12px] py-[8px] relative rounded-[8px] shrink-0 w-[125px] cursor-pointer hover:bg-[#252630] transition-all duration-150 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] active:scale-[0.90] border border-[#262a34]"
+      >
+        <Wallet className="w-[16px] h-[16px] text-[#14b8a6]" />
+        <div className="flex flex-col font-['Clash_Display',sans-serif] justify-center leading-[100%] not-italic relative shrink-0 text-[#14b8a6] text-[16px] text-nowrap tracking-[0%] text-right font-medium">
+          <p className="leading-[100%] whitespace-pre">{displayText}</p>
+        </div>
+      </button>
+      <DepositModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 }
 
@@ -192,7 +222,7 @@ function HeaderContent() {
         {isLoggedIn && (
           <>
             <PortfolioButton />
-            <BalanceButton />
+            <DepositButton />
           </>
         )}
         <AuthButton />

@@ -10,10 +10,13 @@ export const env = createEnv({
     NEXT_PUBLIC_DYNAMIC_ENV_ID: z.string(),
     // Solana RPC endpoint (optional, defaults to mainnet-beta)
     NEXT_PUBLIC_SOLANA_RPC_URL: z.string().optional(),
+    // LiFi API key (optional - for higher rate limits)
+    NEXT_PUBLIC_LIFI_API_KEY: z.string().optional(),
   },
   runtimeEnv: {
     DFLOW_API_KEY: process.env.DFLOW_API_KEY,
     NEXT_PUBLIC_DYNAMIC_ENV_ID: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
     NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+    NEXT_PUBLIC_LIFI_API_KEY: process.env.NEXT_PUBLIC_LIFI_API_KEY,
   },
 });

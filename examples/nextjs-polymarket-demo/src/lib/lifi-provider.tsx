@@ -3,7 +3,7 @@
 import { config as lifiConfig } from "@lifi/sdk";
 import { useSyncWagmiConfig } from "@lifi/wallet-management";
 import { useQuery } from "@tanstack/react-query";
-import { type FC, type PropsWithChildren, useEffect, useState, useCallback, useRef } from "react";
+import { type FC, type PropsWithChildren, useEffect, useCallback, useRef } from "react";
 import type { Config, CreateConnectorFn } from "wagmi";
 import { initializeLiFiConfig, loadLiFiChains } from "./lifi";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
@@ -16,10 +16,9 @@ interface LiFiProviderProps extends PropsWithChildren {
 
 export const LiFiProvider: FC<LiFiProviderProps> = ({ children, wagmiConfig, connectors }) => {
   const { sdkHasLoaded, primaryWallet } = useDynamicContext();
-  const [isInitialized, setIsInitialized] = useState(false);
   const initRef = useRef(false);
 
-  const { data: chains, isLoading } = useQuery({
+  const { data: chains } = useQuery({
     queryKey: ["lifi-chains"],
     queryFn: async () => {
       const chains = await loadLiFiChains();
@@ -41,7 +40,6 @@ export const LiFiProvider: FC<LiFiProviderProps> = ({ children, wagmiConfig, con
       try {
         initializeLiFiConfig(wagmiConfig, getDynamicWalletClient);
         initRef.current = true;
-        setIsInitialized(true);
       } catch (error) {
         console.error("Failed to initialize LI.FI:", error);
       }
@@ -49,14 +47,6 @@ export const LiFiProvider: FC<LiFiProviderProps> = ({ children, wagmiConfig, con
   }, [sdkHasLoaded, wagmiConfig, getDynamicWalletClient, chains]);
 
   useSyncWagmiConfig(wagmiConfig, connectors, chains || undefined);
-
-  if (isLoading || !sdkHasLoaded || !isInitialized) {
-    return (
-      <div className="flex justify-center items-center h-[100px] text-sm text-[#dde2f6] opacity-70">
-        Loading...
-      </div>
-    );
-  }
 
   return <>{children}</>;
 };

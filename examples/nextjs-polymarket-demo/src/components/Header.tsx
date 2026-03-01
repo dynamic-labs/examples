@@ -72,8 +72,6 @@ function AuthButton() {
     setIsDropdownOpen(false);
   };
 
-  const handleTermsAndConditions = () => setIsDropdownOpen(false);
-
   const handleProfileSettings = () => {
     setShowDynamicUserProfile(true);
     setIsDropdownOpen(false);
@@ -141,13 +139,6 @@ function AuthButton() {
       {/* Dropdown Menu */}
       {isDropdownOpen && (
         <div className="absolute top-[calc(100%+8px)] right-0 bg-[#18252E] rounded-[12px] min-w-[180px] z-50 overflow-hidden p-[4px]">
-          <button
-            type="button"
-            onClick={handleTermsAndConditions}
-            className="w-full px-[16px] py-[12px] text-left text-[#72D0ED] font-['SF_Pro_Rounded:Semibold',sans-serif] font-semibold text-[11.99px] leading-[100%] tracking-[0%] hover:bg-[#20323E] rounded-[8px] transition-colors duration-150 cursor-pointer flex items-center"
-          >
-            Terms & Conditions
-          </button>
           <button
             type="button"
             onClick={handleProfileSettings}

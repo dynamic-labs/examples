@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import ClockIcon from "./ClockIcon";
 import { ImageWithFallback } from "./ImageWithFallback";
 import { useKalshiTrading } from "@/lib/hooks/useKalshiTrading";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 
 interface MarketCardProps {
   question: string;

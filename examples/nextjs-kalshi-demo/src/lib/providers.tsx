@@ -5,10 +5,11 @@ import { env } from "@/env";
 import {
   DynamicContextProvider,
   DynamicUserProfile,
-  SolanaWalletConnectors,
-} from "@/lib/dynamic";
+} from "@dynamic-labs/sdk-react-core";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/components/ui/Toast";
+import { LiFiProvider } from "./lifi-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -22,10 +23,12 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          {children}
-          <DynamicUserProfile />
-        </ToastProvider>
+        <LiFiProvider>
+          <ToastProvider>
+            {children}
+            <DynamicUserProfile />
+          </ToastProvider>
+        </LiFiProvider>
       </QueryClientProvider>
     </DynamicContextProvider>
   );

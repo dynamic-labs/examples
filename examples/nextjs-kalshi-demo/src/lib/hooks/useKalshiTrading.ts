@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { useDynamicContext, isSolanaWallet } from "@/lib/dynamic";
+import { useState, useCallback } from "react";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { isSolanaWallet } from "@dynamic-labs/solana";
 import {
   Connection,
   PublicKey,
@@ -26,7 +27,6 @@ import {
   MIN_BET_USD,
   SOL_PRICE_ESTIMATE,
   TX_FEE_RESERVE,
-  SOLANA_RPC_URL,
 } from "@/lib/constants";
 
 export interface TradeParams {
@@ -85,21 +85,20 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const connectionRef = useRef<Connection | null>(null);
 
-  const getConnection = useCallback((): Connection => {
-    if (!connectionRef.current) {
-      connectionRef.current = new Connection(SOLANA_RPC_URL, "confirmed");
+  const getConnection = useCallback(async (): Promise<Connection> => {
+    if (!primaryWallet || !isSolanaWallet(primaryWallet)) {
+      throw new Error("Solana wallet not connected");
     }
-    return connectionRef.current;
-  }, []);
+    return primaryWallet.getConnection();
+  }, [primaryWallet]);
 
   const getSolBalance = useCallback(async (): Promise<number> => {
     const walletAddress = primaryWallet?.address;
     if (!primaryWallet || !walletAddress) return 0;
 
     try {
-      const connection = getConnection();
+      const connection = await getConnection();
       const publicKey = new PublicKey(walletAddress);
       const balance = await connection.getBalance(publicKey);
       return balance / LAMPORTS_PER_SOL;
@@ -113,7 +112,7 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
     if (!primaryWallet || !walletAddress) return 0;
 
     try {
-      const connection = getConnection();
+      const connection = await getConnection();
       const publicKey = new PublicKey(walletAddress);
       const usdcMint = new PublicKey(USDC_MINT);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
@@ -138,7 +137,7 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
     if (!primaryWallet || !walletAddress) return 0;
 
     try {
-      const connection = getConnection();
+      const connection = await getConnection();
       const publicKey = new PublicKey(walletAddress);
       const wsolMint = new PublicKey(WSOL_MINT);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
@@ -172,7 +171,7 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
       }
 
       try {
-        const connection = getConnection();
+        const connection = await getConnection();
         const publicKey = new PublicKey(walletAddress);
         const wsolAta = await getAssociatedTokenAddress(NATIVE_MINT, publicKey);
         const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
@@ -265,7 +264,7 @@ export function useKalshiTrading(): UseKalshiTradingReturn {
       }
 
       try {
-        const connection = getConnection();
+        const connection = await getConnection();
 
         const queryParams = new URLSearchParams();
         queryParams.append("endpoint", "order");

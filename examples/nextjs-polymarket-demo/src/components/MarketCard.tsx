@@ -5,7 +5,7 @@ import { ImageWithFallback } from "./ImageWithFallback";
 import PriceChart from "./PriceChart";
 import { usePolymarketTrading } from "@/lib/hooks/usePolymarketTrading";
 import { polygon } from "wagmi/chains";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 
 interface MarketCardProps {
   question: string;
