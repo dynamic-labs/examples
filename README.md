@@ -17,9 +17,7 @@ To run any example in this repository, we recommend creating a **free Dynamic En
 ## 📖 **Documentation & Resources**
 
 - **[Dynamic Documentation](https://docs.dynamic.xyz)** - Complete integration guides
-- **[Quickstart Guide](https://docs.dynamic.xyz/quickstart)** - Get up and running in 5 minutes
 - **[Playground](https://demo.dynamic.xyz)** - Try Dynamic in your browser without any setup
-- **[API Reference](https://www.dynamic.xyz/docs/api-reference/overview)** - Complete API documentation
 - **[Dashboard](https://app.dynamic.xyz)** - Manage your Dynamic projects
 - **[Community](https://www.dynamic.xyz/slack)** - Get help and connect with other developers
 
@@ -50,9 +48,6 @@ Start with a Starter if you're building something custom, or use an Example if i
 
 <details>
 <summary><strong>Which networks does Dynamic support?</strong></summary>
-
-- Support for all EVM chains
-- Bitcoin, Solana, Sui, Sei
 - View our complete list on the [Ecosystems page](https://www.dynamic.xyz/ecosystems)
 
 </details>
