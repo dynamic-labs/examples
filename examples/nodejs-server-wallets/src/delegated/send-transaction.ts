@@ -70,9 +70,9 @@ async function sendTransaction() {
 
   // Step 3: Display results
   const duration = ((Date.now() - start) / 1000).toFixed(2);
-  console.info(`\n✅ Transaction sent in ${duration}s`);
-  console.info(`📝 Hash: ${hash}`);
-  console.info(`🔗 Explorer: ${getTransactionLink(hash)}`);
+  console.info(`\nTransaction sent in ${duration}s`);
+  console.info(`Hash: ${hash}`);
+  console.info(`Explorer: ${getTransactionLink(hash)}`);
 
   return hash;
 }

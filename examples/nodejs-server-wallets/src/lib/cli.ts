@@ -20,7 +20,7 @@ export async function runScript(fn: () => Promise<void>): Promise<never> {
     await fn();
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error:", error);
+    console.error("Error:", error);
     process.exit(1);
   }
 }

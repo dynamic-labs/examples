@@ -6,6 +6,7 @@
     "wallet": "tsx src/server-wallet/wallet.ts",
     "send-txn": "tsx src/server-wallet/send-transaction.ts",
     "sign-msg": "tsx src/server-wallet/sign-message.ts",
+    "sign-typed-data": "tsx src/server-wallet/sign-typed-data.ts",
     "delegated:send-txn": "tsx src/delegated/send-transaction.ts",
     "delegated:sign-msg": "tsx src/delegated/sign-message.ts",
     "example:omnibus": "tsx src/examples/omnibus-sweep.ts"

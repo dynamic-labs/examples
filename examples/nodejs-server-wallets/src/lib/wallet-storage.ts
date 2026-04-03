@@ -61,7 +61,7 @@ export function saveWallet(wallet: StoredWallet): void {
   wallets[wallet.address] = wallet;
 
   writeFileSync(WALLET_FILE, JSON.stringify(wallets, null, 2));
-  console.info(`💾 Wallet saved to ${WALLET_FILE}`);
+  console.info(`Wallet saved to ${WALLET_FILE}`);
 }
 
 /**
@@ -93,6 +93,6 @@ export function deleteWallet(address: string): boolean {
 
   delete wallets[address];
   writeFileSync(WALLET_FILE, JSON.stringify(wallets, null, 2));
-  console.info(`🗑️  Wallet ${address} deleted`);
+  console.info(`Wallet ${address} deleted`);
   return true;
 }

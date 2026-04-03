@@ -75,7 +75,7 @@ function rsaOaepDecryptEk(privateKeyPem: string, ekB64: string) {
 export function decryptMaterials(
   share: EncryptedDelegatedShare,
   apiKeyEnc: EncryptedDelegatedShare
-): { delegatedShare: EcdsaKeygenResult; walletApiKey: string } {
+): { delegatedShare: typeof EcdsaKeygenResult; walletApiKey: string } {
   const privateKeyPem = getPrivateKey();
 
   const shareKey = rsaOaepDecryptEk(privateKeyPem, share.ek);

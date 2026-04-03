@@ -1,0 +1,9 @@
+{
+  "address": "0x...",
+  "walletId": "wallet-uuid-here",
+  "walletApiKey": "api-key-here",
+  "delegatedShare": {
+    "pubkey": {},
+    "secretShare": "hex-encoded-secret-share"
+  }
+}

@@ -42,7 +42,9 @@ async function sendTransactionStandard(wallet: WalletInfo, password?: string) {
 
   const walletClient = await dynamicEvmClient.getWalletClient({
     accountAddress: wallet.address,
-    externalServerKeyShares: wallet.externalServerKeyShares,
+    ...(wallet.externalServerKeyShares.length > 0 && {
+      externalServerKeyShares: wallet.externalServerKeyShares,
+    }),
     chain: DEFAULT_CHAIN,
     password,
   });
@@ -68,7 +70,9 @@ async function sendTransactionZerodev(wallet: WalletInfo, password?: string) {
     evmClient: dynamicEvmClient,
     networkId: String(DEFAULT_CHAIN.id),
     address: wallet.address as `0x${string}`,
-    externalServerKeyShares: wallet.externalServerKeyShares,
+    ...(wallet.externalServerKeyShares.length > 0 && {
+      externalServerKeyShares: wallet.externalServerKeyShares,
+    }),
     ...(password && { password }),
   });
 
@@ -91,7 +95,9 @@ async function sendTransactionPimlico(wallet: WalletInfo, password?: string) {
   const account = createAccountAdapter({
     evmClient: dynamicEvmClient,
     accountAddress: wallet.address as `0x${string}`,
-    externalServerKeyShares: wallet.externalServerKeyShares,
+    ...(wallet.externalServerKeyShares.length > 0 && {
+      externalServerKeyShares: wallet.externalServerKeyShares,
+    }),
     password,
   }) as LocalAccount;
 
@@ -126,8 +132,8 @@ runScript(async () => {
 
   // Validate provider
   if (!VALID_PROVIDERS.includes(provider)) {
-    console.error(`❌ Invalid provider: ${provider}`);
-    console.error(`✅ Valid providers: ${VALID_PROVIDERS.join(", ")}`);
+    console.error(`Invalid provider: ${provider}`);
+    console.error(`Valid providers: ${VALID_PROVIDERS.join(", ")}`);
     process.exit(1);
   }
 
@@ -153,9 +159,9 @@ runScript(async () => {
 
   // Step 3: Display results
   const duration = ((Date.now() - start) / 1000).toFixed(2);
-  console.info(`\n✅ Transaction sent in ${duration}s`);
-  console.info(`📝 Hash: ${hash}`);
-  console.info(`🔗 Explorer: ${getTransactionLink(hash)}`);
-  console.info(`💳 Provider: ${provider}`);
-  console.info(`👛 Wallet: ${wallet.address}`);
+  console.info(`\nTransaction sent in ${duration}s`);
+  console.info(`Hash: ${hash}`);
+  console.info(`Explorer: ${getTransactionLink(hash)}`);
+  console.info(`Provider: ${provider}`);
+  console.info(`Wallet: ${wallet.address}`);
 });

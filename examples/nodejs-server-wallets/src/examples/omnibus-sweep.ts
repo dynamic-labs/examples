@@ -94,7 +94,7 @@ let dynamicEvmClient: DynamicEvmWalletClient;
  * For simpler wallet creation, see wallet.ts or wallet-helpers.ts
  */
 async function createWalletAccount(
-  walletNumber: number
+  walletNumber: number,
 ): Promise<DynamicWalletAccount | null> {
   if (!dynamicEvmClient) dynamicEvmClient = await authenticatedEvmClient();
 
@@ -103,8 +103,8 @@ async function createWalletAccount(
     setTimeout(
       () =>
         reject(new Error(`Wallet creation timeout for wallet ${walletNumber}`)),
-      60000 // 60 second timeout
-    )
+      60000, // 60 second timeout
+    ),
   );
 
   // Create wallet with retry logic and exponential backoff
@@ -120,14 +120,14 @@ async function createWalletAccount(
 
         const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
         console.error(
-          `Retrying to create wallet account ${walletNumber}. Attempt ${attempt}/5 in ${delay}ms...`
+          `Retrying to create wallet account ${walletNumber}. Attempt ${attempt}/5 in ${delay}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
     console.info(
-      `Failed to create wallet account ${walletNumber} after 5 retries. Skipping...`
+      `Failed to create wallet account ${walletNumber} after 5 retries. Skipping...`,
     );
     return null;
   };
@@ -137,7 +137,7 @@ async function createWalletAccount(
   } catch (error) {
     console.error(
       `Wallet creation timed out for wallet ${walletNumber}:`,
-      error
+      error,
     );
     return null;
   }
@@ -148,7 +148,7 @@ async function createWalletAccount(
  * Uses the SDK's createAccountAdapter for viem-compatible accounts.
  */
 function createWalletClientForCustomer(
-  customerWallet: CustomerWallet
+  customerWallet: CustomerWallet,
 ): LocalAccount {
   if (!dynamicEvmClient) {
     throw new Error("dynamicEvmClient not initialized");
@@ -192,14 +192,14 @@ async function sendTransactionAndWait({
  * Creates a customer wallet and assigns it a random USDC amount (1-1000).
  */
 async function createCustomerWallet(
-  index: number
+  index: number,
 ): Promise<CustomerWallet | null> {
   const walletNumber = index + 1;
   const customerWallet = await createWalletAccount(index);
   if (!customerWallet) return null;
 
   console.info(
-    `Customer wallet ${walletNumber} created: ${customerWallet.accountAddress}`
+    `Customer wallet ${walletNumber} created: ${customerWallet.accountAddress}`,
   );
 
   // Generate random USDC amount up to MAX_USDC_AMOUNT
@@ -217,7 +217,7 @@ async function createCustomerWallet(
  * In production, this would be replaced with actual token transfers.
  */
 async function fundCustomerWallet(
-  customerWallet: CustomerWallet
+  customerWallet: CustomerWallet,
 ): Promise<void> {
   const walletClient = await createWalletClientForCustomer(customerWallet);
 
@@ -233,8 +233,8 @@ async function fundCustomerWallet(
   });
   console.info(
     `Funded customer wallet ${customerWallet.index} (${formatAddress(
-      customerWallet.wallet.accountAddress
-    )}): ${customerWallet.usdcAmount} USDC - ${getTransactionLink(txHash)}`
+      customerWallet.wallet.accountAddress,
+    )}): ${customerWallet.usdcAmount} USDC - ${getTransactionLink(txHash)}`,
   );
 }
 
@@ -244,12 +244,12 @@ async function fundCustomerWallet(
  */
 async function sweepToOmnibus(
   customerWallet: CustomerWallet,
-  omnibus: `0x${string}`
+  omnibus: `0x${string}`,
 ): Promise<bigint> {
   const walletClient = await createWalletClientForCustomer(customerWallet);
   const tokenUnits = dollarsToTokenUnits(
     customerWallet.usdcAmount,
-    USDC_DECIMALS
+    USDC_DECIMALS,
   );
 
   // Transfer USDC from customer wallet to omnibus account
@@ -264,10 +264,10 @@ async function sweepToOmnibus(
   });
   console.info(
     `Swept customer wallet ${customerWallet.index} (${formatAddress(
-      customerWallet.wallet.accountAddress
+      customerWallet.wallet.accountAddress,
     )}): ${customerWallet.usdcAmount} USDC to omnibus - ${getTransactionLink(
-      txHash
-    )}`
+      txHash,
+    )}`,
   );
 
   return customerWallet.usdcAmount;
@@ -285,7 +285,7 @@ runScript(async () => {
   // Validate inputs
   if (Number.isNaN(NUM_WALLETS) || NUM_WALLETS <= 0) {
     console.error(
-      "Error: Please provide a positive integer for the number of customer wallets to create"
+      "Error: Please provide a positive integer for the number of customer wallets to create",
     );
     console.error("Usage: pnpm example:omnibus [num_wallets]");
     console.error("Example: pnpm example:omnibus 10");
@@ -294,11 +294,11 @@ runScript(async () => {
 
   console.info("Dynamic Gasless Transaction Demo - Omnibus Sweep");
   console.info(
-    "Demonstrating scalable wallet management and gasless transfers"
+    "Demonstrating scalable wallet management and gasless transfers",
   );
   console.info("=".repeat(60));
   console.info(
-    `Configuration: ${NUM_WALLETS} wallets, funding random USDC amounts up to ${MAX_USDC_AMOUNT}`
+    `Configuration: ${NUM_WALLETS} wallets, funding random USDC amounts up to ${MAX_USDC_AMOUNT}`,
   );
   console.info("=".repeat(60));
 
@@ -317,38 +317,38 @@ runScript(async () => {
   console.info(`Creating ${NUM_WALLETS} customer wallets...`);
   const walletCreationPromises = Array.from(
     { length: NUM_WALLETS },
-    (_, index) => WALLET_CREATION_LIMIT(() => createCustomerWallet(index))
+    (_, index) => WALLET_CREATION_LIMIT(() => createCustomerWallet(index)),
   );
 
   const customerWallets = await Promise.all(walletCreationPromises);
   const createdWallets = customerWallets.filter(
-    (wallet): wallet is CustomerWallet => wallet !== null
+    (wallet): wallet is CustomerWallet => wallet !== null,
   );
   const failedWallets = customerWallets.filter(
-    (wallet) => wallet === null
+    (wallet) => wallet === null,
   ).length;
 
   console.info(
-    `Successfully created ${createdWallets.length} out of ${NUM_WALLETS} wallets (${failedWallets} failed)`
+    `Successfully created ${createdWallets.length} out of ${NUM_WALLETS} wallets (${failedWallets} failed)`,
   );
   console.info("");
 
   console.info(
-    `Funding ${createdWallets.length} customer wallets with USDC tokens...`
+    `Funding ${createdWallets.length} customer wallets with USDC tokens...`,
   );
   const fundingPromises = createdWallets.map((customerWallet) =>
-    TRANSACTION_LIMIT(() => fundCustomerWallet(customerWallet))
+    TRANSACTION_LIMIT(() => fundCustomerWallet(customerWallet)),
   );
   await Promise.all(fundingPromises);
   console.info("");
 
   console.info(
-    `Sweeping funds from ${createdWallets.length} customer wallets to omnibus account...`
+    `Sweeping funds from ${createdWallets.length} customer wallets to omnibus account...`,
   );
   const sweepPromises = createdWallets.map((customerWallet) =>
     TRANSACTION_LIMIT(() =>
-      sweepToOmnibus(customerWallet, omnibusAddress as `0x${string}`)
-    )
+      sweepToOmnibus(customerWallet, omnibusAddress as `0x${string}`),
+    ),
   );
 
   const usdcAmounts = await Promise.all(sweepPromises);
@@ -361,7 +361,7 @@ runScript(async () => {
   console.info(`Total USDC transferred: ${totalSwept} USDC`);
   console.info(
     `Omnibus wallet address: ${omnibusAddressFormatted} - ${getAddressLink(
-      omnibusAddress
-    )}#tokentxns`
+      omnibusAddress,
+    )}#tokentxns`,
   );
 });

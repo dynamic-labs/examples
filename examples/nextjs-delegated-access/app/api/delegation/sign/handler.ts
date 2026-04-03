@@ -22,7 +22,7 @@ import { SignMessageRequestSchema } from "./schema";
  */
 export async function handleSignMessageRequest(
   request: NextRequest,
-  user: AuthenticatedUser
+  user: AuthenticatedUser,
 ): Promise<NextResponse> {
   const body = await request.json();
 
@@ -36,7 +36,7 @@ export async function handleSignMessageRequest(
         error: "Invalid request body",
         details: validationResult.error.issues,
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -49,7 +49,7 @@ export async function handleSignMessageRequest(
         success: false,
         error: "You are not authorized to sign for this address",
       },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -61,14 +61,31 @@ export async function handleSignMessageRequest(
         success: false,
         error: `No delegation found for address ${address} on chain ${chain}`,
       },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
-  const signature = await signMessage(message, delegation);
+  try {
+    const signature = await signMessage(message, delegation);
 
-  return NextResponse.json(
-    { success: true, signature, message },
-    { status: 200 }
-  );
+    return NextResponse.json(
+      { success: true, signature, message },
+      { status: 200 },
+    );
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Signing failed";
+
+    // Forward status from upstream SDK errors (e.g. 403 from recovery-only gate)
+    const upstreamStatus =
+      error && typeof error === "object" && "status" in error
+        ? (error as { status: number }).status
+        : undefined;
+    const status = upstreamStatus ?? 500;
+
+    return NextResponse.json(
+      { success: false, error: errorMessage },
+      { status },
+    );
+  }
 }
