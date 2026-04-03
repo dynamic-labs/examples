@@ -18,7 +18,7 @@ server_wallet/
 │   ├── wallet.py                 # Create, list, delete Solana wallets
 │   ├── sign_message.py           # Sign messages with Ed25519
 │   ├── sign_transaction.py       # Sign Solana transactions
-│   └── send_transaction.py       # Sign and broadcast Solana transactions
+│   └── send_transaction.py       # Sign and broadcast Solana transactions (with optional sponsorship)
 │
 └── delegated/                    # Delegated wallet operations
     ├── sign_message.py           # Sign messages with delegated access
@@ -54,6 +54,7 @@ lib/                              # Shared utilities
 - Sign messages with Ed25519 signatures (base58-encoded)
 - Sign transactions for manual broadcasting via solders/solana-py
 - Send transactions (sign and broadcast in one call)
+- Send sponsored transactions (gasless — Dynamic pays the fees)
 - Same persistence and threshold scheme patterns as EVM
 
 ### Delegated Wallet Operations (`server_wallet/delegated/`)
@@ -241,6 +242,9 @@ python -m server_wallet.svm.send_transaction --address <address>
 
 # Send with backed-up wallet
 python -m server_wallet.svm.send_transaction --address <address> --password password
+
+# Send with Dynamic gas sponsorship (wallet doesn't need SOL)
+python -m server_wallet.svm.send_transaction --address <address> --sponsored
 ```
 
 ### Delegated Wallet Operations
@@ -318,6 +322,7 @@ This example covers all methods in the Dynamic Python SDK:
 | `sign_message` (SVM)             | `server_wallet/svm/sign_message.py`          |
 | `sign_transaction` (SVM)         | `server_wallet/svm/sign_transaction.py`      |
 | `send_transaction` (SVM)         | `server_wallet/svm/send_transaction.py`      |
+| `sponsor_transaction` (SVM)      | `server_wallet/svm/send_transaction.py --sponsored` |
 | `create_delegated_evm_client`    | `server_wallet/delegated/sign_message.py`    |
 | `delegated_sign_message`         | `server_wallet/delegated/sign_message.py`    |
 | `decrypt_delegated_webhook_data` | `server_wallet/delegated/decrypt_webhook.py` |
