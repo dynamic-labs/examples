@@ -1,0 +1,29 @@
+[project]
+name = "python-server-wallets"
+version = "1.0.0"
+description = "Dynamic Python SDK server-side wallet management examples"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "dynamic-wallet-sdk>=0.5.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
+    "solders>=0.21.0",
+    "eth-account>=0.13.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["lib*", "server_wallet*"]
+
+[project.scripts]
+evm-wallet = "server_wallet.evm.wallet:main"
+evm-sign-msg = "server_wallet.evm.sign_message:main"
+evm-sign-typed-data = "server_wallet.evm.sign_typed_data:main"
+evm-sign-txn = "server_wallet.evm.sign_transaction:main"
+evm-send-txn = "server_wallet.evm.send_transaction:main"
+evm-recover-keys = "server_wallet.evm.recover_key_shares:main"
+svm-wallet = "server_wallet.svm.wallet:main"
+svm-sign-msg = "server_wallet.svm.sign_message:main"
+svm-sign-txn = "server_wallet.svm.sign_transaction:main"
+svm-send-txn = "server_wallet.svm.send_transaction:main"
+delegated-sign-msg = "server_wallet.delegated.sign_message:main"
+delegated-decrypt = "server_wallet.delegated.decrypt_webhook:main"

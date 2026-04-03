@@ -24,6 +24,7 @@ import {
 import DelegatedAccessInit from "./init";
 import DelegatedAccessMethods from "./methods";
 import DelegationManagement from "./management";
+import RecoveryOnlyFlagTest from "./recovery-only-test";
 import DelegationStatusHeader from "./components/delegation-status-header";
 import ConnectedWalletInfo from "./components/connected-wallet-info";
 import ConnectWalletPrompt from "./components/connect-wallet-prompt";
@@ -34,8 +35,11 @@ type DelegationTab = "modal" | "custom";
 
 export default function DelegatedAccess() {
   const { sdkHasLoaded, primaryWallet } = useDynamicContext();
-  const { delegatedAccessEnabled, getWalletsDelegatedStatus, requiresDelegation } =
-    useWalletDelegation();
+  const {
+    delegatedAccessEnabled,
+    getWalletsDelegatedStatus,
+    requiresDelegation,
+  } = useWalletDelegation();
   const [activeTab, setActiveTab] = useState<DelegationTab>("modal");
 
   if (!sdkHasLoaded) {
@@ -48,15 +52,15 @@ export default function DelegatedAccess() {
 
   const walletStatuses = getWalletsDelegatedStatus();
   const primaryWalletDelegationStatus = walletStatuses.find(
-    (wallet) => wallet.address === primaryWallet?.address
+    (wallet) => wallet.address === primaryWallet?.address,
   );
 
   return (
     <div className="space-y-6">
       {/* Main Status Card */}
       <div className="rounded-xl border bg-card overflow-hidden">
-        <DelegationStatusHeader 
-          isEnabled={delegatedAccessEnabled ?? false} 
+        <DelegationStatusHeader
+          isEnabled={delegatedAccessEnabled ?? false}
           requiresDelegation={requiresDelegation}
         />
 
@@ -79,14 +83,21 @@ export default function DelegatedAccess() {
           <DelegationTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
           {/* Tab Content */}
-          {activeTab === "modal" ? <DelegatedAccessInit /> : <DelegationManagement />}
+          {activeTab === "modal" ? (
+            <DelegatedAccessInit />
+          ) : (
+            <DelegationManagement />
+          )}
         </div>
       )}
 
       {/* Methods Panel - shows when delegated */}
       {primaryWallet &&
         primaryWalletDelegationStatus?.status === "delegated" && (
-          <DelegatedAccessMethods />
+          <>
+            <DelegatedAccessMethods />
+            <RecoveryOnlyFlagTest />
+          </>
         )}
 
       <DelegationInfoBox />

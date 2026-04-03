@@ -35,7 +35,7 @@ export const authenticatedEvmClient = async (args?: ClientProps) => {
   const authToken = args?.authToken ?? DYNAMIC_API_TOKEN;
   const client = new DynamicEvmWalletClient({
     environmentId,
-    enableMPCAccelerator: true,
+    enableMPCAccelerator: false,
   });
 
   await client.authenticateApiToken(authToken);
@@ -43,7 +43,7 @@ export const authenticatedEvmClient = async (args?: ClientProps) => {
 };
 
 export const smartAccountClient = async (
-  args: SmartAccountClientProps
+  args: SmartAccountClientProps,
 ): Promise<KernelClient> => {
   const zerodevClient = await createZerodevClient(args.evmClient);
 

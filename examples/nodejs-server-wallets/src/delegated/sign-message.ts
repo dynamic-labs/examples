@@ -52,9 +52,9 @@ async function signMessage(message: string) {
 
   // Step 2: Display results
   const duration = ((Date.now() - start) / 1000).toFixed(2);
-  console.info(`\n✅ Message signed in ${duration}s`);
-  console.info(`📝 Message: "${message}"`);
-  console.info(`✍️ Signature: ${signature}`);
+  console.info(`\nMessage signed in ${duration}s`);
+  console.info(`Message: "${message}"`);
+  console.info(`Signature: ${signature}`);
 
   return signature;
 }
@@ -64,7 +64,7 @@ runScript(async () => {
   const message = positional[0];
 
   if (!message) {
-    console.error("❌ Please provide a message to sign");
+    console.error("Please provide a message to sign");
     console.error("\nUsage:");
     console.error('  pnpm delegated:sign-msg "Hello, World!"');
     process.exit(1);

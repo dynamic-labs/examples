@@ -38,7 +38,7 @@ export interface PimlicoClients {
 
 export function getPimlicoClientsForChain(
   chainId: number,
-  opts?: { apiKey?: string }
+  opts?: { apiKey?: string },
 ): PimlicoClients {
   const apiKey = opts?.apiKey ?? PIMLICO_API_KEY;
 
@@ -56,7 +56,7 @@ export function getPimlicoClientsForChain(
 
 export function createPimlicoPaymasterClient(
   chainId: number,
-  opts?: { apiKey?: string }
+  opts?: { apiKey?: string },
 ) {
   const { paymasterTransport } = getPimlicoClientsForChain(chainId, opts);
 
@@ -72,7 +72,7 @@ export function createPimlicoPaymasterClient(
 export async function getSmartAccountClient(
   publicClient: PublicClient,
   owner: LocalAccount,
-  opts?: { apiKey?: string }
+  opts?: { apiKey?: string },
 ): Promise<SmartAccountClient> {
   const chain = publicClient.chain!;
   const { bundlerTransport } = getPimlicoClientsForChain(chain.id, opts);
@@ -93,7 +93,7 @@ export async function getSmartAccountClient(
 
 export async function getAuthorization(
   publicClient: PublicClient,
-  owner: LocalAccount
+  owner: LocalAccount,
 ): Promise<SignAuthorizationReturnType | undefined> {
   const address = owner.address;
   const code = await publicClient.getCode({ address });

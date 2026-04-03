@@ -1,0 +1,7 @@
+.env
+.wallets.json
+__pycache__/
+*.pyc
+.venv/
+dist/
+*.egg-info/

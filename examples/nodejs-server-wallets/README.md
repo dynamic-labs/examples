@@ -76,25 +76,15 @@ src/
 ## ⚙️ Setup
 
 1. **Install dependencies**:
-
-   ```bash
+  ```bash
    pnpm install
-   ```
-
+  ```
 2. **Configure environment**:
-
-   ```bash
+  ```bash
    cp .env.example .env
    # Edit .env with your credentials
-   ```
-
+  ```
    Required variables:
-
-   ```
-   DYNAMIC_API_TOKEN=your_dynamic_api_token
-   DYNAMIC_ENVIRONMENT_ID=your_environment_id
-   PIMLICO_API_KEY=your_pimlico_api_key
-   ```
 
 ## 🎯 Running the Examples
 
@@ -121,13 +111,13 @@ pnpm wallet --delete 0x123...
 
 ```bash
 # Sign with new ephemeral wallet
-pnpm sign-msg "Hello, World!"
+pnpm sign-msg "Hello, World"
 
 # Sign with saved wallet
-pnpm sign-msg "Hello, World!" --address 0x123...
+pnpm sign-msg "Hello, World" --address 0x123...
 
 # Sign with password-protected wallet
-pnpm sign-msg "Hello, World!" --address 0x123... --password myPassword
+pnpm sign-msg "Hello, World" --address 0x123... --password myPassword
 ```
 
 ### Send Transactions
@@ -235,3 +225,4 @@ Demo completed successfully.
 Total USDC transferred: 333 USDC
 Omnibus wallet address: 0xbBdf18...c10B74
 ```
+
