@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { signAllTransactions } from "@dynamic-labs-sdk/solana";
-import { Connection, VersionedTransaction, SendTransactionError } from "@solana/web3.js";
+import {
+  signAndSendSponsoredTransaction,
+  SponsorTransactionError,
+  type SolanaWalletAccount,
+} from "@dynamic-labs-sdk/solana";
+import { Connection, PublicKey, VersionedTransaction, SendTransactionError } from "@solana/web3.js";
 import {
   createSolanaRpc,
   createNoopSigner,
@@ -19,14 +23,65 @@ import {
 import { KaminoVault, type DepositIxs, type WithdrawIxs } from "@kamino-finance/klend-sdk";
 import { Decimal } from "decimal.js";
 import { useWallet } from "./providers";
-import { dynamicClient } from "./dynamic";
+import { dynamicClient, getSolanaRpcUrl } from "./dynamic";
 
-const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL!;
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 interface PreparedTransaction {
   unsigned: VersionedTransaction;
   blockhash: string;
   lastValidBlockHeight: bigint;
+}
+
+/**
+ * Fetch the wallet's balance for a given token mint, checking both the
+ * legacy SPL Token program and Token-2022.
+ */
+async function fetchTokenBalance(
+  connection: Connection,
+  ownerAddress: string,
+  mintAddress: string
+): Promise<number> {
+  const owner = new PublicKey(ownerAddress);
+  const mint = new PublicKey(mintAddress);
+
+  // Legacy SPL Token program
+  try {
+    const accounts = await connection.getParsedTokenAccountsByOwner(owner, {
+      mint,
+      programId: TOKEN_PROGRAM_ID,
+    });
+    if (accounts.value.length > 0) {
+      return (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (accounts.value[0].account.data as any).parsed?.info?.tokenAmount
+          ?.uiAmount ?? 0
+      );
+    }
+  } catch {
+    // no account in this program
+  }
+
+  // Token-2022 — filter by programId, then match mint client-side
+  try {
+    const mintStr = mint.toBase58();
+    const accounts = await connection.getParsedTokenAccountsByOwner(owner, {
+      programId: TOKEN_2022_PROGRAM_ID,
+    });
+    const match = accounts.value.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (a) => (a.account.data as any).parsed?.info?.mint === mintStr
+    );
+    if (match) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (match.account.data as any).parsed?.info?.tokenAmount?.uiAmount ?? 0;
+    }
+  } catch {
+    // no Token-2022 account
+  }
+
+  return 0;
 }
 
 // Build one unsigned transaction. Each call fetches a fresh finalized blockhash so
@@ -35,7 +90,7 @@ async function prepareTransaction(
   instructions: Parameters<typeof appendTransactionMessageInstructions>[0],
   noopSigner: TransactionSigner
 ): Promise<PreparedTransaction> {
-  const rpc = createSolanaRpc(SOLANA_RPC_URL);
+  const rpc = createSolanaRpc(getSolanaRpcUrl());
   const { value: latestBlockhash } = await rpc
     .getLatestBlockhash({ commitment: "finalized" })
     .send();
@@ -63,38 +118,47 @@ async function prepareTransaction(
   };
 }
 
-async function sendAndConfirm(
+/**
+ * Signs, sends, and confirms a transaction. Tries gas sponsorship first
+ * (Dynamic covers the SOL fee); falls back to a standard signed send if the
+ * environment doesn't have SVM Gas Sponsorship enabled.
+ */
+async function signSendAndConfirm(
   tx: VersionedTransaction,
   blockhash: string,
-  lastValidBlockHeight: bigint
+  lastValidBlockHeight: bigint,
+  walletAccount: SolanaWalletAccount
 ): Promise<string> {
-  const connection = new Connection(SOLANA_RPC_URL, "confirmed");
-  let txHash: string;
   try {
-    txHash = await connection.sendRawTransaction(tx.serialize(), {
-      skipPreflight: false,
-      preflightCommitment: "confirmed",
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { signature } = await signAndSendSponsoredTransaction(
+      { transaction: tx as any, walletAccount },
+      dynamicClient
+    );
+    const connection = new Connection(getSolanaRpcUrl(), "confirmed");
+    const result = await connection.confirmTransaction(
+      { signature, blockhash, lastValidBlockHeight: Number(lastValidBlockHeight) },
+      "confirmed"
+    );
+    if (result.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(result.value.err)}`);
+    }
+    return signature;
   } catch (err) {
+    if (err instanceof SponsorTransactionError) {
+      throw new Error(
+        "Gas sponsorship failed. Enable SVM Gas Sponsorship in your Dynamic dashboard under Settings → Embedded Wallets."
+      );
+    }
     if (err instanceof SendTransactionError) {
-      // err.logs is already populated from preflight — don't call err.getLogs(connection),
-      // which calls getTransaction('') and throws "Invalid param: WrongSize".
-      const logs = err.logs ?? [];
-      if (logs.find((l) => l.includes("insufficient lamports"))) {
-        throw new Error(
-          "Insufficient SOL balance to create a token account. Add more SOL to your wallet and try again."
-        );
-      }
-      throw new Error(logs.join("\n") || err.message);
+      const connection = new Connection(getSolanaRpcUrl(), "confirmed");
+      const logs = await err.getLogs(connection);
+      throw new Error(
+        err.message + (logs?.length ? `\n\nLogs:\n${logs.join("\n")}` : "")
+      );
     }
     throw err;
   }
-  // Blockhash-based confirmation is more reliable than the deprecated string overload.
-  await connection.confirmTransaction(
-    { signature: txHash, blockhash, lastValidBlockHeight: Number(lastValidBlockHeight) },
-    "confirmed"
-  );
-  return txHash;
 }
 
 export function useVaultOperations() {
@@ -104,16 +168,41 @@ export function useVaultOperations() {
 
   const executeDeposit = async (
     vaultAddress: string,
-    amount: number
+    amount: number,
+    tokenMint: string
   ): Promise<string | undefined> => {
     if (!solanaAccount) return;
     setIsOperating(true);
     setOperationError(null);
 
     try {
-      const rpc = createSolanaRpc(SOLANA_RPC_URL);
+      const rpcUrl = getSolanaRpcUrl();
+      const connection = new Connection(rpcUrl, "confirmed");
+      const rpc = createSolanaRpc(rpcUrl);
       const noopSigner = createNoopSigner(address(solanaAccount.address));
       const vault = new KaminoVault(rpc, address(vaultAddress));
+
+      // Pre-flight vault minimum check
+      const vaultState = await vault.getState();
+      const decimals = vaultState.tokenMintDecimals.toNumber();
+      const minRaw = vaultState.minDepositAmount.toNumber();
+      if (minRaw > 0) {
+        const minHuman = minRaw / Math.pow(10, decimals);
+        if (amount < minHuman) {
+          throw new Error(
+            `Amount is below the vault minimum deposit of ${minHuman.toLocaleString(undefined, { maximumFractionDigits: decimals })} tokens.`
+          );
+        }
+      }
+
+      // Pre-flight balance check (covers both SPL Token and Token-2022)
+      const balance = await fetchTokenBalance(connection, solanaAccount.address, tokenMint);
+      if (balance < amount) {
+        throw new Error(
+          `Insufficient balance. You have ${balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} tokens but tried to deposit ${amount}.`
+        );
+      }
+
       const depositIxs: DepositIxs = await vault.depositIxs(noopSigner, new Decimal(amount));
 
       const groups = [
@@ -125,21 +214,12 @@ export function useVaultOperations() {
       if (groups.length === 0) return;
 
       // Build all transactions in parallel (independent blockhash fetches),
-      // sign them in one MPC round, then send+confirm sequentially.
+      // then sign, sponsor, and confirm each one sequentially.
       const prepared = await Promise.all(groups.map((g) => prepareTransaction(g, noopSigner)));
-      const { signedTransactions } = await signAllTransactions(
-        { transactions: prepared.map((p) => p.unsigned), walletAccount: solanaAccount },
-        dynamicClient
-      );
 
       let lastHash: string | undefined;
-      for (let i = 0; i < signedTransactions.length; i++) {
-        const { blockhash, lastValidBlockHeight } = prepared[i];
-        lastHash = await sendAndConfirm(
-          signedTransactions[i] as VersionedTransaction,
-          blockhash,
-          lastValidBlockHeight
-        );
+      for (const { unsigned, blockhash, lastValidBlockHeight } of prepared) {
+        lastHash = await signSendAndConfirm(unsigned, blockhash, lastValidBlockHeight, solanaAccount);
       }
       return lastHash;
     } catch (err) {
@@ -159,7 +239,7 @@ export function useVaultOperations() {
     setOperationError(null);
 
     try {
-      const rpc = createSolanaRpc(SOLANA_RPC_URL);
+      const rpc = createSolanaRpc(getSolanaRpcUrl());
       const noopSigner = createNoopSigner(address(solanaAccount.address));
       const vault = new KaminoVault(rpc, address(vaultAddress));
       const withdrawIxs: WithdrawIxs = await vault.withdrawIxs(
@@ -176,19 +256,10 @@ export function useVaultOperations() {
       if (groups.length === 0) return;
 
       const prepared = await Promise.all(groups.map((g) => prepareTransaction(g, noopSigner)));
-      const { signedTransactions } = await signAllTransactions(
-        { transactions: prepared.map((p) => p.unsigned), walletAccount: solanaAccount },
-        dynamicClient
-      );
 
       let lastHash: string | undefined;
-      for (let i = 0; i < signedTransactions.length; i++) {
-        const { blockhash, lastValidBlockHeight } = prepared[i];
-        lastHash = await sendAndConfirm(
-          signedTransactions[i] as VersionedTransaction,
-          blockhash,
-          lastValidBlockHeight
-        );
+      for (const { unsigned, blockhash, lastValidBlockHeight } of prepared) {
+        lastHash = await signSendAndConfirm(unsigned, blockhash, lastValidBlockHeight, solanaAccount);
       }
       return lastHash;
     } catch (err) {

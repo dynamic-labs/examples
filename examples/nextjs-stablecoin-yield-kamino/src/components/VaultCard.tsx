@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Connection, PublicKey } from "@solana/web3.js";
 import type { EnrichedVault, UserPosition } from "@/lib/types";
+import { getSolanaRpcUrl } from "@/lib/dynamic";
 import {
   formatAPY,
   formatUSD,
@@ -10,12 +12,15 @@ import {
 } from "@/lib/utils";
 import { ExternalLink, TrendingUp, Users, DollarSign } from "lucide-react";
 
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+
 interface VaultCardProps {
   vault: EnrichedVault;
   position?: UserPosition;
   isOperating: boolean;
   primaryWallet: { address: string } | null;
-  onDeposit: (vaultAddress: string, amount: number) => Promise<boolean>;
+  onDeposit: (vaultAddress: string, amount: number, tokenMint: string) => Promise<boolean>;
   onWithdraw: (vaultAddress: string, shares: number) => Promise<boolean>;
 }
 
@@ -30,6 +35,7 @@ export function VaultCard({
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawShares, setWithdrawShares] = useState("");
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
   const isConnected = !!primaryWallet;
   const m = vault.metrics;
@@ -43,6 +49,60 @@ export function VaultCard({
   const vaultName = vault.state.name?.trim() || shortenAddress(vault.address);
   const perfFee = vault.state.performanceFeeBps ?? 0;
   const mgmtFee = vault.state.managementFeeBps ?? 0;
+
+  // Fetch the wallet's token balance for this vault's token (checks both SPL
+  // Token and Token-2022 programs so PYUSD and similar assets are visible).
+  useEffect(() => {
+    if (!primaryWallet || !vault.state.tokenMint) return;
+
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const rpcUrl = getSolanaRpcUrl();
+        const connection = new Connection(rpcUrl, "confirmed");
+        const owner = new PublicKey(primaryWallet!.address);
+        const mint = new PublicKey(vault.state.tokenMint);
+
+        // Try legacy SPL Token first
+        const legacyAccounts = await connection.getParsedTokenAccountsByOwner(owner, {
+          mint,
+          programId: TOKEN_PROGRAM_ID,
+        });
+        if (legacyAccounts.value.length > 0) {
+          const uiAmount =
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (legacyAccounts.value[0].account.data as any).parsed?.info?.tokenAmount?.uiAmount ?? 0;
+          if (!cancelled) setWalletBalance(uiAmount);
+          return;
+        }
+
+        // Fall back to Token-2022
+        const mintStr = mint.toBase58();
+        const t22Accounts = await connection.getParsedTokenAccountsByOwner(owner, {
+          programId: TOKEN_2022_PROGRAM_ID,
+        });
+        const match = t22Accounts.value.find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (a) => (a.account.data as any).parsed?.info?.mint === mintStr
+        );
+        const uiAmount = match
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? ((match.account.data as any).parsed?.info?.tokenAmount?.uiAmount ?? 0)
+          : 0;
+        if (!cancelled) setWalletBalance(uiAmount);
+      } catch {
+        // RPC not ready yet or wallet has no account — leave balance as null
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [primaryWallet, vault.state.tokenMint]);
+
+  const depositAmountNum = parseFloat(depositAmount) || 0;
+  const insufficientBalance =
+    walletBalance !== null && depositAmountNum > 0 && depositAmountNum > walletBalance;
 
   return (
     <div
@@ -186,10 +246,17 @@ export function VaultCard({
         {/* Deposit panel */}
         {activeTab === "deposit" && (
           <div className="space-y-2">
-            <p className="text-xs text-[#606060]">
-              Deposit {vault.tokenSymbol} to earn{" "}
-              {displayApy > 0 ? formatAPY(displayApy) : "yield"} APY (30d avg)
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[#606060]">
+                Deposit {vault.tokenSymbol} to earn{" "}
+                {displayApy > 0 ? formatAPY(displayApy) : "yield"} APY (30d avg)
+              </p>
+              {isConnected && walletBalance !== null && (
+                <p className="text-xs text-[#606060]">
+                  Balance: {formatTokenAmount(walletBalance, vault.decimals)}
+                </p>
+              )}
+            </div>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -198,23 +265,43 @@ export function VaultCard({
                 onChange={(e) => setDepositAmount(e.target.value)}
                 disabled={isOperating}
                 className="flex-1 text-xs px-3 py-2 rounded-lg text-[#030303] outline-none focus:ring-1"
-                style={{ border: "1px solid #DADADA", background: "#fff" }}
+                style={{
+                  border: `1px solid ${insufficientBalance ? "#EF4444" : "#DADADA"}`,
+                  background: "#fff",
+                }}
               />
               <button
                 onClick={async () => {
                   const n = parseFloat(depositAmount);
                   if (!isNaN(n) && n > 0) {
-                    const ok = await onDeposit(vault.address, n);
+                    const ok = await onDeposit(vault.address, n, vault.state.tokenMint);
                     if (ok) setDepositAmount("");
                   }
                 }}
-                disabled={isOperating || !isConnected || !depositAmount || parseFloat(depositAmount) <= 0}
+                disabled={
+                  isOperating ||
+                  !isConnected ||
+                  !depositAmount ||
+                  parseFloat(depositAmount) <= 0 ||
+                  insufficientBalance
+                }
                 className="px-3 py-2 text-xs font-medium rounded-lg text-white transition-colors whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: "#4779FF" }}
               >
                 {isOperating ? "…" : "Deposit"}
               </button>
             </div>
+            {insufficientBalance && (
+              <p className="text-xs text-red-500">
+                Insufficient balance. You have{" "}
+                {formatTokenAmount(walletBalance!, vault.decimals)} {vault.tokenSymbol}.
+              </p>
+            )}
+            {isConnected && walletBalance === 0 && !insufficientBalance && (
+              <p className="text-xs text-[#606060]">
+                No {vault.tokenSymbol} in your wallet. Fund your wallet before depositing.
+              </p>
+            )}
             {!isConnected && (
               <p className="text-xs text-[#606060]">Sign in to deposit</p>
             )}

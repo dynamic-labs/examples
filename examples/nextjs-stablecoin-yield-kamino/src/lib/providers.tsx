@@ -27,14 +27,14 @@ import { dynamicClient } from "./dynamic";
 interface WalletContextValue {
   solanaAccount: SolanaWalletAccount | null;
   loggedIn: boolean;
-  refresh: () => void;
+  ensureSolanaWallet: () => Promise<void>;
   disconnect: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextValue>({
   solanaAccount: null,
   loggedIn: false,
-  refresh: () => {},
+  ensureSolanaWallet: async () => {},
   disconnect: async () => {},
 });
 
@@ -69,8 +69,9 @@ export default function Providers({ children }: { children: ReactNode }) {
     setLoggedIn(false);
   }, []);
 
-  // After a successful email/Google login, ensure the user has a Solana
-  // embedded wallet. Silently ignores errors (e.g. wallet already exists).
+  // After a successful login (email OTP, Google, or external wallet), ensure
+  // the user has a Solana embedded wallet. Silently ignores errors (e.g. wallet
+  // already exists or WaaS not enabled for this environment).
   const ensureSolanaWallet = useCallback(async () => {
     try {
       const accounts = getWalletAccounts(dynamicClient);
@@ -79,7 +80,7 @@ export default function Providers({ children }: { children: ReactNode }) {
         await createWaasWalletAccounts({ chains: ["SOL"] }, dynamicClient);
       }
     } catch {
-      // wallet may already exist or WaaS not enabled — ignore
+      // wallet may already exist — ignore
     }
     refresh();
   }, [refresh]);
@@ -133,7 +134,7 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <WalletContext.Provider
-      value={{ solanaAccount, loggedIn, refresh, disconnect }}
+      value={{ solanaAccount, loggedIn, ensureSolanaWallet, disconnect }}
     >
       <QueryClientProvider client={queryClient}>
         {children}

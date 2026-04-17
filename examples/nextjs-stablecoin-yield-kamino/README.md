@@ -20,7 +20,7 @@ This example uses the headless Dynamic client SDK (`@dynamic-labs-sdk/client`) a
 import { createDynamicClient } from "@dynamic-labs-sdk/client";
 import { addSolanaExtension } from "@dynamic-labs-sdk/solana";
 
-export const dynamicClient = createDynamicClient({ environmentId: "..." });
+export const dynamicClient = createDynamicClient({ environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID! });
 addSolanaExtension();
 ```
 
@@ -73,14 +73,19 @@ pnpm install
 
 ### Environment variables
 
-Create a `.env.local` file:
+```bash
+cp .env.example .env.local
+```
+
+Open `.env.local` and set your Dynamic environment ID:
 
 ```env
 NEXT_PUBLIC_DYNAMIC_ENV_ID=your-environment-id
-NEXT_PUBLIC_SOLANA_RPC_URL=https://your-rpc-endpoint
 ```
 
 Get your environment ID from the [Dynamic dashboard](https://app.dynamic.xyz) under **Developer Settings → SDK & API Keys**.
+
+The Solana RPC URL is sourced automatically from your Dynamic dashboard network configuration — no separate `SOLANA_RPC_URL` env var is needed.
 
 ### Run
 

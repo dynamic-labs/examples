@@ -59,7 +59,7 @@ const outlineBtn =
 // Main component
 // ---------------------------------------------------------------------------
 export default function DynamicButton() {
-  const { solanaAccount, loggedIn, disconnect, refresh } = useWallet();
+  const { solanaAccount, loggedIn, disconnect, ensureSolanaWallet } = useWallet();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"menu" | "email" | "otp" | "wallet">("menu");
   const [email, setEmail] = useState("");
@@ -115,15 +115,20 @@ export default function DynamicButton() {
     setError(null);
     try {
       await verifyOTP({ otpVerification, verificationToken: otp }, dynamicClient);
-      refresh();
+      await ensureSolanaWallet();
       setOpen(false);
       reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid code");
+      const msg = err instanceof Error ? err.message : "Invalid code";
+      if (msg.toLowerCase().includes("unauthorized")) {
+        setError("Verification failed. Please request a new code and try again.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
-  }, [otpVerification, otp, refresh]);
+  }, [otpVerification, otp, ensureSolanaWallet]);
 
   // ── Google OAuth ───────────────────────────────────────────────────────────
   const handleGoogle = useCallback(async () => {
@@ -153,7 +158,7 @@ export default function DynamicButton() {
     setError(null);
     try {
       await connectAndVerifyWithWalletProvider({ walletProviderKey: providerKey }, dynamicClient);
-      refresh();
+      await ensureSolanaWallet();
       setOpen(false);
       reset();
     } catch (err) {
@@ -161,7 +166,7 @@ export default function DynamicButton() {
     } finally {
       setLoading(false);
     }
-  }, [refresh]);
+  }, [ensureSolanaWallet]);
 
   // ── Connected state ────────────────────────────────────────────────────────
   if (loggedIn && solanaAccount) {
