@@ -10,9 +10,11 @@ import {
   type WalletProviderData,
   type OTPVerification,
 } from "@dynamic-labs-sdk/client";
+import { exportWaasPrivateKey } from "@dynamic-labs-sdk/client/waas";
 import { useWallet } from "@/lib/providers";
 import { dynamicClient } from "@/lib/dynamic";
 import { shortenAddress } from "@/lib/utils";
+import { KeyRound } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Inline icon components so we have no extra deps
@@ -61,13 +63,16 @@ const outlineBtn =
 export default function DynamicButton() {
   const { solanaAccount, loggedIn, disconnect, ensureSolanaWallet } = useWallet();
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"menu" | "email" | "otp" | "wallet">("menu");
+  const [view, setView] = useState<"menu" | "email" | "otp" | "wallet" | "export">("menu");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpVerification, setOtpVerification] = useState<OTPVerification | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const exportContainerRef = useRef<HTMLDivElement>(null);
+  const [exportPassword, setExportPassword] = useState("");
+  const [exportRevealed, setExportRevealed] = useState(false);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -90,7 +95,26 @@ export default function DynamicButton() {
     setOtpVerification(null);
     setError(null);
     setLoading(false);
+    setExportPassword("");
+    setExportRevealed(false);
   };
+
+  const handleExportKey = useCallback(async () => {
+    if (!exportContainerRef.current || !solanaAccount) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await exportWaasPrivateKey(
+        { displayContainer: exportContainerRef.current, password: exportPassword, walletAccount: solanaAccount },
+        dynamicClient
+      );
+      setExportRevealed(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setLoading(false);
+    }
+  }, [exportPassword, solanaAccount]);
 
   // ── Email OTP ──────────────────────────────────────────────────────────────
   const handleSendOTP = useCallback(async (e: React.FormEvent) => {
@@ -190,21 +214,72 @@ export default function DynamicButton() {
 
         {open && (
           <div
-            className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl border border-[#DADADA] shadow-lg p-2 z-50"
+            className={`absolute right-0 top-full mt-2 bg-white rounded-xl border border-[#DADADA] shadow-lg p-2 z-50 ${view === "export" ? "w-72" : "w-52"}`}
           >
-            <div className="px-3 py-2 mb-1">
-              <p className="text-xs text-[#606060] font-medium">Connected</p>
-              <p className="text-xs font-mono text-[#030303] truncate mt-0.5">
-                {solanaAccount.address}
-              </p>
-            </div>
-            <div className="border-t border-[#DADADA] my-1" />
-            <button
-              onClick={() => { disconnect(); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              Disconnect
-            </button>
+            {view !== "export" && (
+              <>
+                <div className="px-3 py-2 mb-1">
+                  <p className="text-xs text-[#606060] font-medium">Connected</p>
+                  <p className="text-xs font-mono text-[#030303] truncate mt-0.5">
+                    {solanaAccount.address}
+                  </p>
+                </div>
+                <div className="border-t border-[#DADADA] my-1" />
+                <button
+                  onClick={() => { setView("export"); setError(null); }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-[#030303] hover:bg-[#F9F9F9] rounded-lg transition-colors"
+                >
+                  <KeyRound className="h-3.5 w-3.5 text-[#606060]" />
+                  Export Private Key
+                </button>
+                <div className="border-t border-[#DADADA] my-1" />
+                <button
+                  onClick={() => { disconnect(); setOpen(false); }}
+                  className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  Disconnect
+                </button>
+              </>
+            )}
+
+            {view === "export" && (
+              <div className="p-2 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => { setView("menu"); setError(null); setExportPassword(""); setExportRevealed(false); }}
+                  className="flex items-center gap-1 text-xs text-[#606060] hover:text-[#030303] mb-1"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                  Back
+                </button>
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-[#606060]" />
+                  <p className="text-sm font-medium text-[#030303]">Export Private Key</p>
+                </div>
+                {!exportRevealed && (
+                  <>
+                    <input
+                      type="password"
+                      value={exportPassword}
+                      onChange={(e) => setExportPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="w-full text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#4779FF]"
+                      style={{ border: "1px solid #DADADA", background: "#F9F9F9" }}
+                    />
+                    {error && <p className="text-xs text-red-600">{error}</p>}
+                    <button
+                      onClick={handleExportKey}
+                      disabled={loading}
+                      className="w-full py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: "#030303", color: "#fff" }}
+                    >
+                      {loading ? "Exporting…" : "Reveal Private Key"}
+                    </button>
+                  </>
+                )}
+                <div ref={exportContainerRef} className={exportRevealed ? "mt-2" : "hidden"} />
+              </div>
+            )}
           </div>
         )}
       </div>

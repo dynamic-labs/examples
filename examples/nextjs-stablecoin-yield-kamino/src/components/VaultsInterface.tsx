@@ -11,7 +11,6 @@ import type { EnrichedVault, UserPosition, LastTransaction } from "@/lib/types";
 
 import { VaultCard } from "./VaultCard";
 import { PositionCard } from "./PositionCard";
-import { ExportKeyCard } from "./ExportKeyCard";
 import { CheckCircle, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 const VAULTS_PER_PAGE = 6;
@@ -185,7 +184,7 @@ export function VaultsInterface() {
 
       {/* ── Portfolio summary (logged-in) ────────────────────── */}
       {loggedIn && solanaAccount && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl p-5" style={{ border: "1px solid #DADADA" }}>
             <p className="text-sm text-[#606060] font-medium">Total balance</p>
             <p className="text-2xl font-medium text-[#030303] mt-2">
@@ -208,7 +207,6 @@ export function VaultsInterface() {
               View on Solscan <ExternalLink className="h-3 w-3" />
             </a>
           </div>
-          <ExportKeyCard walletAccount={solanaAccount} />
         </div>
       )}
 
