@@ -311,28 +311,38 @@ export default function OnboardPage() {
       const signature = await primaryWallet.signMessage(proofMessage);
       if (!signature) throw new Error("Failed to sign message");
 
-      const res = await fetch(`${config.api.baseUrl}/api/iron/wallets/self-hosted`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_id: customerId,
-          blockchain,
-          address: walletAddress,
-          message: proofMessage,
-          signature,
-        }),
-      });
+      const walletPayload = {
+        customer_id: customerId,
+        blockchain,
+        address: walletAddress,
+        message: proofMessage,
+        signature,
+      };
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const msg = errorData.error || errorData.message || "";
-        if (msg.includes("not active") || msg.includes("Customer is not active")) {
-          throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
+      // Retry up to 6 times (12s total) — Iron activates customers async after signing.
+      let lastMsg = "";
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+        const res = await fetch(`${config.api.baseUrl}/api/iron/wallets/self-hosted`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(walletPayload),
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          lastMsg = errorData.error || errorData.message || "";
+          if ((lastMsg.includes("not active") || lastMsg.includes("Customer is not active")) && attempt < 5) {
+            continue;
+          }
+          if (lastMsg.includes("not active") || lastMsg.includes("Customer is not active")) {
+            throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
+          }
+          throw new Error(lastMsg || "Failed to register wallet");
         }
-        throw new Error(msg || "Failed to register wallet");
+        const result = await res.json();
+        await updateState({ walletId: result.data.id, walletAddress, step: "bank" });
+        break;
       }
-      const result = await res.json();
-      await updateState({ walletId: result.data.id, walletAddress, step: "bank" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to register wallet");
     } finally {
@@ -344,33 +354,43 @@ export default function OnboardPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${config.api.baseUrl}/api/iron/banks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_id: customerId,
-          currency: "EUR",
-          account_holder_name: bankData.accountHolderName,
-          iban: bankData.iban,
-          bank_name: bankData.bankName,
-          bank_country: bankData.bankCountry,
-          street: bankData.street,
-          city: bankData.city,
-          state: bankData.state,
-          country: bankData.country,
-          postal_code: bankData.postalCode,
-          label: "Primary Bank Account",
-        }),
-      });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        const msg = errorData.error || errorData.message || "";
-        if (msg.includes("not active") || msg.includes("Customer is not active")) {
-          throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
+      const bankPayload = {
+        customer_id: customerId,
+        currency: "EUR",
+        account_holder_name: bankData.accountHolderName,
+        iban: bankData.iban,
+        bank_name: bankData.bankName,
+        bank_country: bankData.bankCountry,
+        street: bankData.street,
+        city: bankData.city,
+        state: bankData.state,
+        country: bankData.country,
+        postal_code: bankData.postalCode,
+        label: "Primary Bank Account",
+      };
+
+      let result: { data?: { id?: string } } = {};
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+        const res = await fetch(`${config.api.baseUrl}/api/iron/banks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bankPayload),
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          const msg = errorData.error || errorData.message || "";
+          if ((msg.includes("not active") || msg.includes("Customer is not active")) && attempt < 5) {
+            continue;
+          }
+          if (msg.includes("not active") || msg.includes("Customer is not active")) {
+            throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
+          }
+          throw new Error(msg || "Failed to add bank account");
         }
-        throw new Error(msg || "Failed to add bank account");
+        result = await res.json();
+        break;
       }
-      const result = await res.json();
       await updateState({
         bankAccountId: result.data?.id || "",
         bankIban: bankData.iban,
