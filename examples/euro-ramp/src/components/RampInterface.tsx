@@ -1,6 +1,6 @@
 "use client";
 
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { useDynamicContext, DynamicWidget } from "@dynamic-labs/sdk-react-core";
 import { useState, useEffect, useCallback } from "react";
 import { config } from "@/lib/config";
 import { useKYCMetadata } from "@/lib/hooks/useKYCMetadata";
@@ -84,7 +84,13 @@ interface AutoRamp {
     customer_id?: string;
     account_identifier?: { iban?: string; type?: string };
     provider_name?: string;
-    address?: string;
+    address?: string | {
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string | { code?: string };
+      postal_code?: string;
+    };
     chain?: string;
     type?: string;
   };
@@ -476,15 +482,18 @@ export function RampInterface() {
           <CardTitle>Onboarding Status</CardTitle>
         </CardHeader>
         <CardContent>
-          {metadataLoading ? (
+          {!user ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Connect your wallet to start onramping and offramping.
+              </p>
+              <DynamicWidget />
+            </div>
+          ) : metadataLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading status...</span>
             </div>
-          ) : !user ? (
-            <p className="text-sm text-muted-foreground">
-              Connect your wallet above to get started.
-            </p>
           ) : isOnboarded ? (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -625,7 +634,7 @@ export function RampInterface() {
                     setError("");
                     setSuccess("");
                   }}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                     rampType === type
                       ? "bg-background shadow-sm text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -978,7 +987,7 @@ export function RampInterface() {
                 {transactions.slice(0, 10).map((tx) => (
                   <button
                     key={tx.id}
-                    className="w-full text-left py-3 border-b last:border-0 text-sm space-y-1 hover:bg-muted/40 -mx-1 px-1 rounded transition-colors"
+                    className="w-full text-left py-3 border-b last:border-0 text-sm space-y-1 hover:bg-muted/40 -mx-1 px-1 rounded transition-colors cursor-pointer"
                     onClick={() => setSelectedTx(tx)}
                   >
                     <div className="flex items-center justify-between">
@@ -1034,7 +1043,7 @@ export function RampInterface() {
 
       {/* Transaction Detail Dialog */}
       <Dialog open={!!selectedTx} onOpenChange={(o) => !o && setSelectedTx(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Transaction Details</DialogTitle>
           </DialogHeader>
@@ -1071,13 +1080,13 @@ function TxDetail({
   function Row({ label, value, copyKey }: { label: string; value?: string | null; copyKey?: string }) {
     if (!value) return null;
     return (
-      <div className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm">
-        <span className="text-muted-foreground shrink-0 mr-4">{label}</span>
+      <div className="flex items-center justify-between py-1 border-b last:border-0 text-sm">
+        <span className="text-muted-foreground text-xs shrink-0 mr-3">{label}</span>
         <div className="flex items-center gap-1 min-w-0">
           <span className="font-mono text-xs truncate">{value}</span>
           {copyKey && (
             <button
-              className="shrink-0 p-0.5 rounded hover:bg-muted"
+              className="shrink-0 p-0.5 rounded hover:bg-muted cursor-pointer"
               onClick={() => onCopy(value, copyKey)}
             >
               {copiedField === copyKey ? (
@@ -1092,87 +1101,106 @@ function TxDetail({
     );
   }
 
-  return (
-    <div className="space-y-5 text-sm">
-      {/* Main Info */}
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Main Information</p>
-        <div className="rounded-md border px-3">
-          {tx.name && <Row label="Name" value={tx.name} />}
-          <Row label="ID" value={tx.id} copyKey="detail-id" />
-          <Row label="Source" value={srcLabel} />
-          <Row label="Destination" value={dstLabel} />
-          {tx.quote?.amount_in?.amount && (
-            <Row
-              label="Amount In"
-              value={`${tx.quote.amount_in.amount} ${tx.quote.amount_in.currency?.code ?? ""}`}
-            />
-          )}
-          {tx.quote?.amount_out?.amount && (
-            <Row
-              label="Amount Out"
-              value={`${tx.quote.amount_out.amount} ${tx.quote.amount_out.currency?.code ?? ""}`}
-            />
-          )}
-          {tx.quote?.rate && <Row label="Rate" value={tx.quote.rate} />}
-          {tx.quote?.fee?.total_fee?.amount && (
-            <Row
-              label="Total Fee"
-              value={`${tx.quote.fee.total_fee.amount} ${tx.quote.fee.total_fee.currency?.code ?? ""}`}
-            />
-          )}
-          <div className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm">
-            <span className="text-muted-foreground">Status</span>
-            <span
-              className={`text-xs font-medium ${
-                tx.status === "Approved" || tx.status === "completed"
-                  ? "text-green-600"
-                  : tx.status === "Rejected" || tx.status === "failed"
-                  ? "text-destructive"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {tx.status}
-            </span>
-          </div>
-          {tx.created_at && (
-            <Row label="Created" value={new Date(tx.created_at).toLocaleString()} />
-          )}
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">{title}</p>
+        <div className="rounded-md border px-3">{children}</div>
       </div>
+    );
+  }
 
-      {/* Deposit Rails */}
-      {rail && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Deposit Account</p>
-          <div className="rounded-md border px-3">
-            {rail.name && <Row label="Bank Name" value={rail.name} copyKey="d-bank" />}
-            {rail.iban && <Row label="IBAN" value={rail.iban} copyKey="d-iban" />}
-            {rail.account_number && <Row label="Account Number" value={rail.account_number} copyKey="d-acct" />}
-            {rail.routing_number && <Row label="Routing Number" value={rail.routing_number} copyKey="d-routing" />}
-            {rail.bic && <Row label="BIC/SWIFT" value={rail.bic} copyKey="d-bic" />}
-            {rail.beneficiary_name && <Row label="Beneficiary" value={rail.beneficiary_name} copyKey="d-bene" />}
-            {rail.account_holder_name && <Row label="Account Holder" value={rail.account_holder_name} copyKey="d-holder" />}
-            {rail.address && <Row label="Bank Address" value={rail.address} copyKey="d-addr" />}
-            {rail.bank_address && <Row label="Bank Address" value={rail.bank_address} copyKey="d-baddr" />}
-            {rail.account_holder_address && <Row label="Holder Address" value={rail.account_holder_address} copyKey="d-haddr" />}
-          </div>
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <Section title="Main">
+        {tx.name && <Row label="Name" value={tx.name} />}
+        <Row label="ID" value={tx.id} copyKey="detail-id" />
+        <Row label="Source" value={srcLabel} />
+        <Row label="Destination" value={dstLabel} />
+        {tx.quote?.amount_in?.amount && (
+          <Row
+            label="Amount In"
+            value={`${tx.quote.amount_in.amount} ${tx.quote.amount_in.currency?.code ?? ""}`}
+          />
+        )}
+        {tx.quote?.amount_out?.amount && (
+          <Row
+            label="Amount Out"
+            value={`${tx.quote.amount_out.amount} ${tx.quote.amount_out.currency?.code ?? ""}`}
+          />
+        )}
+        {tx.quote?.rate && <Row label="Rate" value={tx.quote.rate} />}
+        {tx.quote?.fee?.total_fee?.amount && (
+          <Row
+            label="Total Fee"
+            value={`${tx.quote.fee.total_fee.amount} ${tx.quote.fee.total_fee.currency?.code ?? ""}`}
+          />
+        )}
+        <div className="flex items-center justify-between py-1 border-b last:border-0 text-sm">
+          <span className="text-muted-foreground text-xs">Status</span>
+          <span
+            className={`text-xs font-medium ${
+              tx.status === "Approved" || tx.status === "completed"
+                ? "text-green-600"
+                : tx.status === "Rejected" || tx.status === "failed"
+                ? "text-destructive"
+                : "text-muted-foreground"
+            }`}
+          >
+            {tx.status}
+          </span>
         </div>
-      )}
+        {tx.created_at && (
+          <Row label="Created" value={new Date(tx.created_at).toLocaleString()} />
+        )}
+      </Section>
 
-      {/* Recipient */}
-      {tx.recipient && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recipient Account</p>
-          <div className="rounded-md border px-3">
-            {tx.recipient.type && <Row label="Type" value={tx.recipient.type} />}
-            {tx.recipient.address && <Row label="Address" value={tx.recipient.address} copyKey="r-addr" />}
-            {tx.recipient.chain && <Row label="Chain" value={tx.recipient.chain} />}
-            {tx.recipient.account_identifier?.iban && (
-              <Row label="IBAN" value={tx.recipient.account_identifier.iban} copyKey="r-iban" />
-            )}
-            {tx.recipient.provider_name && <Row label="Bank" value={tx.recipient.provider_name} />}
-          </div>
+      {(rail || tx.recipient) && (
+        <div className="space-y-4">
+          {rail && (
+            <Section title="Deposit Account">
+              {rail.name && <Row label="Bank Name" value={rail.name} copyKey="d-bank" />}
+              {rail.iban && <Row label="IBAN" value={rail.iban} copyKey="d-iban" />}
+              {rail.account_number && <Row label="Account Number" value={rail.account_number} copyKey="d-acct" />}
+              {rail.routing_number && <Row label="Routing Number" value={rail.routing_number} copyKey="d-routing" />}
+              {rail.bic && <Row label="BIC/SWIFT" value={rail.bic} copyKey="d-bic" />}
+              {rail.beneficiary_name && <Row label="Beneficiary" value={rail.beneficiary_name} copyKey="d-bene" />}
+              {rail.account_holder_name && <Row label="Account Holder" value={rail.account_holder_name} copyKey="d-holder" />}
+              {rail.address && <Row label="Bank Address" value={rail.address} copyKey="d-addr" />}
+              {rail.bank_address && <Row label="Bank Address" value={rail.bank_address} copyKey="d-baddr" />}
+              {rail.account_holder_address && <Row label="Holder Address" value={rail.account_holder_address} copyKey="d-haddr" />}
+            </Section>
+          )}
+
+          {tx.recipient && (
+            <Section title="Recipient Account">
+              {tx.recipient.type && <Row label="Type" value={tx.recipient.type} />}
+              {typeof tx.recipient.address === "string" && (
+                <Row label="Address" value={tx.recipient.address} copyKey="r-addr" />
+              )}
+              {tx.recipient.chain && <Row label="Chain" value={tx.recipient.chain} />}
+              {tx.recipient.account_identifier?.iban && (
+                <Row label="IBAN" value={tx.recipient.account_identifier.iban} copyKey="r-iban" />
+              )}
+              {tx.recipient.provider_name && <Row label="Bank" value={tx.recipient.provider_name} />}
+              {tx.recipient.address && typeof tx.recipient.address === "object" && (
+                <Row
+                  label="Bank Address"
+                  value={[
+                    tx.recipient.address.street,
+                    tx.recipient.address.city,
+                    tx.recipient.address.state,
+                    tx.recipient.address.postal_code,
+                    typeof tx.recipient.address.country === "string"
+                      ? tx.recipient.address.country
+                      : tx.recipient.address.country?.code,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                />
+              )}
+            </Section>
+          )}
         </div>
       )}
     </div>

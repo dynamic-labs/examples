@@ -840,7 +840,7 @@ export default function OnboardPage() {
               </p>
             </div>
             <Button asChild className="w-full">
-              <Link href="/ramp">Go to Ramp →</Link>
+              <Link href="/">Go to Ramp →</Link>
             </Button>
           </CardContent>
         </Card>
