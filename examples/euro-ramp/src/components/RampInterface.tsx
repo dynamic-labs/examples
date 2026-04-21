@@ -202,6 +202,9 @@ export function RampInterface() {
       const idx = i >= 0 ? i : 0;
       setSelectedWalletIndex(idx);
       setWalletAddress(registeredWallets[idx].address);
+      if (registeredWallets[idx].blockchain) {
+        setSelectedChain(registeredWallets[idx].blockchain);
+      }
     }
   }, [registeredWallets, selectedWalletIndex, metaWalletAddress]);
 
@@ -308,7 +311,7 @@ export function RampInterface() {
               destination_currency: selectedToken,
               source_amount: parseFloat(amount) * 100,
               payment_rail: "sepa" as const,
-              wallet_id: selectedWallet?.id || "",
+              wallet_address: selectedWalletAddr,
               blockchain: selectedChain,
             }
           : {
@@ -466,21 +469,53 @@ export function RampInterface() {
                   <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
                     Wallet
                   </p>
-                  <p className="font-mono text-xs">
-                    {metaWalletAddress
-                      ? `${metaWalletAddress.slice(0, 8)}...${metaWalletAddress.slice(-6)}`
-                      : "—"}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-mono text-xs">
+                      {metaWalletAddress
+                        ? `${metaWalletAddress.slice(0, 8)}...${metaWalletAddress.slice(-6)}`
+                        : "—"}
+                    </p>
+                    {metaWalletAddress && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => handleCopy(metaWalletAddress, "wallet-addr")}
+                      >
+                        {copiedField === "wallet-addr" ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">
                     Bank (IBAN)
                   </p>
-                  <p className="font-mono text-xs">
-                    {metaBankIban
-                      ? `...${metaBankIban.slice(-8)}`
-                      : "—"}
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-mono text-xs">
+                      {metaBankIban
+                        ? `...${metaBankIban.slice(-8)}`
+                        : "—"}
+                    </p>
+                    {metaBankIban && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => handleCopy(metaBankIban, "bank-iban")}
+                      >
+                        {copiedField === "bank-iban" ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -938,6 +973,18 @@ export function RampInterface() {
                         <span className="text-muted-foreground text-xs font-mono">
                           {tx.id.slice(0, 12)}...
                         </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5"
+                          onClick={() => handleCopy(tx.id, `tx-${tx.id}`)}
+                        >
+                          {copiedField === `tx-${tx.id}` ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
                       </div>
                       <span
                         className={`text-xs font-medium ${

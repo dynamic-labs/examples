@@ -27,7 +27,7 @@ const quoteSchema = z.object({
   source_amount: z.number().positive().optional(),
   destination_amount: z.number().positive().optional(),
   payment_rail: z.enum(["ach", "wire", "sepa", "pix", "faster_payments"]),
-  wallet_id: z.string().min(1, "Wallet ID is required"),
+  wallet_address: z.string().min(1, "Wallet address is required"),
   blockchain: z.enum(["Ethereum", "Solana", "Polygon", "Arbitrum", "Base", "Stellar", "Citrea"]).optional(),
 });
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
         source_amount: validated.source_amount,
         destination_amount: validated.destination_amount,
         payment_rail: validated.payment_rail,
-        wallet_id: validated.wallet_id,
+        wallet_address: validated.wallet_address,
         blockchain: validated.blockchain,
       };
 
