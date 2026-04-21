@@ -6,11 +6,11 @@ import { config } from "@/lib/config";
 import { useKYCMetadata } from "@/lib/hooks/useKYCMetadata";
 import {
   Loader2,
-  RefreshCw,
   Copy,
   Check,
   ArrowRight,
   CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import {
   CHAINS,
@@ -36,6 +36,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type {
   RampType,
   RegisteredWallet,
@@ -47,12 +53,40 @@ import type {
 
 interface AutoRamp {
   id: string;
+  kind?: string;
   type: string;
   status: string;
+  name?: string;
   created_at?: string;
+  source_currencies?: Array<{ code?: string; token?: string; type?: string; blockchain?: string }>;
+  destination_currency?: { code?: string; token?: string; type?: string; blockchain?: string };
   quote?: {
+    quote_id?: string;
     amount_in?: { amount: string; currency: { code: string } };
     amount_out?: { amount: string; currency: { code: string } };
+    rate?: string;
+    fee?: { total_fee?: { amount: string; currency: { code: string } } };
+  };
+  deposit_rails?: Array<{
+    iban?: string;
+    name?: string;
+    bic?: string;
+    beneficiary_name?: string;
+    address?: string;
+    account_number?: string;
+    routing_number?: string;
+    account_holder_name?: string;
+    account_holder_address?: string;
+    bank_address?: string;
+    rails?: string[];
+  }>;
+  recipient?: {
+    customer_id?: string;
+    account_identifier?: { iban?: string; type?: string };
+    provider_name?: string;
+    address?: string;
+    chain?: string;
+    type?: string;
   };
 }
 
@@ -110,6 +144,7 @@ export function RampInterface() {
 
   const [transactions, setTransactions] = useState<AutoRamp[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [selectedTx, setSelectedTx] = useState<AutoRamp | null>(null);
 
   useEffect(() => {
     if (metadataLoading || !isOnboarded) return;
@@ -572,24 +607,10 @@ export function RampInterface() {
       {isOnboarded && (
         <Card className="max-w-5xl mx-auto">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Quick Ramp</CardTitle>
-                <CardDescription>
-                  Convert between fiat and stablecoins
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={fetchRegisteredAccounts}
-                disabled={loadingAccounts}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${loadingAccounts ? "animate-spin" : ""}`}
-                />
-              </Button>
-            </div>
+            <CardTitle>Quick Ramp</CardTitle>
+            <CardDescription>
+              Convert between fiat and stablecoins
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {/* Ramp type toggle */}
@@ -953,11 +974,12 @@ export function RampInterface() {
                 No transactions yet.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-0">
                 {transactions.slice(0, 10).map((tx) => (
-                  <div
+                  <button
                     key={tx.id}
-                    className="py-3 border-b last:border-0 text-sm space-y-1"
+                    className="w-full text-left py-3 border-b last:border-0 text-sm space-y-1 hover:bg-muted/40 -mx-1 px-1 rounded transition-colors"
+                    onClick={() => setSelectedTx(tx)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -973,30 +995,21 @@ export function RampInterface() {
                         <span className="text-muted-foreground text-xs font-mono">
                           {tx.id.slice(0, 12)}...
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5"
-                          onClick={() => handleCopy(tx.id, `tx-${tx.id}`)}
-                        >
-                          {copiedField === `tx-${tx.id}` ? (
-                            <Check className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
                       </div>
-                      <span
-                        className={`text-xs font-medium ${
-                          tx.status === "completed" || tx.status === "Completed"
-                            ? "text-green-600"
-                            : tx.status === "failed" || tx.status === "Failed"
-                            ? "text-destructive"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {tx.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-medium ${
+                            tx.status === "Approved" || tx.status === "completed"
+                              ? "text-green-600"
+                              : tx.status === "Rejected" || tx.status === "failed"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>
@@ -1008,15 +1021,159 @@ export function RampInterface() {
                           : ""}
                       </span>
                       {tx.created_at && (
-                        <span>{new Date(tx.created_at).toLocaleDateString()}</span>
+                        <span>{new Date(tx.created_at).toLocaleString()}</span>
                       )}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Transaction Detail Dialog */}
+      <Dialog open={!!selectedTx} onOpenChange={(o) => !o && setSelectedTx(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transaction Details</DialogTitle>
+          </DialogHeader>
+          {selectedTx && <TxDetail tx={selectedTx} onCopy={handleCopy} copiedField={copiedField} />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function TxDetail({
+  tx,
+  onCopy,
+  copiedField,
+}: {
+  tx: AutoRamp;
+  onCopy: (text: string, field: string) => void;
+  copiedField: string | null;
+}) {
+  const rail = tx.deposit_rails?.[0];
+  const srcLabel =
+    tx.source_currencies
+      ?.map((c) => c.token || c.code || "")
+      .filter(Boolean)
+      .join(", ") ||
+    tx.quote?.amount_in?.currency?.code ||
+    "—";
+  const dstLabel =
+    (tx.destination_currency?.token || tx.destination_currency?.code || "") +
+    (tx.destination_currency?.blockchain ? ` (${tx.destination_currency.blockchain})` : "") ||
+    tx.quote?.amount_out?.currency?.code ||
+    "—";
+
+  function Row({ label, value, copyKey }: { label: string; value?: string | null; copyKey?: string }) {
+    if (!value) return null;
+    return (
+      <div className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm">
+        <span className="text-muted-foreground shrink-0 mr-4">{label}</span>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="font-mono text-xs truncate">{value}</span>
+          {copyKey && (
+            <button
+              className="shrink-0 p-0.5 rounded hover:bg-muted"
+              onClick={() => onCopy(value, copyKey)}
+            >
+              {copiedField === copyKey ? (
+                <Check className="h-3 w-3 text-green-500" />
+              ) : (
+                <Copy className="h-3 w-3 text-muted-foreground" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 text-sm">
+      {/* Main Info */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Main Information</p>
+        <div className="rounded-md border px-3">
+          {tx.name && <Row label="Name" value={tx.name} />}
+          <Row label="ID" value={tx.id} copyKey="detail-id" />
+          <Row label="Source" value={srcLabel} />
+          <Row label="Destination" value={dstLabel} />
+          {tx.quote?.amount_in?.amount && (
+            <Row
+              label="Amount In"
+              value={`${tx.quote.amount_in.amount} ${tx.quote.amount_in.currency?.code ?? ""}`}
+            />
+          )}
+          {tx.quote?.amount_out?.amount && (
+            <Row
+              label="Amount Out"
+              value={`${tx.quote.amount_out.amount} ${tx.quote.amount_out.currency?.code ?? ""}`}
+            />
+          )}
+          {tx.quote?.rate && <Row label="Rate" value={tx.quote.rate} />}
+          {tx.quote?.fee?.total_fee?.amount && (
+            <Row
+              label="Total Fee"
+              value={`${tx.quote.fee.total_fee.amount} ${tx.quote.fee.total_fee.currency?.code ?? ""}`}
+            />
+          )}
+          <div className="flex items-center justify-between py-1.5 border-b last:border-0 text-sm">
+            <span className="text-muted-foreground">Status</span>
+            <span
+              className={`text-xs font-medium ${
+                tx.status === "Approved" || tx.status === "completed"
+                  ? "text-green-600"
+                  : tx.status === "Rejected" || tx.status === "failed"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {tx.status}
+            </span>
+          </div>
+          {tx.created_at && (
+            <Row label="Created" value={new Date(tx.created_at).toLocaleString()} />
+          )}
+        </div>
+      </div>
+
+      {/* Deposit Rails */}
+      {rail && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Deposit Account</p>
+          <div className="rounded-md border px-3">
+            {rail.name && <Row label="Bank Name" value={rail.name} copyKey="d-bank" />}
+            {rail.iban && <Row label="IBAN" value={rail.iban} copyKey="d-iban" />}
+            {rail.account_number && <Row label="Account Number" value={rail.account_number} copyKey="d-acct" />}
+            {rail.routing_number && <Row label="Routing Number" value={rail.routing_number} copyKey="d-routing" />}
+            {rail.bic && <Row label="BIC/SWIFT" value={rail.bic} copyKey="d-bic" />}
+            {rail.beneficiary_name && <Row label="Beneficiary" value={rail.beneficiary_name} copyKey="d-bene" />}
+            {rail.account_holder_name && <Row label="Account Holder" value={rail.account_holder_name} copyKey="d-holder" />}
+            {rail.address && <Row label="Bank Address" value={rail.address} copyKey="d-addr" />}
+            {rail.bank_address && <Row label="Bank Address" value={rail.bank_address} copyKey="d-baddr" />}
+            {rail.account_holder_address && <Row label="Holder Address" value={rail.account_holder_address} copyKey="d-haddr" />}
+          </div>
+        </div>
+      )}
+
+      {/* Recipient */}
+      {tx.recipient && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recipient Account</p>
+          <div className="rounded-md border px-3">
+            {tx.recipient.type && <Row label="Type" value={tx.recipient.type} />}
+            {tx.recipient.address && <Row label="Address" value={tx.recipient.address} copyKey="r-addr" />}
+            {tx.recipient.chain && <Row label="Chain" value={tx.recipient.chain} />}
+            {tx.recipient.account_identifier?.iban && (
+              <Row label="IBAN" value={tx.recipient.account_identifier.iban} copyKey="r-iban" />
+            )}
+            {tx.recipient.provider_name && <Row label="Bank" value={tx.recipient.provider_name} />}
+          </div>
+        </div>
       )}
     </div>
   );

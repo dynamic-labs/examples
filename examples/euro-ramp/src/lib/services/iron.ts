@@ -336,6 +336,12 @@ export interface IronAutorampResponse {
     beneficiary_name?: string;
     address?: string;
     phone?: string;
+    account_number?: string;
+    routing_number?: string;
+    account_holder_name?: string;
+    account_holder_address?: string;
+    bank_address?: string;
+    rails?: string[]; // e.g. ["ACH", "Wire", "RTP"]
   }>;
   destination_currency?: {
     blockchain?: string;
@@ -922,7 +928,7 @@ class IronFinanceClient {
       },
       recipient_account: {
         type: "Crypto",
-        blockchain: blockchain,
+        chain: blockchain,
         address: request.wallet_address,
       },
       source_currencies: [
