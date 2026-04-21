@@ -190,11 +190,15 @@ export default function OnboardPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         const errorMsg = errorData.error || "";
-        if (res.status === 409 && errorMsg.includes("not in status SigningsRequired")) {
+        if (errorMsg.includes("not in status SigningsRequired")) {
           setError("KYC still pending. Complete KYC first or wait for approval.");
           return;
         }
-        if (res.status === 404 || errorMsg.includes("no required signings")) {
+        if (
+          res.status === 404 ||
+          errorMsg.includes("no required signings") ||
+          errorMsg.includes("does not require signings")
+        ) {
           setRequiredSignings([]);
           await updateState({ step: "wallet" });
           return;
