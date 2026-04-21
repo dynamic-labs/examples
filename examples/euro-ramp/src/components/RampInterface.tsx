@@ -594,7 +594,7 @@ export function RampInterface() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Form */}
               <div className="space-y-4">
-                {!quote && !result && (
+                {!result && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
@@ -682,9 +682,10 @@ export function RampInterface() {
                             onValueChange={(v) => {
                               const idx = parseInt(v);
                               setSelectedWalletIndex(idx);
-                              setWalletAddress(
-                                registeredWallets[idx]?.address || ""
-                              );
+                              setWalletAddress(registeredWallets[idx]?.address || "");
+                              if (registeredWallets[idx]?.blockchain) {
+                                setSelectedChain(registeredWallets[idx].blockchain);
+                              }
                             }}
                             disabled={loadingAccounts}
                           >
@@ -759,11 +760,12 @@ export function RampInterface() {
                       className="w-full"
                       onClick={handleGetQuote}
                       disabled={loading}
+                      variant={quote ? "outline" : "default"}
                     >
                       {loading && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Get Quote
+                      {quote ? "Refresh Quote" : "Get Quote"}
                     </Button>
                   </>
                 )}
@@ -920,33 +922,27 @@ export function RampInterface() {
                 {transactions.slice(0, 10).map((tx) => (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between py-2 border-b last:border-0 text-sm"
+                    className="py-3 border-b last:border-0 text-sm space-y-1"
                   >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          tx.type === "onramp"
-                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                            : "bg-orange-500/10 text-orange-600 dark:text-orange-400"
-                        }`}
-                      >
-                        {tx.type === "onramp" ? "Onramp" : "Offramp"}
-                      </span>
-                      <span className="text-muted-foreground text-xs font-mono">
-                        {tx.id.slice(0, 8)}...
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">
-                        {tx.source_amount
-                          ? `${tx.source_amount} ${tx.source_currency ?? ""}`
-                          : "—"}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                            tx.type === "onramp"
+                              ? "bg-blue-500/10 text-blue-600"
+                              : "bg-orange-500/10 text-orange-600"
+                          }`}
+                        >
+                          {tx.type === "onramp" ? "Onramp" : "Offramp"}
+                        </span>
+                        <span className="text-muted-foreground text-xs font-mono">
+                          {tx.id.slice(0, 12)}...
+                        </span>
+                      </div>
                       <span
                         className={`text-xs font-medium ${
-                          tx.status === "completed" ||
-                          tx.status === "Completed"
-                            ? "text-green-600 dark:text-green-400"
+                          tx.status === "completed" || tx.status === "Completed"
+                            ? "text-green-600"
                             : tx.status === "failed" || tx.status === "Failed"
                             ? "text-destructive"
                             : "text-muted-foreground"
@@ -954,6 +950,15 @@ export function RampInterface() {
                       >
                         {tx.status}
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {tx.source_amount ? `${tx.source_amount} ${tx.source_currency ?? ""}` : "—"}
+                        {tx.destination_amount ? ` → ${tx.destination_amount} ${tx.destination_currency ?? ""}` : ""}
+                      </span>
+                      {tx.created_at && (
+                        <span>{new Date(tx.created_at).toLocaleDateString()}</span>
+                      )}
                     </div>
                   </div>
                 ))}
