@@ -172,7 +172,43 @@ export default function OnboardPage() {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to approve identification");
       }
-      await updateState({ step: "signings" });
+
+      // Attempt to auto-fetch and auto-sign all required documents in sandbox.
+      const signingsRes = await fetch(
+        `${config.api.baseUrl}/api/iron/customers/${customerId}/signings`
+      );
+      if (signingsRes.ok) {
+        const signingsResult = await signingsRes.json();
+        const signings: RequiredSigning[] = signingsResult.data || [];
+        if (signings.length === 0) {
+          await updateState({ step: "wallet" });
+        } else {
+          for (const signing of signings) {
+            await fetch(
+              `${config.api.baseUrl}/api/iron/customers/${customerId}/signings`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  content_id: signing.id,
+                  content_type: signing.type || "Url",
+                  signed: true,
+                }),
+              }
+            );
+          }
+          await updateState({ step: "wallet" });
+        }
+      } else {
+        const signingsError = await signingsRes.json().catch(() => ({}));
+        const signingsMsg = signingsError.error || "";
+        if (signingsMsg.includes("does not require signings") || signingsMsg.includes("no required signings")) {
+          await updateState({ step: "wallet" });
+        } else {
+          // KYC approval is async — fall back to signings step for manual retry.
+          await updateState({ step: "signings" });
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve identification");
     } finally {
@@ -180,7 +216,7 @@ export default function OnboardPage() {
     }
   };
 
-  const handleFetchSignings = async () => {
+  const handleFetchSignings = async (): Promise<boolean> => {
     setLoading(true);
     setError("");
     try {
@@ -190,14 +226,16 @@ export default function OnboardPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         const errorMsg = errorData.error || "";
-        // Any 409 means the customer hasn't transitioned to SigningsRequired yet —
-        // KYC approval is async. Tell the user to wait and retry.
-        if (
-          errorMsg.includes("not in status SigningsRequired") ||
-          errorMsg.includes("does not require signings")
-        ) {
-          setError("KYC approval is still processing. Please wait a moment and try again.");
-          return;
+        // Customer hasn't transitioned to SigningsRequired yet — KYC approval is async.
+        if (errorMsg.includes("not in status SigningsRequired")) {
+          setError("KYC still pending. Please wait a moment and try again.");
+          return false;
+        }
+        // No signings required for this customer — advance to wallet.
+        if (res.status === 404 || errorMsg.includes("does not require signings") || errorMsg.includes("no required signings")) {
+          setRequiredSignings([]);
+          await updateState({ step: "wallet" });
+          return true;
         }
         throw new Error(errorMsg || "Failed to fetch signings");
       }
@@ -208,8 +246,10 @@ export default function OnboardPage() {
       } else {
         setRequiredSignings(signings);
       }
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch signings");
+      return false;
     } finally {
       setLoading(false);
     }
