@@ -49,11 +49,11 @@ interface AutoRamp {
   id: string;
   type: string;
   status: string;
-  source_currency?: string;
-  destination_currency?: string;
-  source_amount?: number;
-  destination_amount?: number;
   created_at?: string;
+  quote?: {
+    amount_in?: { amount: string; currency: { code: string } };
+    amount_out?: { amount: string; currency: { code: string } };
+  };
 }
 
 const ONBOARD_STEPS = [
@@ -308,7 +308,7 @@ export function RampInterface() {
               destination_currency: selectedToken,
               source_amount: parseFloat(amount) * 100,
               payment_rail: "sepa" as const,
-              wallet_address: selectedWalletAddr,
+              wallet_id: selectedWallet?.id || "",
               blockchain: selectedChain,
             }
           : {
@@ -953,8 +953,12 @@ export function RampInterface() {
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>
-                        {tx.source_amount ? `${tx.source_amount} ${tx.source_currency ?? ""}` : "—"}
-                        {tx.destination_amount ? ` → ${tx.destination_amount} ${tx.destination_currency ?? ""}` : ""}
+                        {tx.quote?.amount_in?.amount
+                          ? `${tx.quote.amount_in.amount} ${tx.quote.amount_in.currency?.code ?? ""}`
+                          : "—"}
+                        {tx.quote?.amount_out?.amount
+                          ? ` → ${tx.quote.amount_out.amount} ${tx.quote.amount_out.currency?.code ?? ""}`
+                          : ""}
                       </span>
                       {tx.created_at && (
                         <span>{new Date(tx.created_at).toLocaleDateString()}</span>

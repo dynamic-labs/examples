@@ -253,7 +253,7 @@ export interface OnrampQuoteRequest {
   source_amount?: number; // Amount in cents
   destination_amount?: number; // Amount in smallest unit
   payment_rail: PaymentRail;
-  wallet_address: string; // The actual blockchain wallet address (e.g., 0x...)
+  wallet_id: string; // The Iron Finance registered address ID
   blockchain?: BlockchainType; // The blockchain to use for the destination currency
 }
 
@@ -794,7 +794,7 @@ class IronFinanceClient {
       source_currency_code: request.source_currency, // e.g., "EUR"
       destination_currency_code: request.destination_currency, // e.g., "USDC"
       destination_currency_chain: request.blockchain || "Base", // Use requested blockchain or default to Base
-      recipient_account: request.wallet_address, // The actual blockchain wallet address
+      recipient_account: request.wallet_id, // Iron Finance registered address ID
       rate_expiry_policy: "Return",
       expiry_in_hours: "24",
       is_third_party: "false",
