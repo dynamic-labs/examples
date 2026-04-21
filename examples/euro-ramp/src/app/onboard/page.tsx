@@ -673,8 +673,31 @@ export default function OnboardPage() {
       {step === "bank" && (
         <Card>
           <CardHeader>
-            <CardTitle>Add Bank Account</CardTitle>
-            <CardDescription>Add your SEPA bank account for transfers.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Add Bank Account</CardTitle>
+                <CardDescription>Add your SEPA bank account for transfers.</CardDescription>
+              </div>
+              {isSandbox && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBankData({
+                    accountHolderName: "Jane Smith",
+                    iban: "DE89370400440532013000",
+                    bankName: "Deutsche Bank",
+                    bankCountry: "DE",
+                    street: "Hauptstraße 1",
+                    city: "Berlin",
+                    state: "Berlin",
+                    country: "DE",
+                    postalCode: "10115",
+                  })}
+                >
+                  Fill Test Data
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
