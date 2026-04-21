@@ -332,9 +332,11 @@ export function RampInterface() {
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(
-          errorData.error || `Failed to get ${rampType} quote`
-        );
+        const msg = errorData.error || "";
+        if (msg.includes("not active") || msg.includes("Customer is not active")) {
+          throw new Error("Your Iron Finance account is not yet active. Complete onboarding fully and wait a moment before trying again.");
+        }
+        throw new Error(msg || `Failed to get ${rampType} quote`);
       }
       const data = await res.json();
       setQuote(data);
@@ -397,7 +399,14 @@ export function RampInterface() {
         credentials: "include",
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`Failed to execute ${rampType}`);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const msg = errorData.error || "";
+        if (msg.includes("not active") || msg.includes("Customer is not active")) {
+          throw new Error("Your Iron Finance account is not yet active. Complete onboarding fully and wait a moment before trying again.");
+        }
+        throw new Error(msg || `Failed to execute ${rampType}`);
+      }
       const data = await res.json();
       setResult(data);
       setSuccess(

@@ -289,7 +289,11 @@ export default function OnboardPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Failed to register wallet");
+        const msg = errorData.error || errorData.message || "";
+        if (msg.includes("not active") || msg.includes("Customer is not active")) {
+          throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
+        }
+        throw new Error(msg || "Failed to register wallet");
       }
       const result = await res.json();
       await updateState({ walletId: result.data.id, walletAddress, step: "bank" });
@@ -324,7 +328,11 @@ export default function OnboardPage() {
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Failed to add bank account");
+        const msg = errorData.error || errorData.message || "";
+        if (msg.includes("not active") || msg.includes("Customer is not active")) {
+          throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
+        }
+        throw new Error(msg || "Failed to add bank account");
       }
       const result = await res.json();
       await updateState({
