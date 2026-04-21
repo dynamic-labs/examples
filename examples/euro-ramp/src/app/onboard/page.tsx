@@ -338,20 +338,16 @@ export default function OnboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col transition-colors duration-300 bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-        <div className="container mx-auto px-4 py-20 text-center">
-          <p className="text-muted-foreground">Connect your wallet to begin onboarding.</p>
-        </div>
+      <div className="container mx-auto px-4 py-20 text-center">
+        <p className="text-muted-foreground">Connect your wallet to begin onboarding.</p>
       </div>
     );
   }
 
   if (initializing) {
     return (
-      <div className="min-h-screen flex flex-col transition-colors duration-300 bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-        <div className="container mx-auto px-4 py-20 flex justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+      <div className="container mx-auto px-4 py-20 flex justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -359,7 +355,6 @@ export default function OnboardPage() {
   const currentStepIndex = STEPS.findIndex((s) => s.key === step);
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300 bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
     <div className="container mx-auto px-4 py-20 pb-24 max-w-xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Onboarding</h1>
@@ -410,8 +405,27 @@ export default function OnboardPage() {
       {step === "customer" && (
         <Card>
           <CardHeader>
-            <CardTitle>Your Profile</CardTitle>
-            <CardDescription>We need a few details to create your account.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Your Profile</CardTitle>
+                <CardDescription>We need a few details to create your account.</CardDescription>
+              </div>
+              {isSandbox && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({
+                    firstName: "Jane",
+                    lastName: "Smith",
+                    countryCode: "DE",
+                    dateOfBirth: "1990-01-15",
+                    phoneNumber: "+4915123456789",
+                  })}
+                >
+                  Fill Test Data
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -718,7 +732,6 @@ export default function OnboardPage() {
           </CardContent>
         </Card>
       )}
-    </div>
     </div>
   );
 }

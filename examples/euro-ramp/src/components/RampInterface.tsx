@@ -423,8 +423,6 @@ export function RampInterface() {
 
   return (
     <div className="space-y-6 mt-6 pb-20">
-      <h1 className="text-3xl font-bold text-center">EuroRamp</h1>
-
       {/* Onboarding Status Card */}
       <Card className="max-w-5xl mx-auto">
         <CardHeader>

@@ -3,7 +3,6 @@
  */
 
 export type RampType = "onramp" | "offramp";
-export type TabType = "market" | "quote" | "transactions";
 
 export interface RegisteredWallet {
   id: string;

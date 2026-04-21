@@ -74,8 +74,6 @@ export function useKYCMetadata() {
 
   const [state, setState] = useState<KYCState>(DEFAULT_STATE);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const lastSyncedState = useRef<string>("");
 
@@ -117,9 +115,6 @@ export function useKYCMetadata() {
         return true;
       }
 
-      setIsSyncing(true);
-      setError(null);
-
       try {
         const metadata: IronKYCMetadata = {
           ...(user.metadata as IronKYCMetadata),
@@ -134,7 +129,6 @@ export function useKYCMetadata() {
             onboardingStep: newState.step,
             kycCompleted: newState.kycCompleted,
             updatedAt: new Date().toISOString(),
-            // Preserve createdAt if it exists
             createdAt:
               (user.metadata as IronKYCMetadata)?.iron?.createdAt ||
               new Date().toISOString(),
@@ -143,16 +137,10 @@ export function useKYCMetadata() {
 
         await updateUser({ metadata });
         lastSyncedState.current = stateHash;
-        console.log("[useKYCMetadata] Synced to Dynamic:", metadata.iron);
         return true;
       } catch (e) {
-        const errorMessage =
-          e instanceof Error ? e.message : "Failed to sync to Dynamic";
-        console.error("[useKYCMetadata] Sync failed:", errorMessage);
-        setError(errorMessage);
+        console.error("[useKYCMetadata] Sync failed:", e instanceof Error ? e.message : e);
         return false;
-      } finally {
-        setIsSyncing(false);
       }
     },
     [user, updateUser]
@@ -194,44 +182,6 @@ export function useKYCMetadata() {
   );
 
   // ---------------------------------------------------------------------------
-  // Convenience methods for updating individual fields
-  // ---------------------------------------------------------------------------
-  const setCustomerId = useCallback(
-    (customerId: string) => updateState({ customerId }),
-    [updateState]
-  );
-
-  const setWalletId = useCallback(
-    (walletId: string) => updateState({ walletId }),
-    [updateState]
-  );
-
-  const setBankAccountId = useCallback(
-    (bankAccountId: string) => updateState({ bankAccountId }),
-    [updateState]
-  );
-
-  const setIdentificationId = useCallback(
-    (identificationId: string) => updateState({ identificationId }),
-    [updateState]
-  );
-
-  const setKycUrl = useCallback(
-    (kycUrl: string) => updateState({ kycUrl }),
-    [updateState]
-  );
-
-  const setStep = useCallback(
-    (step: OnboardStep) => updateState({ step }),
-    [updateState]
-  );
-
-  const setKycCompleted = useCallback(
-    (kycCompleted: boolean) => updateState({ kycCompleted }),
-    [updateState]
-  );
-
-  // ---------------------------------------------------------------------------
   // Reset all state
   // ---------------------------------------------------------------------------
   const reset = useCallback(async (): Promise<boolean> => {
@@ -245,38 +195,10 @@ export function useKYCMetadata() {
     return true;
   }, [user, syncToDynamic]);
 
-  // ---------------------------------------------------------------------------
-  // Force sync to Dynamic (useful after completing a major step)
-  // ---------------------------------------------------------------------------
-  const forceSync = useCallback(async (): Promise<boolean> => {
-    if (!user) {
-      console.warn("[useKYCMetadata] No user, cannot force sync");
-      return false;
-    }
-
-    lastSyncedState.current = ""; // Clear cache to force sync
-    return await syncToDynamic(state);
-  }, [user, state, syncToDynamic]);
-
   return {
-    // State
     ...state,
     isLoading,
-    isSyncing,
-    error,
-
-    // Update methods
     updateState,
-    setCustomerId,
-    setWalletId,
-    setBankAccountId,
-    setIdentificationId,
-    setKycUrl,
-    setStep,
-    setKycCompleted,
-
-    // Utility methods
     reset,
-    forceSync,
   };
 }

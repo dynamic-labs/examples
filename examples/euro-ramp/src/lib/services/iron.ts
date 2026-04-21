@@ -83,21 +83,6 @@ export interface Customer {
   metadata?: Record<string, unknown>;
 }
 
-export interface UpdateCustomerRequest {
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  business_name?: string;
-  phone_number?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface ListCustomersRequest {
-  limit?: number;
-  offset?: number;
-  type?: CustomerType;
-  kyc_status?: KYCStatus;
-}
 
 // Wallet/Address Types
 // Note: Iron API uses "addresses" for crypto destination addresses
@@ -109,9 +94,6 @@ export interface RegisterSelfHostedAddressRequest {
   message: string;
 }
 
-// Legacy type alias for backwards compatibility
-export type RegisterHostedWalletRequest = RegisterSelfHostedAddressRequest;
-export type RegisterSelfHostedWalletRequest = RegisterSelfHostedAddressRequest;
 
 export interface Wallet {
   id: string;
@@ -454,29 +436,6 @@ export interface Offramp {
 }
 
 // Third Party Payment Types
-export interface CreateThirdPartyPaymentRequest {
-  customer_id: string;
-  type: "payin" | "payout";
-  amount: number;
-  currency: FiatCurrency;
-  bank_account_id: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface ThirdPartyPayment {
-  id: string;
-  customer_id: string;
-  type: "payin" | "payout";
-  amount: number;
-  currency: FiatCurrency;
-  status: RampStatus;
-  bank_account_id: string;
-  description?: string;
-  created_at: string;
-  updated_at: string;
-  metadata?: Record<string, unknown>;
-}
 
 // KYC Types
 export interface StartKYCRequest {
@@ -639,44 +598,6 @@ class IronFinanceClient {
     return this.handleResponse<Customer>(response);
   }
 
-  /**
-   * List customers with optional filters
-   */
-  async listCustomers(
-    request?: ListCustomersRequest
-  ): Promise<{ data: Customer[]; total: number }> {
-    const params = new URLSearchParams();
-    if (request?.limit) params.append("limit", request.limit.toString());
-    if (request?.offset) params.append("offset", request.offset.toString());
-    if (request?.type) params.append("type", request.type);
-    if (request?.kyc_status) params.append("kyc_status", request.kyc_status);
-
-    const response = await fetch(
-      `${this.apiUrl}/api/customers?${params.toString()}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<{ data: Customer[]; total: number }>(response);
-  }
-
-  /**
-   * Update a customer
-   */
-  async updateCustomer(
-    customerId: string,
-    request: UpdateCustomerRequest
-  ): Promise<Customer> {
-    const response = await fetch(`${this.apiUrl}/api/customers/${customerId}`, {
-      method: "PATCH",
-      headers: this.getHeaders(),
-      body: JSON.stringify(request),
-    });
-
-    return this.handleResponse<Customer>(response);
-  }
 
   // =============================================================================
   // CURRENCIES
@@ -726,28 +647,6 @@ class IronFinanceClient {
     return this.handleResponse<Wallet>(response);
   }
 
-  /**
-   * Register a self-hosted wallet (alias for registerHostedWallet)
-   * @deprecated Use registerHostedWallet instead
-   */
-  async registerSelfHostedWallet(
-    request: RegisterSelfHostedAddressRequest,
-    idempotencyKey?: string
-  ): Promise<Wallet> {
-    return this.registerHostedWallet(request, idempotencyKey);
-  }
-
-  /**
-   * Get a wallet by ID
-   */
-  async getWallet(walletId: string): Promise<Wallet> {
-    const response = await fetch(`${this.apiUrl}/api/wallets/${walletId}`, {
-      method: "GET",
-      headers: this.getHeaders(),
-    });
-
-    return this.handleResponse<Wallet>(response);
-  }
 
   /**
    * List wallets for a customer.
@@ -848,20 +747,6 @@ class IronFinanceClient {
     return this.handleResponse<FiatAddress>(response);
   }
 
-  /**
-   * Get a fiat address (bank account) by ID
-   */
-  async getBankAccount(addressId: string): Promise<BankAccount> {
-    const response = await fetch(
-      `${this.apiUrl}/api/addresses/fiat/${addressId}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<BankAccount>(response);
-  }
 
   /**
    * List fiat addresses (bank accounts) for a customer.
@@ -893,20 +778,6 @@ class IronFinanceClient {
     return { data };
   }
 
-  /**
-   * Delete a fiat address (bank account)
-   */
-  async deleteBankAccount(addressId: string): Promise<{ success: boolean }> {
-    const response = await fetch(
-      `${this.apiUrl}/api/addresses/fiat/${addressId}`,
-      {
-        method: "DELETE",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<{ success: boolean }>(response);
-  }
 
   // =============================================================================
   // QUOTE METHODS (via Autoramp API)
@@ -1022,16 +893,6 @@ class IronFinanceClient {
     };
   }
 
-  /**
-   * Get a quote by ID - Note: Iron doesn't have this endpoint directly
-   */
-  async getQuote(quoteId: string): Promise<Quote> {
-    // Iron doesn't have a direct quote-by-ID endpoint
-    // Quotes are ephemeral and tied to autoramp creation
-    throw new Error(
-      "Direct quote lookup not supported. Use getOnrampQuote or getOfframpQuote instead."
-    );
-  }
 
   // =============================================================================
   // AUTORAMP METHODS (Unified Onramp/Offramp)
@@ -1061,8 +922,8 @@ class IronFinanceClient {
       },
       recipient_account: {
         type: "Crypto",
-        chain: blockchain,
-        address: request.wallet_address, // The verified blockchain wallet address
+        blockchain: blockchain,
+        address: request.wallet_address,
       },
       source_currencies: [
         {
@@ -1128,64 +989,6 @@ class IronFinanceClient {
     return statusMap[status] || "pending";
   }
 
-  /**
-   * Get an onramp/autoramp by ID
-   */
-  async getOnramp(onrampId: string): Promise<Onramp> {
-    const response = await fetch(`${this.apiUrl}/api/autoramps/${onrampId}`, {
-      method: "GET",
-      headers: this.getHeaders(),
-    });
-
-    const data = await this.handleResponse<IronAutorampResponse>(response);
-    return this.mapAutorampToOnramp(data);
-  }
-
-  /**
-   * List autoramps for a customer
-   */
-  async listOnramps(
-    customerId: string,
-    limit?: number,
-    offset?: number
-  ): Promise<{ data: Onramp[]; total: number }> {
-    const params = new URLSearchParams({
-      customer_id: customerId,
-    });
-    if (limit) params.append("limit", limit.toString());
-    if (offset) params.append("offset", offset.toString());
-
-    const response = await fetch(
-      `${this.apiUrl}/api/autoramps?${params.toString()}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    const result = await this.handleResponse<{ data: IronAutorampResponse[] }>(
-      response
-    );
-    return {
-      data: result.data
-        .filter((a) => a.kind === "Onramp")
-        .map((a) => this.mapAutorampToOnramp(a)),
-      total: result.data.filter((a) => a.kind === "Onramp").length,
-    };
-  }
-
-  /**
-   * Cancel an autoramp
-   */
-  async cancelOnramp(onrampId: string): Promise<Onramp> {
-    const response = await fetch(`${this.apiUrl}/api/autoramps/${onrampId}`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-    });
-
-    const data = await this.handleResponse<IronAutorampResponse>(response);
-    return this.mapAutorampToOnramp(data);
-  }
 
   // =============================================================================
   // OFFRAMP METHODS
@@ -1259,127 +1062,7 @@ class IronFinanceClient {
     };
   }
 
-  /**
-   * Get an offramp by ID
-   */
-  async getOfframp(offrampId: string): Promise<Offramp> {
-    const response = await fetch(`${this.apiUrl}/api/autoramps/${offrampId}`, {
-      method: "GET",
-      headers: this.getHeaders(),
-    });
 
-    const data = await this.handleResponse<IronAutorampResponse>(response);
-    return this.mapAutorampToOfframp(data);
-  }
-
-  /**
-   * List offramps for a customer
-   */
-  async listOfframps(
-    customerId: string,
-    limit?: number,
-    offset?: number
-  ): Promise<{ data: Offramp[]; total: number }> {
-    const params = new URLSearchParams({
-      customer_id: customerId,
-    });
-    if (limit) params.append("limit", limit.toString());
-    if (offset) params.append("offset", offset.toString());
-
-    const response = await fetch(
-      `${this.apiUrl}/api/autoramps?${params.toString()}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    const result = await this.handleResponse<{ data: IronAutorampResponse[] }>(
-      response
-    );
-    return {
-      data: result.data
-        .filter((a) => a.kind === "Offramp")
-        .map((a) => this.mapAutorampToOfframp(a)),
-      total: result.data.filter((a) => a.kind === "Offramp").length,
-    };
-  }
-
-  /**
-   * Cancel an offramp
-   */
-  async cancelOfframp(offrampId: string): Promise<Offramp> {
-    const response = await fetch(`${this.apiUrl}/api/autoramps/${offrampId}`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-    });
-
-    const data = await this.handleResponse<IronAutorampResponse>(response);
-    return this.mapAutorampToOfframp(data);
-  }
-
-  // =============================================================================
-  // THIRD PARTY PAYMENT METHODS
-  // =============================================================================
-
-  /**
-   * Create a third-party payment (payin or payout)
-   * Useful for businesses managing payments on behalf of users
-   */
-  async createThirdPartyPayment(
-    request: CreateThirdPartyPaymentRequest,
-    idempotencyKey?: string
-  ): Promise<ThirdPartyPayment> {
-    const response = await fetch(`${this.apiUrl}/api/third-party-payments`, {
-      method: "POST",
-      headers: this.getHeaders(idempotencyKey || randomUUID()),
-      body: JSON.stringify(request),
-    });
-
-    return this.handleResponse<ThirdPartyPayment>(response);
-  }
-
-  /**
-   * Get a third-party payment by ID
-   */
-  async getThirdPartyPayment(paymentId: string): Promise<ThirdPartyPayment> {
-    const response = await fetch(
-      `${this.apiUrl}/api/third-party-payments/${paymentId}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<ThirdPartyPayment>(response);
-  }
-
-  /**
-   * List third-party payments for a customer
-   */
-  async listThirdPartyPayments(
-    customerId: string,
-    limit?: number,
-    offset?: number
-  ): Promise<{ data: ThirdPartyPayment[]; total: number }> {
-    const params = new URLSearchParams({
-      customer_id: customerId,
-    });
-    if (limit) params.append("limit", limit.toString());
-    if (offset) params.append("offset", offset.toString());
-
-    const response = await fetch(
-      `${this.apiUrl}/api/third-party-payments?${params.toString()}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<{ data: ThirdPartyPayment[]; total: number }>(
-      response
-    );
-  }
 
   // =============================================================================
   // KYC METHODS
@@ -1408,40 +1091,6 @@ class IronFinanceClient {
     return this.handleResponse<KYCSession>(response);
   }
 
-  /**
-   * Get KYC session status
-   */
-  async getKYCSession(sessionId: string): Promise<KYCSession> {
-    const response = await fetch(
-      `${this.apiUrl}/api/kyc/sessions/${sessionId}`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<KYCSession>(response);
-  }
-
-  /**
-   * Get customer's current KYC status
-   */
-  async getCustomerKYCStatus(customerId: string): Promise<{
-    status: KYCStatus;
-    session?: KYCSession;
-  }> {
-    const response = await fetch(
-      `${this.apiUrl}/api/customers/${customerId}/kyc-status`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<{ status: KYCStatus; session?: KYCSession }>(
-      response
-    );
-  }
 
   // =============================================================================
   // SIGNINGS METHODS
@@ -1553,52 +1202,7 @@ class IronFinanceClient {
     return this.handleResponse<any>(response);
   }
 
-  // =============================================================================
-  // VIRTUAL ACCOUNTS METHODS
-  // =============================================================================
-
-  /**
-   * List virtual accounts for a customer
-   * Reference: https://docs.iron.xyz/account#named-virtual-account
-   */
-  async listVirtualAccounts(customerId: string): Promise<any> {
-    const response = await fetch(
-      `${this.apiUrl}/api/customers/${customerId}/virtual-accounts`,
-      {
-        method: "GET",
-        headers: this.getHeaders(),
-      }
-    );
-
-    return this.handleResponse<any>(response);
-  }
-
-  /**
-   * Create a named virtual account for auto-ramp
-   * Reference: https://docs.iron.xyz/account#named-virtual-account
-   */
-  async createVirtualAccount(
-    customerId: string,
-    request: {
-      name: string;
-      currency: FiatCurrency;
-      destination_wallet_address?: string;
-      destination_blockchain?: BlockchainType;
-      destination_currency?: CryptoCurrency;
-    },
-    idempotencyKey?: string
-  ): Promise<any> {
-    const response = await fetch(
-      `${this.apiUrl}/api/customers/${customerId}/virtual-accounts`,
-      {
-        method: "POST",
-        headers: this.getHeaders(idempotencyKey || randomUUID()),
-        body: JSON.stringify(request),
-      }
-    );
-
-    return this.handleResponse<any>(response);
-  }
 }
+
 
 export const ironClient = new IronFinanceClient();

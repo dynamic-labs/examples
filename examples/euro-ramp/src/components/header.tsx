@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ModeToggle } from "@/components/mode-toggle";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
 import DynamicLogo from "./dynamic/logo";
@@ -15,7 +14,6 @@ export function Header() {
       </div>
       <div className="hidden md:flex gap-2 pr-4">
         <DynamicWidget />
-        <ModeToggle />
       </div>
       <div className="md:hidden pr-4">
         <HamburgerMenu>
