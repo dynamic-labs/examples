@@ -337,6 +337,28 @@ export default function OnboardPage() {
           if (lastMsg.includes("not active") || lastMsg.includes("Customer is not active")) {
             throw new Error("Your account is still being activated by Iron Finance. Please wait a moment and try again.");
           }
+          // Wallet already registered — look up the existing one and advance.
+          const isAlreadyRegistered =
+            lastMsg.toLowerCase().includes("already") ||
+            lastMsg.toLowerCase().includes("duplicate") ||
+            lastMsg.toLowerCase().includes("exists") ||
+            lastMsg.toLowerCase().includes("conflict");
+          if (isAlreadyRegistered) {
+            const walletsRes = await fetch(
+              `${config.api.baseUrl}/api/iron/customers/${customerId}/wallets`
+            );
+            if (walletsRes.ok) {
+              const walletsData = await walletsRes.json();
+              const existing = (walletsData.data?.data || walletsData.data || []).find(
+                (w: { address?: string; wallet_address?: string }) =>
+                  (w.address || w.wallet_address)?.toLowerCase() === walletAddress
+              );
+              if (existing?.id) {
+                await updateState({ walletId: existing.id, walletAddress, step: "bank" });
+                return;
+              }
+            }
+          }
           throw new Error(lastMsg || "Failed to register wallet");
         }
         const result = await res.json();
