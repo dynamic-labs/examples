@@ -190,17 +190,13 @@ export default function OnboardPage() {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         const errorMsg = errorData.error || "";
-        if (errorMsg.includes("not in status SigningsRequired")) {
-          setError("KYC still pending. Complete KYC first or wait for approval.");
-          return;
-        }
+        // Any 409 means the customer hasn't transitioned to SigningsRequired yet —
+        // KYC approval is async. Tell the user to wait and retry.
         if (
-          res.status === 404 ||
-          errorMsg.includes("no required signings") ||
+          errorMsg.includes("not in status SigningsRequired") ||
           errorMsg.includes("does not require signings")
         ) {
-          setRequiredSignings([]);
-          await updateState({ step: "wallet" });
+          setError("KYC approval is still processing. Please wait a moment and try again.");
           return;
         }
         throw new Error(errorMsg || "Failed to fetch signings");
