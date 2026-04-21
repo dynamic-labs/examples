@@ -117,7 +117,7 @@ export default function OnboardPage() {
       if (!res.ok) throw new Error("Failed to start KYC");
       const result = await res.json();
       const updates: Partial<{ identificationId: string; kycUrl: string; step: OnboardStep }> = {
-        step: "signings",
+        step: "kyc",
       };
       if (result.data?.id) updates.identificationId = result.data.id;
       if (result.data?.verification_url || result.data?.url) {
