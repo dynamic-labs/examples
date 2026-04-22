@@ -122,16 +122,13 @@ pnpm install
 # Copy environment template
 cp .example.env .env.local
 
-# Add your Dynamic Environment ID
+# Add your Dynamic credentials
 NEXT_PUBLIC_DYNAMIC_ENV_ID=your_dynamic_env_id_here
-DYNAMIC_ENV_ID=your_api_key_here
+DYNAMIC_API_KEY=your_dynamic_api_key_here
 
 # Add Rain API credentials
 RAIN_API_BASE_URL=your_rain_api_url
 RAIN_API_KEY=your_rain_api_key
-
-# Add Google Client ID (for address autofill)
-GOOGLE_CLIENT_ID=your_google_client_id_here
 ```
 
 ### Running the Demo
