@@ -14,6 +14,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { redirect } from "next/navigation";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
+  const environmentId = process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID;
+  if (!environmentId) {
+    throw new Error(
+      "NEXT_PUBLIC_DYNAMIC_ENV_ID is not set. Copy .example.env to .env.local and fill it in."
+    );
+  }
+
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
@@ -30,10 +37,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <DynamicContextProvider
             theme="light"
             settings={{
-              environmentId:
-                // replace with your own environment ID
-                process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID ||
-                "2762a57b-faa4-41ce-9f16-abff9300e2c9",
+              environmentId,
               walletConnectors: [
                 EthereumWalletConnectors,
                 ZeroDevSmartWalletConnectors,

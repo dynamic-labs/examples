@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
-import { AddressAutocomplete } from "@/components/application/address-autocomplete";
 import { Calendar as DateInput } from "@/components/application/calendar";
 import { Button } from "@/components/ui/button";
 import {
@@ -290,36 +289,10 @@ export default function ApplicationForm({ formId }: { formId: string }) {
                   <FormItem>
                     <FormLabel>Address line 1</FormLabel>
                     <FormControl>
-                      <AddressAutocomplete
-                        country={
-                          (form.watch("address.countryCode") as string) || "US"
-                        }
-                        defaultValue={(field.value as string) || ""}
-                        onChange={(value) => {
-                          field.onChange(value);
-                        }}
-                        onPick={(d) => {
-                          form.setValue("address.line1", d.line1, {
-                            shouldDirty: true,
-                          });
-                          form.setValue("address.city", d.city, {
-                            shouldDirty: true,
-                          });
-                          if (d.region)
-                            form.setValue("address.region", d.region as any, {
-                              shouldDirty: true,
-                            });
-                          if (d.postalCode)
-                            form.setValue("address.postalCode", d.postalCode, {
-                              shouldDirty: true,
-                            });
-                          if (d.countryCode)
-                            form.setValue(
-                              "address.countryCode",
-                              d.countryCode as any,
-                              { shouldDirty: true }
-                            );
-                        }}
+                      <Input
+                        placeholder="123 Market St"
+                        {...field}
+                        name="address.line1"
                       />
                     </FormControl>
                   </FormItem>
