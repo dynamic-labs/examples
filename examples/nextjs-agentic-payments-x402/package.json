@@ -13,7 +13,7 @@
     "@coinbase/x402": "1.0.1",
     "@dynamic-labs-sdk/client": "1.8.0",
     "@dynamic-labs-sdk/evm": "1.8.0",
-    "@dynamic-labs-sdk/react-hooks": "1.2.0",
+    "@dynamic-labs-sdk/react-hooks": "1.8.0",
     "@dynamic-labs-wallet/node": "1.0.28",
     "@dynamic-labs-wallet/node-evm": "1.0.28",
     "@radix-ui/react-slot": "1.2.3",
