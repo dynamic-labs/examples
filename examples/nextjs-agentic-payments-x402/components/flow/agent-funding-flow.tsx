@@ -6,7 +6,6 @@ import {
   Check,
   Copy,
   Loader2,
-  Lock,
   Plus,
   ShieldCheck,
   Sparkles,
@@ -161,132 +160,9 @@ function AuthorizeView({ busy }: Readonly<{ busy: boolean }>) {
   );
 }
 
-// ─── 3. Secure (required) → 4. Funding ─────────────────────────────────────────
+// ─── 3. Funding ─────────────────────────────────────────────────────────────────
 
 function FundingView({ address }: Readonly<{ address: string }>) {
-  const [secured, setSecured] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    fetch(`/api/account?address=${address}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => active && d && setSecured(Boolean(d.secured)))
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [address]);
-
-  if (secured === null) {
-    return (
-      <Shell>
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-dynamic" />
-        </div>
-      </Shell>
-    );
-  }
-
-  if (!secured) {
-    return <SecureView address={address} onSecured={() => setSecured(true)} />;
-  }
-
-  return <FundedView address={address} />;
-}
-
-// ─── 3. Secure your agent (required spending password) ──────────────────────────
-
-function SecureView({
-  address,
-  onSecured,
-}: Readonly<{ address: string; onSecured: () => void }>) {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async () => {
-    setError(null);
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords don't match.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch("/api/secure-wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, password }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Couldn't secure your agent");
-      }
-      onSecured();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't secure your agent");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Shell
-      title="Secure your agent"
-      subtitle="Set a password your agent must use to spend. Only you know it — no one can use your balance without it, and we can't recover it."
-    >
-      <div className="mb-5 flex items-start gap-3 rounded-xl border border-dynamic/20 bg-dynamic/5 p-4">
-        <Lock className="mt-0.5 h-5 w-5 shrink-0 text-dynamic" />
-        <p className="text-sm text-muted-foreground">
-          Your funds are encrypted with this password. Without it, not even the
-          service operator can spend from your account.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <input
-          type="password"
-          autoComplete="new-password"
-          placeholder="Password (min 8 characters)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-dynamic"
-        />
-        <input
-          type="password"
-          autoComplete="new-password"
-          placeholder="Confirm password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-dynamic"
-        />
-        <Button
-          onClick={submit}
-          disabled={busy}
-          className="w-full bg-dynamic text-white hover:bg-dynamic/90"
-        >
-          {busy ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Securing…
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <Lock className="h-4 w-4" /> Set password
-            </span>
-          )}
-        </Button>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-      </div>
-    </Shell>
-  );
-}
-
-// ─── 4. Funding ─────────────────────────────────────────────────────────────────
-
-function FundedView({ address }: Readonly<{ address: string }>) {
   const [usd, setUsd] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loadingAmt, setLoadingAmt] = useState<number | null>(null);

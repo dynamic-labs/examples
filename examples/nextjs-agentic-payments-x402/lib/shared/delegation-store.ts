@@ -70,37 +70,14 @@ function getEncryptionKey(): Buffer {
 
 const TABLE = "delegations";
 
-// PBKDF2-SHA256 work factor for password-derived keys (OWASP 2023 guidance).
-const PBKDF2_ITERATIONS = 600_000;
-
 // ─── AES-256-GCM encryption at rest ─────────────────────────────────────────────
 
-/**
- * Derive the AES key for a password-protected ("secured") row.
- *
- * Requires BOTH the server master key AND the wallet's password: the password
- * is stretched with PBKDF2-SHA256, then HMAC'd under the master key. So neither
- * the operator (master key, no password) nor a DB leak (password-derived
- * material, no master key) can decrypt on its own — only the owner who knows
- * the password, running with the server master key, can.
- */
-function deriveSecuredKey(password: string, saltB64: string): Buffer {
-  const master = getEncryptionKey();
-  const salt = Buffer.from(saltB64, "base64");
-  const pwKey = crypto.pbkdf2Sync(
-    password.normalize("NFKC"),
-    salt,
-    PBKDF2_ITERATIONS,
-    32,
-    "sha256"
-  );
-  return crypto.createHmac("sha256", master).update(pwKey).digest();
-}
-
-function encryptSecretWithKey(
-  secret: EncryptedSecret,
-  key: Buffer
-): { ciphertext: string; iv: string; tag: string } {
+function encryptSecret(secret: EncryptedSecret): {
+  ciphertext: string;
+  iv: string;
+  tag: string;
+} {
+  const key = getEncryptionKey();
   const iv = crypto.randomBytes(12); // 96-bit nonce, unique per write
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
   const plaintext = Buffer.from(JSON.stringify(secret), "utf8");
@@ -112,10 +89,12 @@ function encryptSecretWithKey(
   };
 }
 
-function decryptSecretWithKey(
-  row: { secret_ciphertext: string; secret_iv: string; secret_tag: string },
-  key: Buffer
-): EncryptedSecret {
+function decryptSecret(row: {
+  secret_ciphertext: string;
+  secret_iv: string;
+  secret_tag: string;
+}): EncryptedSecret {
+  const key = getEncryptionKey();
   const decipher = crypto.createDecipheriv(
     "aes-256-gcm",
     key,
@@ -129,31 +108,15 @@ function decryptSecretWithKey(
   return JSON.parse(plaintext.toString("utf8")) as EncryptedSecret;
 }
 
-/** Thrown when a secured wallet is read without (or with a wrong) password. */
-export class PasswordRequiredError extends Error {
-  constructor(message = "This wallet is password-protected. A correct password is required.") {
-    super(message);
-    this.name = "PasswordRequiredError";
-  }
-}
-
 // ─── Store / read / delete ──────────────────────────────────────────────────────
 
-/** Upsert a delegation, encrypting the share + API key before persisting.
- *
- * New rows are stored UNSECURED (master-key encryption only) — the user secures
- * them later by setting a password (see {@link secureDelegation}). A re-delegation
- * resets protection, since the share material changes.
- */
+/** Upsert a delegation, encrypting the share + API key (AES-256-GCM) before persisting. */
 export async function storeDelegation(record: DelegationRecord): Promise<void> {
   const supabase = getSupabase();
-  const { ciphertext, iv, tag } = encryptSecretWithKey(
-    {
-      delegatedShare: record.delegatedShare,
-      walletApiKey: record.walletApiKey,
-    },
-    getEncryptionKey()
-  );
+  const { ciphertext, iv, tag } = encryptSecret({
+    delegatedShare: record.delegatedShare,
+    walletApiKey: record.walletApiKey,
+  });
 
   const { error } = await supabase.from(TABLE).upsert(
     {
@@ -164,8 +127,6 @@ export async function storeDelegation(record: DelegationRecord): Promise<void> {
       secret_ciphertext: ciphertext,
       secret_iv: iv,
       secret_tag: tag,
-      secret_salt: null,
-      secured: false,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,chain" }
@@ -185,32 +146,10 @@ interface RawRow {
   secret_ciphertext: string;
   secret_iv: string;
   secret_tag: string;
-  secret_salt?: string | null;
-  secured?: boolean | null;
 }
 
-/**
- * Decrypt a row into a full DelegationRecord.
- *
- * Secured rows need the wallet password; legacy/unsecured rows decrypt with the
- * master key alone. A missing/incorrect password throws PasswordRequiredError.
- */
-function rowToRecord(row: RawRow, password?: string): DelegationRecord {
-  let secret: EncryptedSecret;
-  if (row.secured) {
-    if (!password) throw new PasswordRequiredError();
-    if (!row.secret_salt) {
-      throw new Error("Secured row is missing its salt — cannot decrypt.");
-    }
-    try {
-      secret = decryptSecretWithKey(row, deriveSecuredKey(password, row.secret_salt));
-    } catch {
-      // AES-GCM auth failure ⇒ wrong password (don't leak crypto details).
-      throw new PasswordRequiredError("Incorrect password for this wallet.");
-    }
-  } else {
-    secret = decryptSecretWithKey(row, getEncryptionKey());
-  }
+function rowToRecord(row: RawRow): DelegationRecord {
+  const secret = decryptSecret(row);
   return {
     userId: row.user_id,
     chain: row.chain,
@@ -223,8 +162,7 @@ function rowToRecord(row: RawRow, password?: string): DelegationRecord {
 
 export async function getDelegationByAddress(
   address: string,
-  chain: string,
-  password?: string
+  chain: string
 ): Promise<DelegationRecord | undefined> {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -234,80 +172,7 @@ export async function getDelegationByAddress(
     .eq("chain", chain)
     .maybeSingle();
   if (error) throw new Error(`Failed to read delegation: ${error.message}`);
-  return data ? rowToRecord(data as RawRow, password) : undefined;
-}
-
-/**
- * Lightweight existence + protection status for an address — does NOT decrypt,
- * so it works without a password (used by the funding UI / account lookup).
- */
-export async function getDelegationStatus(
-  address: string,
-  chain: string = DELEGATION_CHAIN
-): Promise<{ exists: boolean; secured: boolean }> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("secured")
-    .eq("address", address.toLowerCase())
-    .eq("chain", chain)
-    .maybeSingle();
-  if (error) throw new Error(`Failed to read delegation: ${error.message}`);
-  return { exists: Boolean(data), secured: Boolean(data?.secured) };
-}
-
-/**
- * Secure a wallet with a password: re-encrypt the stored share under a key
- * derived from the master key + password. Only valid for an unsecured row
- * (the share material itself never changes here). Idempotent guard: securing
- * an already-secured wallet is rejected (re-delegating resets protection).
- */
-export async function secureDelegation(
-  address: string,
-  chain: string,
-  password: string
-): Promise<void> {
-  if (!password || password.length < 8) {
-    throw new Error("Password must be at least 8 characters.");
-  }
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("*")
-    .eq("address", address.toLowerCase())
-    .eq("chain", chain)
-    .maybeSingle();
-  if (error) throw new Error(`Failed to read delegation: ${error.message}`);
-  if (!data) throw new Error("No delegation found for this wallet.");
-
-  const row = data as RawRow;
-  if (row.secured) {
-    throw new Error("This wallet is already password-protected.");
-  }
-
-  // Decrypt the current (master-key) secret, then re-encrypt under the password.
-  const secret = decryptSecretWithKey(row, getEncryptionKey());
-  const salt = crypto.randomBytes(16).toString("base64");
-  const { ciphertext, iv, tag } = encryptSecretWithKey(
-    secret,
-    deriveSecuredKey(password, salt)
-  );
-
-  const { error: updateError } = await supabase
-    .from(TABLE)
-    .update({
-      secret_ciphertext: ciphertext,
-      secret_iv: iv,
-      secret_tag: tag,
-      secret_salt: salt,
-      secured: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("address", address.toLowerCase())
-    .eq("chain", chain);
-  if (updateError) {
-    throw new Error(`Failed to secure delegation: ${updateError.message}`);
-  }
+  return data ? rowToRecord(data as RawRow) : undefined;
 }
 
 export async function deleteDelegation(

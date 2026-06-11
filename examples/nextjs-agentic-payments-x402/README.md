@@ -19,10 +19,11 @@ Built on the **Dynamic JS SDK** (`@dynamic-labs-sdk/*` + react-hooks), like
 | --- | --- | --- |
 | **Website** | `app/`, `components/flow/`, `lib/providers.tsx` | Email sign-in → embedded wallet (guarded) → authorize → fund. USD-framed, light theme. |
 | **Delegation webhook** | `app/api/webhooks/dynamic/`, `lib/dynamic/` | Verifies + receives `wallet.delegation.created`, decrypts the share (RSA-OAEP + AES-GCM). |
-| **Encrypted store** | `lib/shared/delegation-store.ts`, `supabase/` | Re-encrypts shares (AES-256-GCM, password-derived) into Supabase. |
-| **Account API** | `app/api/account/`, `app/api/balance/` | Delegation/secured status + USD balance for the UI. |
+| **Encrypted store** | `lib/shared/delegation-store.ts`, `supabase/` | Re-encrypts shares (AES-256-GCM, server master key) into Supabase. |
+| **Balance API** | `app/api/balance/` | The wallet's USD balance for the UI. |
+| **Owner approval** | `app/authorize/`, `app/api/agent-grant/`, `lib/shared/agent-grants.ts` | Self-hosted device-grant: the owner approves an agent run by signing in here; verified against their Dynamic JWT. |
 | **Paid service** | `app/api/services/azure-compute/`, `lib/shared/x402-server.ts` | An "Azure-style" resource gated behind x402 v2 (`withX402`), priced in USD. |
-| **Agent** | `agent/pay-for-service.ts` | Resolves a user's wallet **by address**, unlocks it with the wallet password, pays the service via x402 (gasless). |
+| **Agent** | `agent/pay-for-service.ts` | Resolves a wallet **by address**, gets the owner's approval via the device-grant, then pays the service via x402 (gasless). |
 
 ## How it works
 
@@ -49,15 +50,25 @@ and registers it on an `x402Client` via `ExactEvmScheme`.
 
 **User ↔ wallet mapping.** The agent is told which wallet to act for by its
 **address** (shown on the funding page): `pnpm agent <walletAddress>`. The address
-is public and non-secret — it only selects which encrypted row to load; spending
-still requires the wallet password (below).
+is public and non-secret — it only selects which wallet to request; acting on it
+requires the owner's approval (below).
 
-**Owner-only access.** A wallet must be **password-protected** before the agent
-will spend from it. The key share is encrypted with a key derived from *both* the
-server master key *and* the user's password
-(`HMAC(masterKey, PBKDF2-SHA256(password, salt, 600k))`), so neither the operator
-(no password) nor a DB leak (no master key) can spend — only the owner who set the
-password. The agent reads it from `AGENT_PASSWORD` or prompts for it.
+**Owner approval (self-hosted device grant).** Before acting, the agent starts a
+grant and prints a link to **this app's** `/authorize?code=XXXX-XXXX`. The wallet
+owner opens it, signs in with Dynamic, and approves; the server verifies their
+**Dynamic session JWT** owns that wallet (`lib/dynamic/auth.ts`) before flipping
+the grant to `approved`. The agent polls until then. So knowing the public address
+authorizes nothing — only the owner, proven by their Dynamic login, can.
+
+```
+   pnpm agent <addr> ──POST /api/agent-grant──▶ user_code + grant_code
+        │                                          │
+        │  print  …/authorize?code=XXXX-XXXX  ◀────┘
+        │                                       owner opens, signs in (Dynamic),
+        │                                       approves → /api/agent-grant/approve
+        │                                       verifies JWT owns the wallet
+        └──poll /api/agent-grant?grant_code=…──▶ approved → agent pays via x402
+```
 
 ## Network
 
@@ -97,19 +108,25 @@ network, no switching. Payments settle through the **public x402 facilitator**
 
 1. **Sign in** with email (embedded wallet created silently, guarded so it's never duplicated).
 2. **Authorize your agent** — delegated access; the webhook stores the encrypted share in Supabase.
-3. **Secure your agent** — set a password. The stored share is re-encrypted under it; the agent needs it to spend.
-4. **Add funds** — MoonPay card top-up (signed URL via the Dynamic SDK's `getMoonPayUrl`). Balance shows in USD. Note your **wallet address**.
-5. **Run the agent** for that wallet:
+3. **Add funds** — MoonPay card top-up (signed URL via the Dynamic SDK's `getMoonPayUrl`). Balance shows in USD. Note your **wallet address**.
+4. **Run the agent** for that wallet:
    ```bash
-   AGENT_PASSWORD=… pnpm agent <walletAddress>   # omit AGENT_PASSWORD to be prompted
+   pnpm agent <walletAddress>
    ```
    ```
    Wallet 0x…
+   🔐 Approve this agent to act on your wallet:
+      https://…/authorize?code=ABCD-EFGH
+   ⏳ Waiting for approval…
+   ```
+5. **Approve** — open the printed link, sign in as the wallet owner, click **Approve**. The agent then continues:
+   ```
+   ✅ Approved.
    Balance: $25.00
    💳 Paying for service: …/api/services/azure-compute
    ✅ Service delivered (paid $0.01): { status: "provisioned", … }
    ```
-   No binding yet → the agent prints the funding URL. Unsecured wallet → it asks you to set a password first.
+   No binding yet → the agent prints the onboarding steps instead.
 
 ## Deploy (Vercel)
 
@@ -136,9 +153,10 @@ Then:
   are decrypted server-side, then re-encrypted with AES-256-GCM
   (`DELEGATION_ENCRYPTION_KEY`) before Supabase. The table has RLS on with no
   public policies — only the service-role key reads it.
-- **Owner-only spending.** The share is encrypted under a key derived from the
-  server master key **and** the user's password (PBKDF2-SHA256 600k → HMAC), so the
-  public wallet address alone can't unlock funds — only the password-holder can.
+- **Owner-approved actions.** The agent can't act until the wallet owner approves
+  the run at `/authorize`, verified against their Dynamic session JWT + wallet
+  ownership (`lib/dynamic/auth.ts`). The grant's poll secret is stored only as a
+  SHA-256 hash; grants expire after 15 minutes.
 - **No raw keys in the agent.** All signing is inside Dynamic's MPC.
 - **Gasless.** x402 payments are EIP-3009 `transferWithAuthorization` — the
   facilitator pays gas; the user pays only the stablecoin amount.

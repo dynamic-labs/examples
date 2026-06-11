@@ -1,33 +1,29 @@
 /**
- * The agent — runs server-side, no UI, no human in the loop.
+ * The agent — runs server-side, paying for services on a user's behalf.
  *
- * The agent is bound to ONE user's wallet via that wallet's address (shown on
- * the funding page).
+ * The agent is bound to ONE user's wallet by its address (shown on the funding
+ * page). First run: `pnpm agent <walletAddress>` (persisted to agent/.agent-account);
+ * later runs: just `pnpm agent`.
  *
- *   - First run, no binding yet → prints the funding URL so the user can sign up,
- *     authorize their agent, and fund. They then run `pnpm agent <walletAddress>`
- *     once; the agent persists that address locally (agent/.agent-account).
- *   - Every later run → `pnpm agent` reuses the saved binding, with no argument.
+ * Owner-only access via a self-hosted device-authorization grant: before acting,
+ * the agent asks the web app to start a grant, prints an /authorize link + code,
+ * and waits. The wallet owner opens the link, signs in with Dynamic, and approves
+ * — the server verifies their session JWT owns the wallet. Only then does the
+ * agent proceed. Knowing the public address alone authorizes nothing.
  *
- * Owner-only access: a wallet must be password-protected on the website before
- * the agent will act on it. Decrypting the key share requires that password
- * (supply it via AGENT_PASSWORD, or the agent prompts for it). Knowing the
- * public wallet address alone is not enough — only the owner who set the password
- * can authorize spending. See lib/shared/delegation-store.ts.
- *
- * Once bound, the agent:
- *   1. loads that user's delegated wallet credentials from Supabase (decrypting
- *      with the password),
+ * Once approved, the agent:
+ *   1. loads the delegated wallet credentials from Supabase,
  *   2. checks the spendable USD balance,
  *   3. if empty, points the user to the funding page and stops,
  *   4. otherwise pays an x402-protected "cloud service" — a gasless USDC payment
  *      signed inside Dynamic's MPC — and uses the result.
  *
- * Run with: pnpm agent [walletAddress]   (AGENT_PASSWORD optional)
+ * Run with: pnpm agent [walletAddress]
  */
 import "dotenv/config";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { execFile } from "child_process";
 import { createPublicClient, http } from "viem";
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
@@ -42,8 +38,6 @@ import {
 } from "../lib/shared/constants";
 import {
   getDelegationByAddress,
-  getDelegationStatus,
-  PasswordRequiredError,
   type DelegationRecord,
 } from "../lib/shared/delegation-store";
 import { createDynamicX402Account } from "../lib/shared/x402-account";
@@ -52,15 +46,17 @@ const SERVICE_URL =
   process.env.X402_SERVICE_URL ??
   "http://localhost:3000/api/services/azure-compute";
 const FUNDING_URL = process.env.FUNDING_URL ?? "http://localhost:3000";
+const GRANT_API = `${FUNDING_URL}/api/agent-grant`;
 const PRICE_USD_BASE_UNITS = BigInt(10_000); // $0.01 in USDC (6 decimals)
 
 // Where the agent remembers which wallet address it's bound to.
 const ACCOUNT_FILE = join(__dirname, ".agent-account");
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function readBoundAddress(): string | null {
   try {
-    const address = readFileSync(ACCOUNT_FILE, "utf8").trim();
-    return address || null;
+    return readFileSync(ACCOUNT_FILE, "utf8").trim() || null;
   } catch {
     return null; // not bound yet
   }
@@ -77,110 +73,72 @@ function persistBoundAddress(address: string) {
   }
 }
 
-/** Thrown when the bound wallet hasn't been password-protected on the website yet. */
-class UnsecuredWalletError extends Error {}
-
-/** Read a password from the terminal without echoing it. */
-function promptHiddenPassword(query: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const { stdin, stdout } = process;
-    if (!stdin.isTTY || typeof stdin.setRawMode !== "function") {
-      reject(
-        new Error(
-          "No interactive terminal for a password prompt — set AGENT_PASSWORD instead."
-        )
-      );
-      return;
-    }
-    stdout.write(query);
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf8");
-    let input = "";
-    const onData = (chunk: string) => {
-      for (const ch of chunk) {
-        if (ch === "\n" || ch === "\r" || ch === "\u0004") {
-          stdin.setRawMode(false);
-          stdin.pause();
-          stdin.removeListener("data", onData);
-          stdout.write("\n");
-          resolve(input);
-          return;
-        } else if (ch === "\u0003") {
-          stdin.setRawMode(false);
-          process.exit(1);
-        } else if (ch === "\u007f" || ch === "\b") {
-          if (input) {
-            input = input.slice(0, -1);
-            stdout.write("\b \b");
-          }
-        } else {
-          input += ch;
-          stdout.write("*");
-        }
-      }
-    };
-    stdin.on("data", onData);
+/** Best-effort: open the approval URL in the user's browser (ignored if headless). */
+function tryOpenBrowser(url: string) {
+  const cmd =
+    process.platform === "darwin"
+      ? "open"
+      : process.platform === "win32"
+        ? "cmd"
+        : "xdg-open";
+  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
+  execFile(cmd, args, () => {
+    /* ignore — the URL is printed too */
   });
 }
 
 /**
- * Resolve which delegated wallet this agent acts for, by wallet address.
- *
- * Precedence: explicit CLI arg / AGENT_WALLET_ADDRESS env → the saved local
- * binding. Secured wallets need their password (AGENT_PASSWORD, else an
- * interactive prompt). The agent refuses wallets that haven't been secured yet.
- * Returns null only when nothing is bound (first run → onboarding prompt).
+ * Owner-authorization gate: start a device grant, show the owner an /authorize
+ * link, and wait until they approve (or it's denied/expires). Returns true on
+ * approval.
  */
-async function loadDelegation(): Promise<DelegationRecord | null> {
-  const explicit = process.argv[2] ?? process.env.AGENT_WALLET_ADDRESS;
-  const address = explicit ?? readBoundAddress();
+async function acquireAuthorization(address: string): Promise<boolean> {
+  const startRes = await fetch(GRANT_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address }),
+  });
+  if (!startRes.ok) {
+    throw new Error(`Failed to start authorization (HTTP ${startRes.status}).`);
+  }
+  const { userCode, grantCode, verificationUri, expiresInSeconds, pollIntervalSeconds } =
+    await startRes.json();
 
-  if (!address) return null;
+  console.log("\n🔐 Approve this agent to act on your wallet:");
+  console.log(`   ${verificationUri}`);
+  console.log(`   code: ${userCode}\n`);
+  tryOpenBrowser(verificationUri);
+  process.stdout.write("⏳ Waiting for approval…");
 
-  let delegation: DelegationRecord | undefined;
-  try {
-    delegation = await getDelegationByAddress(
-      address,
-      DELEGATION_CHAIN,
-      process.env.AGENT_PASSWORD || undefined
+  const deadline = Date.now() + expiresInSeconds * 1000;
+  const intervalMs = Math.max(pollIntervalSeconds ?? 3, 2) * 1000;
+  while (Date.now() < deadline) {
+    await sleep(intervalMs);
+    process.stdout.write(".");
+    const pollRes = await fetch(
+      `${GRANT_API}?grant_code=${encodeURIComponent(grantCode)}`
     );
-  } catch (err) {
-    if (!(err instanceof PasswordRequiredError)) throw err;
-    // Secured wallet and no/!valid AGENT_PASSWORD — ask for it interactively.
-    const password = await promptHiddenPassword("🔑 Wallet password: ");
-    try {
-      delegation = await getDelegationByAddress(address, DELEGATION_CHAIN, password);
-    } catch (retryErr) {
-      if (retryErr instanceof PasswordRequiredError) {
-        throw new Error("Incorrect password.");
-      }
-      throw retryErr;
+    if (pollRes.status === 404) {
+      console.log("\n⚠️  Authorization request expired. Run the agent again.");
+      return false;
+    }
+    if (!pollRes.ok) continue;
+    const { status } = await pollRes.json();
+    if (status === "approved") {
+      console.log("\n✅ Approved.\n");
+      return true;
+    }
+    if (status === "denied") {
+      console.log("\n🚫 Request denied.");
+      return false;
     }
   }
-
-  if (!delegation) {
-    throw new Error(
-      `No delegation found for "${address}". Has the user authorized the agent ` +
-        "(and did the Dynamic webhook store it)?"
-    );
-  }
-
-  // Enforce owner-only access: the agent only acts on password-protected wallets.
-  const { secured } = await getDelegationStatus(delegation.address, DELEGATION_CHAIN);
-  if (!secured) throw new UnsecuredWalletError();
-
-  // Remember an explicitly-provided address so `pnpm agent` works with no args next time.
-  if (explicit) persistBoundAddress(delegation.address);
-
-  return delegation;
+  console.log("\n⚠️  Authorization timed out. Run the agent again.");
+  return false;
 }
 
 async function getBalanceBaseUnits(address: string): Promise<bigint> {
-  const client = createPublicClient({
-    chain: VIEM_CHAIN,
-    transport: http(RPC_URL),
-  });
+  const client = createPublicClient({ chain: VIEM_CHAIN, transport: http(RPC_URL) });
   return client.readContract({
     address: USDC_ADDRESS,
     abi: ERC20_BALANCE_ABI,
@@ -189,57 +147,67 @@ async function getBalanceBaseUnits(address: string): Promise<bigint> {
   });
 }
 
+function printOnboarding() {
+  console.log("⚠️  This agent isn't linked to a wallet yet.\n");
+  console.log("To set up your agent wallet:");
+  console.log(`  1. Visit ${FUNDING_URL}`);
+  console.log("  2. Sign in with your email");
+  console.log('  3. Click "Authorize agent" to delegate signing access');
+  console.log("  4. Add funds via MoonPay");
+  console.log(
+    "  5. Copy your wallet address from the page, then run: `pnpm agent <walletAddress>`"
+  );
+  console.log("     (the agent remembers it — after that, just `pnpm agent`)\n");
+}
+
 async function main() {
   console.log("🤖 Agent starting…\n");
 
-  const delegation = await loadDelegation();
-
-  if (!delegation) {
-    console.log("⚠️  This agent isn't linked to a wallet yet.\n");
-    console.log("To set up your agent wallet:");
-    console.log(`  1. Visit ${FUNDING_URL}`);
-    console.log("  2. Sign in with your email");
-    console.log("  3. Click \"Authorize agent\" to delegate signing access");
-    console.log("  4. Set a password to secure your agent");
-    console.log("  5. Add funds via MoonPay");
-    console.log(
-      "  6. Copy your wallet address from the page, then run: `pnpm agent <walletAddress>`"
-    );
-    console.log(
-      "     (the agent remembers it — after that, just `pnpm agent`)\n"
-    );
+  const explicit = process.argv[2] ?? process.env.AGENT_WALLET_ADDRESS;
+  const address = explicit ?? readBoundAddress();
+  if (!address) {
+    printOnboarding();
     return;
   }
 
+  // Confirm the wallet has been delegated (the webhook stored its share).
+  const delegation: DelegationRecord | undefined = await getDelegationByAddress(
+    address,
+    DELEGATION_CHAIN
+  );
+  if (!delegation) {
+    console.log(`⚠️  No delegated wallet found for ${address}.\n`);
+    console.log(
+      `👉 Authorize the agent at ${FUNDING_URL} (and make sure the delegation webhook is configured), then try again.\n`
+    );
+    return;
+  }
+  if (explicit) persistBoundAddress(delegation.address);
   console.log(`Wallet ${delegation.address}`);
+
+  // Owner must approve this run via the web app.
+  const approved = await acquireAuthorization(delegation.address);
+  if (!approved) return;
 
   // 1. Check funds
   const balance = await getBalanceBaseUnits(delegation.address);
   console.log(`Balance: $${formatUsd(balance)}`);
-
   if (balance < PRICE_USD_BASE_UNITS) {
     console.log(
-      `\n⚠️  Not enough funds to pay for the service ($${formatUsd(
-        PRICE_USD_BASE_UNITS
-      )}).`
+      `\n⚠️  Not enough funds to pay for the service ($${formatUsd(PRICE_USD_BASE_UNITS)}).`
     );
     console.log(`👉 Ask the user to add funds at: ${FUNDING_URL}\n`);
     return;
   }
 
-  // 2. Build an x402 signer backed by the delegated MPC wallet (gasless EIP-3009)
-  //    and register it for Base mainnet on an x402 v2 client.
+  // 2. Build an x402 v2 signer backed by the delegated MPC wallet (gasless EIP-3009).
   const account = createDynamicX402Account(delegation);
-  const client = new x402Client().register(
-    X402_NETWORK,
-    new ExactEvmScheme(account)
-  );
+  const client = new x402Client().register(X402_NETWORK, new ExactEvmScheme(account));
   const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 
   // 3. Pay for the service. x402 handles the 402 → sign → retry handshake.
   console.log(`\n💳 Paying for service: ${SERVICE_URL}`);
   const res = await fetchWithPayment(SERVICE_URL, { method: "GET" });
-
   if (!res.ok) {
     console.error(`Service call failed: HTTP ${res.status}`);
     console.error(await res.text());
@@ -253,13 +221,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  if (err instanceof UnsecuredWalletError) {
-    console.log("⚠️  This wallet isn't password-protected yet.\n");
-    console.log(
-      `👉 Secure it first: open ${FUNDING_URL}, then "Secure your agent" and set a password.\n`
-    );
-    return;
-  }
   console.error("\n❌ Agent error:", err instanceof Error ? err.message : err);
   process.exitCode = 1;
 });
