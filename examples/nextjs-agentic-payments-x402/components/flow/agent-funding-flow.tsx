@@ -6,13 +6,16 @@ import {
   Check,
   Copy,
   Loader2,
+  Lock,
   Plus,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { getMoonPayUrl } from "@dynamic-labs-sdk/client";
 import { useWallet } from "@/lib/providers";
 import LoginForm from "@/components/dynamic/login-form";
-import { env } from "@/env";
+import { dynamicClient } from "@/lib/dynamic-client";
+import { NETWORK_ID } from "@/lib/shared/constants";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -70,11 +73,11 @@ function Shell({
   children,
   title,
   subtitle,
-}: {
+}: Readonly<{
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
-}) {
+}>) {
   return (
     <div className="rounded-2xl border bg-card p-7 shadow-sm">
       <div className="mb-6 flex items-center gap-2">
@@ -112,7 +115,7 @@ function SignInView() {
 
 // ─── 2. Authorize (delegate) ─────────────────────────────────────────────────
 
-function AuthorizeView({ busy }: { busy: boolean }) {
+function AuthorizeView({ busy }: Readonly<{ busy: boolean }>) {
   const { delegate } = useWallet();
   const [error, setError] = useState<string | null>(null);
 
@@ -160,10 +163,12 @@ function AuthorizeView({ busy }: { busy: boolean }) {
 
 // ─── 3. Funding ───────────────────────────────────────────────────────────────
 
-function FundingView({ address }: { address: string }) {
+function FundingView({ address }: Readonly<{ address: string }>) {
   const [usd, setUsd] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loadingAmt, setLoadingAmt] = useState<number | null>(null);
+  const [secured, setSecured] = useState<boolean | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -179,26 +184,34 @@ function FundingView({ address }: { address: string }) {
     const id = setInterval(refresh, 10_000);
     fetch(`/api/account?address=${address}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setCode(d.code))
+      .then((d) => {
+        if (!d) return;
+        setCode(d.code);
+        setSecured(Boolean(d.secured));
+      })
       .catch(() => {});
     return () => clearInterval(id);
   }, [refresh, address]);
 
-  const isMainnet = env.NEXT_PUBLIC_X402_NETWORK !== "base-sepolia";
-  const onramp = env.NEXT_PUBLIC_ONRAMP_URL;
-  const faucet = env.NEXT_PUBLIC_FAUCET_URL;
-
-  // Production on-ramp: a hosted card-purchase widget (MoonPay / Coinbase /
-  // Crypto.com) via NEXT_PUBLIC_ONRAMP_URL, prefilled with the user's account
-  // and amount. On testnet, fall back to the faucet.
-  const addFundsUrl = (amount: number) => {
-    if (onramp) {
-      const u = new URL(onramp);
-      u.searchParams.set("walletAddress", address);
-      u.searchParams.set("baseCurrencyAmount", String(amount));
-      return u.toString();
+  const openMoonPay = async (amount: number) => {
+    setLoadingAmt(amount);
+    try {
+      const url = await getMoonPayUrl(
+        {
+          chain: "EVM",
+          walletAddress: address,
+          token: "usdc",
+          networkId: NETWORK_ID,
+          tokenAmount: amount,
+        },
+        dynamicClient
+      );
+      window.open(url, "_blank", "noreferrer");
+    } catch (err) {
+      console.error("MoonPay URL error:", err);
+    } finally {
+      setLoadingAmt(null);
     }
-    return faucet ?? "#";
   };
 
   const copy = async () => {
@@ -211,7 +224,7 @@ function FundingView({ address }: { address: string }) {
 
   return (
     <Shell>
-      <div className="rounded-2xl border bg-gradient-to-b from-dynamic/5 to-transparent p-6 text-center">
+      <div className="rounded-2xl border bg-linear-to-b from-dynamic/5 to-transparent p-6 text-center">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Available balance
         </p>
@@ -225,37 +238,56 @@ function FundingView({ address }: { address: string }) {
               : "bg-amber-500/10 text-amber-600"
           }`}
         >
-          {funded ? (
+          {funded && secured ? (
             <>
               <Check className="h-3.5 w-3.5" /> Agent ready to spend
             </>
           ) : (
-            "Add funds to activate your agent"
+            "Finish setup to activate your agent"
           )}
         </div>
       </div>
+
+      <SecureAgentCard
+        address={address}
+        secured={secured}
+        onSecured={() => setSecured(true)}
+      />
 
       <div className="mt-5">
         <p className="mb-2 text-sm font-medium">Add funds</p>
         <div className="grid grid-cols-3 gap-2">
           {[25, 50, 100].map((amt) => (
-            <a key={amt} href={addFundsUrl(amt)} target="_blank" rel="noreferrer">
-              <Button variant="outline" className="w-full">
-                ${amt}
-              </Button>
-            </a>
+            <Button
+              key={amt}
+              variant="outline"
+              className="w-full"
+              disabled={loadingAmt !== null}
+              onClick={() => openMoonPay(amt)}
+            >
+              {loadingAmt === amt ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                `$${amt}`
+              )}
+            </Button>
           ))}
         </div>
-        <a href={addFundsUrl(25)} target="_blank" rel="noreferrer">
-          <Button className="mt-2 w-full bg-dynamic text-white hover:bg-dynamic/90">
-            <Plus className="mr-1.5 h-4 w-4" /> Add funds with card
-          </Button>
-        </a>
-        {!isMainnet && !onramp && (
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Demo on test network — &quot;Add funds&quot; opens the test faucet.
-          </p>
-        )}
+        <Button
+          className="mt-2 w-full bg-dynamic text-white hover:bg-dynamic/90"
+          disabled={loadingAmt !== null}
+          onClick={() => openMoonPay(25)}
+        >
+          {loadingAmt === null ? (
+            <span className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Add funds with card
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Opening MoonPay…
+            </span>
+          )}
+        </Button>
       </div>
 
       <div className="mt-5 rounded-xl border bg-muted/40 p-3">
@@ -287,7 +319,122 @@ function FundingView({ address }: { address: string }) {
   );
 }
 
-function Bullet({ children }: { children: React.ReactNode }) {
+// ─── Secure your agent (set a spending password) ──────────────────────────────
+
+function SecureAgentCard({
+  address,
+  secured,
+  onSecured,
+}: Readonly<{
+  address: string;
+  secured: boolean | null;
+  onSecured: () => void;
+}>) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Still loading status — render nothing to avoid flashing the form.
+  if (secured === null) return null;
+
+  if (secured) {
+    return (
+      <div className="mt-5 flex items-start gap-3 rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+        <Lock className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+        <div>
+          <p className="text-sm font-medium">Agent secured with a password</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Your agent needs this password to spend. We can&apos;t recover it —
+            keep it safe.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    setError(null);
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords don't match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/secure-wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Couldn't secure your agent");
+      }
+      setPassword("");
+      setConfirm("");
+      onSecured();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't secure your agent");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-5 rounded-xl border border-dynamic/20 bg-dynamic/5 p-4">
+      <div className="flex items-start gap-3">
+        <Lock className="mt-0.5 h-5 w-5 shrink-0 text-dynamic" />
+        <div>
+          <p className="text-sm font-medium">Secure your agent</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Set a password your agent must use to spend. Only you know it — no
+            one can use your balance without it.
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 space-y-2">
+        <input
+          type="password"
+          autoComplete="new-password"
+          placeholder="Password (min 8 characters)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-dynamic"
+        />
+        <input
+          type="password"
+          autoComplete="new-password"
+          placeholder="Confirm password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-dynamic"
+        />
+        <Button
+          onClick={submit}
+          disabled={busy}
+          className="w-full bg-dynamic text-white hover:bg-dynamic/90"
+        >
+          {busy ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Securing…
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Lock className="h-4 w-4" /> Set password
+            </span>
+          )}
+        </Button>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function Bullet({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <li className="flex items-start gap-2">
       <Check className="mt-0.5 h-4 w-4 shrink-0 text-dynamic" />

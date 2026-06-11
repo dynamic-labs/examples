@@ -24,6 +24,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Pin the workspace root (a stray lockfile in $HOME otherwise confuses Next 16).
+  turbopack: { root: __dirname },
   serverExternalPackages: [
     "@dynamic-labs-wallet/node",
     "@dynamic-labs-wallet/node-evm",
@@ -31,10 +33,6 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  webpack: (config) => {
-    config.externals.push("pino-pretty", "lokijs", "encoding");
-    return config;
-  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

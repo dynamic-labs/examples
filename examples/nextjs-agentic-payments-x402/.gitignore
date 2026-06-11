@@ -36,3 +36,6 @@ next-env.d.ts
 
 # supabase CLI temp
 supabase/.temp/
+
+# agent's locally-bound account code (which user's wallet this agent acts for)
+agent/.agent-account

@@ -1,4 +1,4 @@
-import * as crypto from "crypto";
+import * as crypto from "node:crypto";
 import type { ServerKeyShare } from "@dynamic-labs-wallet/node";
 import type { EncryptedDelegatedShare } from "@/lib/dynamic/webhooks/schemas";
 import { env } from "@/env";

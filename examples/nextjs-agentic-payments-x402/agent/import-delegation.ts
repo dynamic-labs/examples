@@ -11,7 +11,7 @@
  */
 import "dotenv/config";
 import { readFileSync } from "fs";
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { storeDelegation } from "../lib/shared/delegation-store";
 
 interface Enc {

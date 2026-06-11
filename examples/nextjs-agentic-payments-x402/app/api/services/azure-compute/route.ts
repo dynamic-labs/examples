@@ -1,15 +1,25 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { X402_NETWORK } from "@/lib/shared/constants";
+import { x402Server } from "@/lib/shared/x402-server";
 
 /**
  * Sample paid "cloud service" — stands in for an Azure service the agent buys.
  *
- * The x402 middleware (see /middleware.ts) gates this route: a request without a
- * valid payment gets HTTP 402 + payment requirements; once the caller attaches a
- * settled USDC payment, the request reaches this handler and we return the
- * "provisioned" resource. The handler itself contains no crypto — it just serves
- * the product the user paid for, framed in plain USD.
+ * `withX402` (x402 v2) gates this handler: a request without a valid payment
+ * gets HTTP 402 + payment requirements; once the caller attaches a settled USDC
+ * payment, the handler runs and returns the "provisioned" resource. Settlement
+ * happens only after a successful (status < 400) response. The handler itself
+ * contains no crypto — it just serves the product, framed in plain USD.
  */
-export async function GET() {
+const payTo = (process.env.X402_PAY_TO ||
+  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+if (!process.env.X402_PAY_TO) {
+  console.warn("[x402] X402_PAY_TO is not set — the service route will error.");
+}
+
+async function handler(_request: NextRequest) {
   const provisionedAt = new Date().toISOString();
   return NextResponse.json({
     status: "provisioned",
@@ -22,3 +32,22 @@ export async function GET() {
     message: "Compute unit provisioned. Charged $0.01 to your account.",
   });
 }
+
+export const GET = withX402(
+  handler,
+  {
+    accepts: {
+      scheme: "exact",
+      payTo,
+      price: "$0.01",
+      network: X402_NETWORK,
+    },
+    description: "Provision an Azure-style compute unit (demo resource)",
+    mimeType: "application/json",
+  },
+  x402Server,
+  undefined, // paywallConfig
+  undefined, // paywall
+  // Sync supported kinds lazily on first request, not at build/startup.
+  false
+);

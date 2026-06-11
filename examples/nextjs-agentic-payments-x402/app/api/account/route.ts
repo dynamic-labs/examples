@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAddress } from "viem";
-import { deriveAccountCode } from "@/lib/shared/delegation-store";
+import {
+  deriveAccountCode,
+  getDelegationStatus,
+} from "@/lib/shared/delegation-store";
 import { DELEGATION_CHAIN } from "@/lib/shared/constants";
-import { getDelegationByAddress } from "@/lib/shared/delegation-store";
 
 /**
  * Returns the short account code for a wallet address — shown to the user so an
@@ -22,10 +24,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const delegation = await getDelegationByAddress(address, DELEGATION_CHAIN);
+  const { exists, secured } = await getDelegationStatus(address, DELEGATION_CHAIN);
   return NextResponse.json({
     address,
     code: deriveAccountCode(address),
-    delegated: Boolean(delegation),
+    delegated: exists,
+    secured,
   });
 }
