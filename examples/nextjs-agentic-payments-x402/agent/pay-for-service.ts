@@ -125,11 +125,17 @@ async function mintAndSaveToken(grantCode: string): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ grantCode }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.warn(`⚠️  Could not save auth token (HTTP ${res.status}) — you'll need to approve again next run.`);
+      return;
+    }
     const { token } = await res.json();
-    if (token) persistToken(token as string);
-  } catch {
-    /* non-fatal — next run will re-approve */
+    if (token) {
+      persistToken(token as string);
+      console.log("🔑 Auth token saved — future runs won't need approval.\n");
+    }
+  } catch (err) {
+    console.warn("⚠️  Could not save auth token:", err instanceof Error ? err.message : err, "— you'll need to approve again next run.");
   }
 }
 

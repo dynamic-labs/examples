@@ -75,17 +75,34 @@ function InnerProviders({ children }: { children: ReactNode }) {
   const [delegated, setDelegated] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Restore the in-session delegation flag for this wallet (demo persistence;
-  // the source of truth is the encrypted row the webhook stores in Supabase).
+  // Sync the delegation flag: start from localStorage (instant), then confirm
+  // against the server so a returning user is never stuck on the "Authorize"
+  // screen when their share is already stored in Supabase.
   useEffect(() => {
     if (!evmAccount) {
       setDelegated(false);
       return;
     }
-    setDelegated(
+    const cached =
       typeof window !== "undefined" &&
-        localStorage.getItem(delegatedKey(evmAccount.address)) === "1"
-    );
+      localStorage.getItem(delegatedKey(evmAccount.address)) === "1";
+    setDelegated(cached);
+
+    // Always verify against the server — localStorage can be stale (cleared,
+    // different browser) even when the delegation is still active server-side.
+    const address = evmAccount.address;
+    fetch(`/api/delegation-status?address=${encodeURIComponent(address)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        if (data.delegated) {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(delegatedKey(address), "1");
+          }
+          setDelegated(true);
+        }
+      })
+      .catch(() => {/* keep whatever localStorage said */});
   }, [evmAccount]);
 
   // Create the embedded EVM wallet only if the signed-in user has none yet.
