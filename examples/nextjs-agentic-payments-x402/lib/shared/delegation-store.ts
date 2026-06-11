@@ -175,16 +175,22 @@ export async function getDelegationByAddress(
   return data ? rowToRecord(data as RawRow) : undefined;
 }
 
+/**
+ * Delete a delegation. Returns the wallet address that was deleted, or null if
+ * no matching record was found.
+ */
 export async function deleteDelegation(
   userId: string,
   chain: string
-): Promise<boolean> {
+): Promise<string | null> {
   const supabase = getSupabase();
-  const { error, count } = await supabase
+  const { data, error } = await supabase
     .from(TABLE)
-    .delete({ count: "exact" })
+    .delete()
     .eq("user_id", userId)
-    .eq("chain", chain);
+    .eq("chain", chain)
+    .select("address")
+    .maybeSingle();
   if (error) throw new Error(`Failed to delete delegation: ${error.message}`);
-  return (count ?? 0) > 0;
+  return data?.address ?? null;
 }

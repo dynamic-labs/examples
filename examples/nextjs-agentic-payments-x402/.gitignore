@@ -39,3 +39,5 @@ supabase/.temp/
 
 # agent's locally-bound account code (which user's wallet this agent acts for)
 agent/.agent-account
+# agent's persistent auth token (approved once, reused until delegation is revoked)
+agent/.agent-token

@@ -3,6 +3,7 @@ import {
   deleteDelegation,
   storeDelegation,
 } from "@/lib/dynamic/delegation";
+import { deleteAgentTokensByAddress } from "@/lib/shared/agent-grants";
 import type {
   DelegationCreatedEvent,
   DelegationRevokedEvent,
@@ -83,12 +84,15 @@ export async function handleDelegationRevoked(payload: DelegationRevokedEvent) {
     );
 
     // Remove the delegation from storage
-    const deleted = await deleteDelegation(
+    const deletedAddress = await deleteDelegation(
       payload.data.userId,
       payload.data.chain
     );
 
-    if (deleted) {
+    if (deletedAddress) {
+      // Invalidate any persisted agent tokens for this wallet so the next
+      // agent run is forced back through the approval flow.
+      await deleteAgentTokensByAddress(deletedAddress, payload.data.chain);
       console.log("✅ Successfully revoked delegation");
       return { success: true, message: "Delegation revoked" };
     } else {

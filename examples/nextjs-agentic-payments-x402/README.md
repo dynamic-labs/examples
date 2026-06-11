@@ -53,21 +53,29 @@ and registers it on an `x402Client` via `ExactEvmScheme`.
 is public and non-secret — it only selects which wallet to request; acting on it
 requires the owner's approval (below).
 
-**Owner approval (self-hosted device grant).** Before acting, the agent starts a
-grant and prints a link to **this app's** `/authorize?code=XXXX-XXXX`. The wallet
-owner opens it, signs in with Dynamic, and approves; the server verifies their
-**Dynamic session JWT** owns that wallet (`lib/dynamic/auth.ts`) before flipping
-the grant to `approved`. The agent polls until then. So knowing the public address
-authorizes nothing — only the owner, proven by their Dynamic login, can.
+**Owner approval (self-hosted device grant, once).** On the first run the agent
+starts a grant and prints a link to **this app's** `/authorize?code=XXXX-XXXX`.
+The wallet owner opens it, signs in with Dynamic, and approves; the server
+verifies their **Dynamic session JWT** owns that wallet (`lib/dynamic/auth.ts`)
+before flipping the grant to `approved`. On approval the agent mints a
+**persistent token** (stored in `agent/.agent-token`) and the server saves a
+hash in Supabase. Every subsequent run verifies that token — if the delegation
+is still active the approval step is skipped entirely. Revoking delegation
+deletes the server-side token hash, so the next run forces re-approval.
 
 ```
+   First run:
    pnpm agent <addr> ──POST /api/agent-grant──▶ user_code + grant_code
         │                                          │
         │  print  …/authorize?code=XXXX-XXXX  ◀────┘
         │                                       owner opens, signs in (Dynamic),
         │                                       approves → /api/agent-grant/approve
         │                                       verifies JWT owns the wallet
-        └──poll /api/agent-grant?grant_code=…──▶ approved → agent pays via x402
+        └──poll /api/agent-grant?grant_code=…──▶ approved
+             └──POST /api/agent-token──────────▶ persistent token (saved to disk)
+
+   Subsequent runs:
+   pnpm agent ──GET /api/agent-token?token=…──▶ valid → skip approval → pay via x402
 ```
 
 ## Network
@@ -109,7 +117,7 @@ network, no switching. Payments settle through the **public x402 facilitator**
 1. **Sign in** with email (embedded wallet created silently, guarded so it's never duplicated).
 2. **Authorize your agent** — delegated access; the webhook stores the encrypted share in Supabase.
 3. **Add funds** — MoonPay card top-up (signed URL via the Dynamic SDK's `getMoonPayUrl`). Balance shows in USD. Note your **wallet address**.
-4. **Run the agent** for that wallet:
+4. **First run** — bind the agent to your wallet and approve it once:
    ```bash
    pnpm agent <walletAddress>
    ```
@@ -119,14 +127,25 @@ network, no switching. Payments settle through the **public x402 facilitator**
       https://…/authorize?code=ABCD-EFGH
    ⏳ Waiting for approval…
    ```
-5. **Approve** — open the printed link, sign in as the wallet owner, click **Approve**. The agent then continues:
+5. **Approve** — open the printed link, sign in as the wallet owner, click **Approve**. The agent proceeds and saves a persistent token to `agent/.agent-token`:
    ```
    ✅ Approved.
    Balance: $25.00
    💳 Paying for service: …/api/services/azure-compute
    ✅ Service delivered (paid $0.01): { status: "provisioned", … }
    ```
-   No binding yet → the agent prints the onboarding steps instead.
+6. **Subsequent runs** — no approval prompt; the saved token is verified against the server:
+   ```bash
+   pnpm agent
+   ```
+   ```
+   Wallet 0x…
+   ✅ Already authorized (saved token valid).
+   Balance: $25.00
+   💳 Paying for service: …/api/services/azure-compute
+   ✅ Service delivered (paid $0.01): { status: "provisioned", … }
+   ```
+   Revoking delegation from the Dynamic dashboard invalidates the token server-side; the next `pnpm agent` will prompt for approval again.
 
 ## Deploy (Vercel)
 
@@ -153,10 +172,13 @@ Then:
   are decrypted server-side, then re-encrypted with AES-256-GCM
   (`DELEGATION_ENCRYPTION_KEY`) before Supabase. The table has RLS on with no
   public policies — only the service-role key reads it.
-- **Owner-approved actions.** The agent can't act until the wallet owner approves
-  the run at `/authorize`, verified against their Dynamic session JWT + wallet
-  ownership (`lib/dynamic/auth.ts`). The grant's poll secret is stored only as a
-  SHA-256 hash; grants expire after 15 minutes.
+- **Owner-approved actions.** The agent requires approval once per delegation
+  lifetime. The first run prompts the wallet owner at `/authorize`, verified
+  against their Dynamic session JWT + wallet ownership (`lib/dynamic/auth.ts`).
+  On approval a long-lived token is issued and saved; subsequent runs verify
+  the token without interrupting the user. Revoking delegation deletes the
+  server-side token hash, forcing re-approval. Grant poll secrets are stored
+  only as SHA-256 hashes; grants expire after 15 minutes.
 - **No raw keys in the agent.** All signing is inside Dynamic's MPC.
 - **Gasless.** x402 payments are EIP-3009 `transferWithAuthorization` — the
   facilitator pays gas; the user pays only the stablecoin amount.

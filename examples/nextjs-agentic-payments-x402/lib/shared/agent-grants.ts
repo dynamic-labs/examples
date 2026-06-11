@@ -142,3 +142,57 @@ export async function pollGrant(
   if (data.status === "pending" && isExpired(data)) return null; // expired
   return { status: data.status as GrantStatus, address: data.address };
 }
+
+// ─── Persistent agent tokens ──────────────────────────────────────────────────
+//
+// After the first approval the agent saves a long-lived token to disk.
+// On subsequent runs it verifies the token here (and that the delegation still
+// exists). Revoking delegation also deletes all tokens for that address, so
+// the next agent run is forced back through the approval flow.
+
+const TOKEN_TABLE = "agent_tokens";
+
+/** Issue a long-lived token for an address after a grant has been approved. */
+export async function issueAgentToken(address: string, chain: string): Promise<string> {
+  const supabase = getSupabase();
+  const token = crypto.randomBytes(32).toString("base64url");
+  const { error } = await supabase.from(TOKEN_TABLE).insert({
+    token_hash: hashGrantCode(token),
+    address: address.toLowerCase(),
+    chain,
+  });
+  if (error) throw new Error(`Failed to issue agent token: ${error.message}`);
+  return token;
+}
+
+/**
+ * Verify an agent token. Returns the address + chain on success, null if the
+ * token is unknown (already checks hash — caller still needs to confirm the
+ * delegation exists).
+ */
+export async function verifyAgentToken(
+  token: string
+): Promise<{ address: string; chain: string } | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(TOKEN_TABLE)
+    .select("address, chain")
+    .eq("token_hash", hashGrantCode(token))
+    .maybeSingle();
+  if (error) throw new Error(`Failed to verify agent token: ${error.message}`);
+  return data ? { address: data.address, chain: data.chain } : null;
+}
+
+/** Delete all tokens for an address — called when delegation is revoked. */
+export async function deleteAgentTokensByAddress(
+  address: string,
+  chain: string
+): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase
+    .from(TOKEN_TABLE)
+    .delete()
+    .eq("address", address.toLowerCase())
+    .eq("chain", chain);
+  if (error) throw new Error(`Failed to delete agent tokens: ${error.message}`);
+}

@@ -5,13 +5,14 @@
  * page). First run: `pnpm agent <walletAddress>` (persisted to agent/.agent-account);
  * later runs: just `pnpm agent`.
  *
- * Owner-only access via a self-hosted device-authorization grant: before acting,
- * the agent asks the web app to start a grant, prints an /authorize link + code,
- * and waits. The wallet owner opens the link, signs in with Dynamic, and approves
- * — the server verifies their session JWT owns the wallet. Only then does the
- * agent proceed. Knowing the public address alone authorizes nothing.
+ * Authorization is required once: on the first run (or after delegation is
+ * revoked) the agent starts a device grant, prints an /authorize link + code,
+ * and waits for the wallet owner to approve. On approval a long-lived token is
+ * saved to agent/.agent-token. Subsequent runs verify that token against the
+ * server; if the delegation is still active the approval step is skipped
+ * entirely. Revoking delegation invalidates the token and forces re-approval.
  *
- * Once approved, the agent:
+ * Once authorized, the agent:
  *   1. loads the delegated wallet credentials from Supabase,
  *   2. checks the spendable USD balance,
  *   3. if empty, points the user to the funding page and stops,
@@ -51,6 +52,8 @@ const PRICE_USD_BASE_UNITS = BigInt(10_000); // $0.01 in USDC (6 decimals)
 
 // Where the agent remembers which wallet address it's bound to.
 const ACCOUNT_FILE = join(__dirname, ".agent-account");
+// Where the agent stores its persistent auth token (approved once, reused until delegation is revoked).
+const TOKEN_FILE = join(__dirname, ".agent-token");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -73,6 +76,63 @@ function persistBoundAddress(address: string) {
   }
 }
 
+function readSavedToken(): string | null {
+  try {
+    return readFileSync(TOKEN_FILE, "utf8").trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function persistToken(token: string) {
+  try {
+    writeFileSync(TOKEN_FILE, `${token}\n`, "utf8");
+  } catch (err) {
+    console.warn(
+      "⚠️  Could not persist auth token:",
+      err instanceof Error ? err.message : err
+    );
+  }
+}
+
+function clearToken() {
+  try {
+    writeFileSync(TOKEN_FILE, "", "utf8");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Verify a saved token against the server. Returns the address on success. */
+async function checkSavedToken(token: string): Promise<string | null> {
+  try {
+    const res = await fetch(GRANT_API.replace("/agent-grant", "/agent-token"), {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const { valid, address } = await res.json();
+    return valid ? (address as string) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** After an approval, mint a persistent token and save it. */
+async function mintAndSaveToken(grantCode: string): Promise<void> {
+  try {
+    const res = await fetch(GRANT_API.replace("/agent-grant", "/agent-token"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grantCode }),
+    });
+    if (!res.ok) return;
+    const { token } = await res.json();
+    if (token) persistToken(token as string);
+  } catch {
+    /* non-fatal — next run will re-approve */
+  }
+}
+
 /** Best-effort: open the approval URL in the user's browser (ignored if headless). */
 function tryOpenBrowser(url: string) {
   const cmd =
@@ -89,10 +149,10 @@ function tryOpenBrowser(url: string) {
 
 /**
  * Owner-authorization gate: start a device grant, show the owner an /authorize
- * link, and wait until they approve (or it's denied/expires). Returns true on
- * approval.
+ * link, and wait until they approve (or it's denied/expires). Returns the
+ * grantCode on approval (used to mint a persistent token), or null on failure.
  */
-async function acquireAuthorization(address: string): Promise<boolean> {
+async function acquireAuthorization(address: string): Promise<string | null> {
   const startRes = await fetch(GRANT_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,21 +180,21 @@ async function acquireAuthorization(address: string): Promise<boolean> {
     );
     if (pollRes.status === 404) {
       console.log("\n⚠️  Authorization request expired. Run the agent again.");
-      return false;
+      return null;
     }
     if (!pollRes.ok) continue;
     const { status } = await pollRes.json();
     if (status === "approved") {
       console.log("\n✅ Approved.\n");
-      return true;
+      return grantCode as string;
     }
     if (status === "denied") {
       console.log("\n🚫 Request denied.");
-      return false;
+      return null;
     }
   }
   console.log("\n⚠️  Authorization timed out. Run the agent again.");
-  return false;
+  return null;
 }
 
 async function getBalanceBaseUnits(address: string): Promise<bigint> {
@@ -185,9 +245,27 @@ async function main() {
   if (explicit) persistBoundAddress(delegation.address);
   console.log(`Wallet ${delegation.address}`);
 
-  // Owner must approve this run via the web app.
-  const approved = await acquireAuthorization(delegation.address);
-  if (!approved) return;
+  // Check for a saved auth token. If valid, skip the approval flow entirely.
+  // The token is invalidated server-side when delegation is revoked, so the
+  // next run after revocation will fall through to the approval gate below.
+  const savedToken = readSavedToken();
+  if (savedToken) {
+    const tokenAddress = await checkSavedToken(savedToken);
+    if (tokenAddress && tokenAddress.toLowerCase() === delegation.address.toLowerCase()) {
+      console.log("✅ Already authorized (saved token valid).\n");
+    } else {
+      // Token is stale (delegation revoked or token tampered) — clear and re-approve.
+      clearToken();
+      const grantCode = await acquireAuthorization(delegation.address);
+      if (!grantCode) return;
+      await mintAndSaveToken(grantCode);
+    }
+  } else {
+    // First run — go through the approval flow and save the token.
+    const grantCode = await acquireAuthorization(delegation.address);
+    if (!grantCode) return;
+    await mintAndSaveToken(grantCode);
+  }
 
   // 1. Check funds
   const balance = await getBalanceBaseUnits(delegation.address);
