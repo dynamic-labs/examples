@@ -90,8 +90,13 @@ function InnerProviders({ children }: { children: ReactNode }) {
 
     // Always verify against the server — localStorage can be stale (cleared,
     // different browser) even when the delegation is still active server-side.
+    // AbortController prevents a stale response from a previous account from
+    // overwriting the current account's state if evmAccount changes mid-flight.
     const address = evmAccount.address;
-    fetch(`/api/delegation-status?address=${encodeURIComponent(address)}`)
+    const controller = new AbortController();
+    fetch(`/api/delegation-status?address=${encodeURIComponent(address)}`, {
+      signal: controller.signal,
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
@@ -102,7 +107,8 @@ function InnerProviders({ children }: { children: ReactNode }) {
           setDelegated(true);
         }
       })
-      .catch(() => {/* keep whatever localStorage said */});
+      .catch(() => {/* aborted or network error — keep whatever localStorage said */});
+    return () => controller.abort();
   }, [evmAccount]);
 
   // Create the embedded EVM wallet only if the signed-in user has none yet.

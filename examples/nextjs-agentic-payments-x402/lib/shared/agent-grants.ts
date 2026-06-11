@@ -152,10 +152,22 @@ export async function pollGrant(
 
 const TOKEN_TABLE = "agent_tokens";
 
-/** Issue a long-lived token for an address after a grant has been approved. */
+/**
+ * Issue a long-lived token for an address after a grant has been approved.
+ * Replaces any existing token for the same address+chain so repeated calls
+ * (e.g. double-click, retry) don't accumulate multiple valid tokens.
+ */
 export async function issueAgentToken(address: string, chain: string): Promise<string> {
   const supabase = getSupabase();
   const token = crypto.randomBytes(32).toString("base64url");
+
+  // Delete any prior token for this address before inserting the new one.
+  await supabase
+    .from(TOKEN_TABLE)
+    .delete()
+    .eq("address", address.toLowerCase())
+    .eq("chain", chain);
+
   const { error } = await supabase.from(TOKEN_TABLE).insert({
     token_hash: hashGrantCode(token),
     address: address.toLowerCase(),

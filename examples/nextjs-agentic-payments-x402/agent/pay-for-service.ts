@@ -48,52 +48,35 @@ const SERVICE_URL =
   "http://localhost:3000/api/services/azure-compute";
 const FUNDING_URL = process.env.FUNDING_URL ?? "http://localhost:3000";
 const GRANT_API = `${FUNDING_URL}/api/agent-grant`;
+const TOKEN_API = `${FUNDING_URL}/api/agent-token`;
 const PRICE_USD_BASE_UNITS = BigInt(10_000); // $0.01 in USDC (6 decimals)
 
-// Where the agent remembers which wallet address it's bound to.
+// Where the agent persists its bound wallet address and auth token.
 const ACCOUNT_FILE = join(__dirname, ".agent-account");
-// Where the agent stores its persistent auth token (approved once, reused until delegation is revoked).
 const TOKEN_FILE = join(__dirname, ".agent-token");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function readBoundAddress(): string | null {
+function readAgentFile(path: string): string | null {
   try {
-    return readFileSync(ACCOUNT_FILE, "utf8").trim() || null;
-  } catch {
-    return null; // not bound yet
-  }
-}
-
-function persistBoundAddress(address: string) {
-  try {
-    writeFileSync(ACCOUNT_FILE, `${address}\n`, "utf8");
-  } catch (err) {
-    console.warn(
-      "⚠️  Could not persist the bound wallet address:",
-      err instanceof Error ? err.message : err
-    );
-  }
-}
-
-function readSavedToken(): string | null {
-  try {
-    return readFileSync(TOKEN_FILE, "utf8").trim() || null;
+    return readFileSync(path, "utf8").trim() || null;
   } catch {
     return null;
   }
 }
 
-function persistToken(token: string) {
+function writeAgentFile(path: string, value: string, label: string) {
   try {
-    writeFileSync(TOKEN_FILE, `${token}\n`, "utf8");
+    writeFileSync(path, `${value}\n`, "utf8");
   } catch (err) {
-    console.warn(
-      "⚠️  Could not persist auth token:",
-      err instanceof Error ? err.message : err
-    );
+    console.warn(`⚠️  Could not persist ${label}:`, err instanceof Error ? err.message : err);
   }
 }
+
+const readBoundAddress = () => readAgentFile(ACCOUNT_FILE);
+const readSavedToken = () => readAgentFile(TOKEN_FILE);
+const persistBoundAddress = (address: string) => writeAgentFile(ACCOUNT_FILE, address, "bound wallet address");
+const persistToken = (token: string) => writeAgentFile(TOKEN_FILE, token, "auth token");
 
 function clearToken() {
   try {
@@ -106,7 +89,7 @@ function clearToken() {
 /** Verify a saved token against the server. Returns the address on success. */
 async function checkSavedToken(token: string): Promise<string | null> {
   try {
-    const res = await fetch(GRANT_API.replace("/agent-grant", "/agent-token"), {
+    const res = await fetch(TOKEN_API, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return null;
@@ -120,7 +103,7 @@ async function checkSavedToken(token: string): Promise<string | null> {
 /** After an approval, mint a persistent token and save it. */
 async function mintAndSaveToken(grantCode: string): Promise<void> {
   try {
-    const res = await fetch(GRANT_API.replace("/agent-grant", "/agent-token"), {
+    const res = await fetch(TOKEN_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ grantCode }),
@@ -251,23 +234,15 @@ async function main() {
   if (explicit) persistBoundAddress(delegation.address);
   console.log(`Wallet ${delegation.address}`);
 
-  // Check for a saved auth token. If valid, skip the approval flow entirely.
-  // The token is invalidated server-side when delegation is revoked, so the
-  // next run after revocation will fall through to the approval gate below.
+  // Check for a saved auth token — skip approval if still valid server-side.
+  // The token is invalidated when delegation is revoked, so the next run after
+  // revocation falls through to the approval gate.
   const savedToken = readSavedToken();
-  if (savedToken) {
-    const tokenAddress = await checkSavedToken(savedToken);
-    if (tokenAddress && tokenAddress.toLowerCase() === delegation.address.toLowerCase()) {
-      console.log("✅ Already authorized (saved token valid).\n");
-    } else {
-      // Token is stale (delegation revoked or token tampered) — clear and re-approve.
-      clearToken();
-      const grantCode = await acquireAuthorization(delegation.address);
-      if (!grantCode) return;
-      await mintAndSaveToken(grantCode);
-    }
+  const tokenAddress = savedToken ? await checkSavedToken(savedToken) : null;
+  if (tokenAddress && tokenAddress.toLowerCase() === delegation.address.toLowerCase()) {
+    console.log("✅ Already authorized (saved token valid).\n");
   } else {
-    // First run — go through the approval flow and save the token.
+    if (savedToken) clearToken(); // stale token — discard before re-approving
     const grantCode = await acquireAuthorization(delegation.address);
     if (!grantCode) return;
     await mintAndSaveToken(grantCode);
