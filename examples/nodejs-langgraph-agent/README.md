@@ -1,17 +1,17 @@
-# Bare-bones LangGraph agent + Dynamic delegated wallet
+# Bare-bones LangGraph agent + Dynamic server wallet
 
-A minimal [LangGraph](https://github.com/langchain-ai/langgraphjs) ReAct agent that
-acts on a user's wallet through a **Dynamic delegated MPC wallet**. The user grants
-the agent signing access in the Dynamic SDK; the agent signs and broadcasts
-transactions server-side via Dynamic's MPC — no private keys are ever held by the agent.
+A minimal [LangGraph](https://github.com/langchain-ai/langgraphjs) ReAct agent
+that acts through its own **Dynamic server-side MPC wallet**. The agent creates
+and owns its wallet entirely server-side — no user JWT, no delegation, no
+client-side approval flow required.
 
 It ships three tools:
 
 | Tool | What it does |
 | --- | --- |
-| `list_wallets` | Returns the delegated wallet address. |
-| `get_token_balances` | Multi-chain balances via Dynamic's balances API (optional USD prices). |
-| `send_transaction` | Native transfer, signed via Dynamic MPC. **Always** gated behind a `y/N` confirm prompt. |
+| `list_wallets` | Returns the agent's server wallet address. |
+| `get_token_balances` | Native-token balances across EVM chains via on-chain RPC. |
+| `send_transaction` | Native transfer, signed via Dynamic server-side MPC. **Always** gated behind a `y/N` confirm prompt. |
 
 ## How it works
 
@@ -19,8 +19,9 @@ It ships three tools:
 You ──▶ LangGraph ReAct agent (Claude) ──▶ tools ──▶ Dynamic MPC signing ──▶ chain
 ```
 
-- **`src/wallet.ts`** — loads delegation credentials from env, creates the Dynamic
-  delegated EVM client, and signs + broadcasts transactions.
+- **`src/wallet.ts`** — initializes the `DynamicEvmWalletClient`, creates a new
+  wallet on first run (persisted to `.wallet-state.json`), and signs + broadcasts
+  transactions.
 - **`src/tools.ts`** — the three LangChain tools above.
 - **`src/agent.ts`** — the `createReactAgent` loop (Claude Haiku 4.5) + system prompt.
 - **`src/index.ts`** — an interactive terminal REPL.
@@ -43,16 +44,7 @@ You ──▶ LangGraph ReAct agent (Claude) ──▶ tools ──▶ Dynamic M
    | Variable | Purpose |
    | --- | --- |
    | `ANTHROPIC_API_KEY` | Drives the agent. |
-   | `DYNAMIC_ENVIRONMENT_ID`, `DYNAMIC_API_KEY` | Dynamic env for delegated signing. |
-   | `DYNAMIC_USER_JWT` | Required by `get_token_balances` (Dynamic balances API). |
-   | `DELEGATED_WALLET_ID`, `DELEGATED_WALLET_ADDRESS`, `DELEGATED_WALLET_API_KEY`, `DELEGATED_KEY_SHARE` | Pre-decrypted delegation credentials. |
-
-   The delegation credentials come from the user approving delegation in the Dynamic
-   SDK (client-side), delivered to your server via Dynamic's webhook. For local dev you
-   can paste the pre-decrypted values into `.env`.
-
-   > **Never commit `.env` or real credentials.** `.env*` is gitignored; only
-   > `.example.env` (placeholders) is tracked.
+   | `DYNAMIC_ENVIRONMENT_ID`, `DYNAMIC_API_KEY` | Dynamic env for server-side MPC signing. |
 
 3. Run it:
 
@@ -60,9 +52,12 @@ You ──▶ LangGraph ReAct agent (Claude) ──▶ tools ──▶ Dynamic M
    pnpm start        # or: pnpm dev  (watch mode)
    ```
 
+   On first run the agent creates an MPC wallet and saves it to `.wallet-state.json`.
+   Subsequent runs reuse the same wallet.
+
    ```
    You: show my wallet
-   Agent: Your delegated wallet is 0x1234…abcd.
+   Agent: Your server wallet is 0x1234…abcd.
 
    You: send 0.001 ETH on ethereum to 0xabc…
    ┌─ ACTION REQUIRED ────────────────────────────────────────
@@ -78,9 +73,8 @@ You ──▶ LangGraph ReAct agent (Claude) ──▶ tools ──▶ Dynamic M
 
 - **Mainnet only.** Supported chains: Ethereum (1), Polygon (137), Base (8453),
   Arbitrum (42161), Optimism (10), BSC (56). Extend `CHAIN_MAP` in `src/wallet.ts`.
+- `.wallet-state.json` contains the server key share — treat it like a private key.
+  It is gitignored; never commit it or expose it to untrusted parties.
 - `send_transaction` only does native transfers. To add ERC-20 transfers or contract
-  calls, build the calldata and extend `sendTransactionDelegated`.
+  calls, build the calldata and extend `sendTransactionServer`.
 - Conversation memory is in-process (`MemorySaver`) and resets on restart.
-
-This is a trimmed-down version of the full `langgraph-dynamic-agent` (which adds
-Polymarket betting, LI.FI cross-chain swaps, and voice).

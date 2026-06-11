@@ -1,25 +1,26 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { isAddress, parseEther, formatEther } from "viem";
+import { isAddress, parseEther, formatEther, createPublicClient, http } from "viem";
 import { confirm } from "./confirm.js";
 import {
   getChainById,
-  sendTransactionDelegated,
-  type DelegationCredentials,
+  sendTransactionServer,
+  SUPPORTED_CHAIN_IDS,
+  type ServerWallet,
 } from "./wallet.js";
 
 // ─── Agent wallet (set once at startup) ──────────────────────────────────────
 
-let agentWallet: DelegationCredentials | null = null;
+let agentWallet: ServerWallet | null = null;
 
-export function setAgentWallet(creds: DelegationCredentials): void {
-  agentWallet = creds;
-  console.log(`[agent-wallet] Loaded delegated wallet: ${creds.walletAddress}`);
+export function setAgentWallet(wallet: ServerWallet): void {
+  agentWallet = wallet;
+  console.log(`[agent-wallet] Loaded server wallet: ${wallet.accountAddress}`);
 }
 
-function requireWallet(): DelegationCredentials {
+function requireWallet(): ServerWallet {
   if (!agentWallet) {
-    throw new Error("No agent wallet loaded. Set delegation credentials in .env.");
+    throw new Error("No agent wallet loaded. Run initServerWallet() at startup.");
   }
   return agentWallet;
 }
@@ -42,86 +43,54 @@ export const listWalletsTool = tool(
       wallets: [
         {
           label: "agent",
-          address: agentWallet.walletAddress,
-          type: "delegated (user's wallet)",
+          address: agentWallet.accountAddress,
+          type: "server (agent-owned MPC wallet)",
         },
       ],
     });
   },
   {
     name: "list_wallets",
-    description: "Show the agent's delegated wallet address.",
+    description: "Show the agent's server wallet address.",
     schema: z.object({}),
   }
 );
 
-// ─── get_token_balances (Dynamic multi-chain balances API) ───────────────────
+// ─── get_token_balances (on-chain via viem) ───────────────────────────────────
 
 export const getTokenBalancesTool = tool(
-  async ({ chainName, networkId, includePrices }) => {
+  async ({ networkId }) => {
     try {
       const wallet = requireWallet();
-      const environmentId = process.env.DYNAMIC_ENVIRONMENT_ID;
-      const userJwt = process.env.DYNAMIC_USER_JWT;
-      if (!environmentId || !userJwt) {
-        return toolError(new Error("DYNAMIC_ENVIRONMENT_ID or DYNAMIC_USER_JWT not set"));
-      }
+      const address = wallet.accountAddress as `0x${string}`;
 
-      const chain = chainName?.toUpperCase() ?? "EVM";
+      const chainIds = networkId ? [networkId] : SUPPORTED_CHAIN_IDS;
 
-      // Decode the JWT payload to extract the session public key (no verification).
-      let sessionPublicKey: string | undefined;
-      try {
-        const payload = JSON.parse(
-          Buffer.from(userJwt.split(".")[1], "base64url").toString("utf8")
-        );
-        sessionPublicKey = payload.session_public_key;
-      } catch {
-        // not fatal — header is optional
-      }
-
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${userJwt}`,
-        "Content-Type": "application/json",
-      };
-      if (sessionPublicKey) headers["x-dyn-session-public-key"] = sessionPublicKey;
-
-      // The balances API requires a networkId; fan out across popular EVM chains
-      // when none is specified.
-      const networkIds = networkId ? [networkId] : [1, 137, 8453, 42161, 56, 10];
-
-      const fetchForNetwork = async (netId: number) => {
-        const url = new URL(
-          `https://app.dynamicauth.com/api/v0/sdk/${environmentId}/chains/${chain}/balances`
-        );
-        url.searchParams.set("accountAddress", wallet.walletAddress);
-        url.searchParams.set("includeNative", "true");
-        url.searchParams.set("filterSpamTokens", "true");
-        url.searchParams.set("networkId", String(netId));
-        if (includePrices) url.searchParams.set("includePrices", "true");
-
-        const res = await fetch(url.toString(), { headers });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
+      const fetchBalance = async (chainId: number) => {
+        try {
+          const chain = getChainById(chainId);
+          const client = createPublicClient({ chain, transport: http() });
+          const balance = await client.getBalance({ address });
+          return {
+            networkId: chainId,
+            chainName: chain.name,
+            symbol: chain.nativeCurrency.symbol,
+            balance: formatEther(balance),
+            isNative: true,
+          };
+        } catch {
+          return null;
+        }
       };
 
-      const items = (await Promise.all(networkIds.map(fetchForNetwork))).flat();
+      const results = (await Promise.all(chainIds.map(fetchBalance))).filter(
+        Boolean
+      );
 
       return JSON.stringify({
         success: true,
-        address: wallet.walletAddress,
-        chain,
-        networkId: networkId ?? "all",
-        tokens: items.map((t: any) => ({
-          name: t.name,
-          symbol: t.symbol,
-          balance: t.balance,
-          networkId: t.networkId,
-          ...(t.price != null && { priceUsd: t.price }),
-          ...(t.marketValue != null && { valueUsd: t.marketValue }),
-          isNative: t.isNative ?? false,
-        })),
+        address,
+        tokens: results,
       });
     } catch (err) {
       return toolError(err);
@@ -130,27 +99,22 @@ export const getTokenBalancesTool = tool(
   {
     name: "get_token_balances",
     description:
-      "Get token balances for the agent's delegated wallet using Dynamic's multi-chain " +
-      "balances API. Use networkId to filter to a specific chain (e.g. 1 = Ethereum, " +
-      "137 = Polygon, 8453 = Base). Pass includePrices=true for USD values.",
+      "Get native token balances for the agent's server wallet across EVM chains. " +
+      "Use networkId to filter to a specific chain (e.g. 1 = Ethereum, 137 = Polygon, " +
+      "8453 = Base). Balances are fetched on-chain via RPC.",
     schema: z.object({
-      chainName: z
-        .string()
-        .optional()
-        .describe("Chain type: ETH, EVM, SOL, BTC, etc. Defaults to EVM."),
       networkId: z
         .number()
         .optional()
-        .describe("Specific network ID (1 = Ethereum, 137 = Polygon, 8453 = Base)"),
-      includePrices: z
-        .boolean()
-        .optional()
-        .describe("Include USD prices and market values"),
+        .describe(
+          "Specific network ID (1 = Ethereum, 137 = Polygon, 8453 = Base). " +
+            "Omit to query all supported chains."
+        ),
     }),
   }
 );
 
-// ─── send_transaction (signs via Dynamic MPC, gated by a confirm prompt) ─────
+// ─── send_transaction ─────────────────────────────────────────────────────────
 
 export const sendTransactionTool = tool(
   async ({ to, amountEth, chainId }) => {
@@ -166,7 +130,7 @@ export const sendTransactionTool = tool(
       const ok = await confirm(
         `Send native transfer\n` +
           `  Chain:  ${chain.name} (${chainId})\n` +
-          `  From:   ${wallet.walletAddress}\n` +
+          `  From:   ${wallet.accountAddress}\n` +
           `  To:     ${to}\n` +
           `  Amount: ${formatEther(value)} ${chain.nativeCurrency.symbol}`
       );
@@ -174,7 +138,7 @@ export const sendTransactionTool = tool(
         return JSON.stringify({ success: false, error: "User declined the transaction" });
       }
 
-      const hash = await sendTransactionDelegated(
+      const hash = await sendTransactionServer(
         wallet,
         chainId,
         to as `0x${string}`,
@@ -188,14 +152,14 @@ export const sendTransactionTool = tool(
   {
     name: "send_transaction",
     description:
-      "Send a native-currency transfer (e.g. ETH, POL) from the agent's delegated wallet. " +
+      "Send a native-currency transfer (e.g. ETH, POL) from the agent's server wallet. " +
       "Signs via Dynamic MPC and broadcasts. The user is always prompted to confirm before " +
       "the transaction is sent.",
     schema: z.object({
       to: z.string().describe("Recipient EVM address (0x...)"),
       amountEth: z
         .string()
-        .describe("Amount to send, in whole native units (e.g. \"0.01\")"),
+        .describe('Amount to send, in whole native units (e.g. "0.01")'),
       chainId: z
         .number()
         .describe("EVM chain ID (1 = Ethereum, 137 = Polygon, 8453 = Base)"),

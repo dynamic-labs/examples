@@ -1,4 +1,4 @@
-import type readline from "readline";
+import type readline from "node:readline";
 
 // ─── Shared readline instance ─────────────────────────────────────────────────
 

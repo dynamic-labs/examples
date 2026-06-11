@@ -5,3 +5,4 @@ dist/
 !.example.env
 *.log
 .DS_Store
+.wallet-state.json
