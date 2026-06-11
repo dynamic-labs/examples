@@ -19,10 +19,10 @@ Built on the **Dynamic JS SDK** (`@dynamic-labs-sdk/*` + react-hooks), like
 | --- | --- | --- |
 | **Website** | `app/`, `components/flow/`, `lib/providers.tsx` | Email sign-in → embedded wallet (guarded) → authorize → fund. USD-framed, light theme. |
 | **Delegation webhook** | `app/api/webhooks/dynamic/`, `lib/dynamic/` | Verifies + receives `wallet.delegation.created`, decrypts the share (RSA-OAEP + AES-GCM). |
-| **Encrypted store** | `lib/shared/delegation-store.ts`, `supabase/` | Re-encrypts shares (AES-256-GCM) into Supabase; derives a short **account code** per wallet. |
-| **Account API** | `app/api/account/`, `app/api/balance/` | Account code + USD balance for the UI. |
+| **Encrypted store** | `lib/shared/delegation-store.ts`, `supabase/` | Re-encrypts shares (AES-256-GCM, password-derived) into Supabase. |
+| **Account API** | `app/api/account/`, `app/api/balance/` | Delegation/secured status + USD balance for the UI. |
 | **Paid service** | `app/api/services/azure-compute/`, `lib/shared/x402-server.ts` | An "Azure-style" resource gated behind x402 v2 (`withX402`), priced in USD. |
-| **Agent** | `agent/pay-for-service.ts` | Resolves a user's wallet **by account code**, unlocks it with the wallet password, pays the service via x402 (gasless). |
+| **Agent** | `agent/pay-for-service.ts` | Resolves a user's wallet **by address**, unlocks it with the wallet password, pays the service via x402 (gasless). |
 
 ## How it works
 
@@ -33,9 +33,9 @@ Built on the **Dynamic JS SDK** (`@dynamic-labs-sdk/*` + react-hooks), like
                           Dynamic webhook (wallet.delegation.created)
                                                               │  RSA-decrypt
                                                               ▼  AES-256-GCM encrypt
-                                                       Supabase (encrypted share + code)
+                                                       Supabase (encrypted share)
                                                               │
-   agent <accountCode> ──────────────────────────────────────┘
+   agent <walletAddress> ─────────────────────────────────────┘
      │   check USD balance ──(empty)──▶ point user to funding page
      │   pay x402 service  ──sign EIP-3009 via Dynamic MPC (gasless)──▶ facilitator settles USDC
      ▼
@@ -47,10 +47,10 @@ signature, so `lib/shared/x402-account.ts` exposes a minimal signer (`address` +
 `signTypedData`) that routes `signTypedData` to Dynamic's `delegatedSignTypedData`
 and registers it on an `x402Client` via `ExactEvmScheme`.
 
-**User ↔ wallet mapping.** Each delegation gets a short, stable **account code**
-(derived from the wallet address, stored in Supabase). The funding page shows it;
-the agent is told which user to act for by that code (`pnpm agent <code>`) — no
-hardcoded addresses.
+**User ↔ wallet mapping.** The agent is told which wallet to act for by its
+**address** (shown on the funding page): `pnpm agent <walletAddress>`. The address
+is public and non-secret — it only selects which encrypted row to load; spending
+still requires the wallet password (below).
 
 **Owner-only access.** A wallet must be **password-protected** before the agent
 will spend from it. The key share is encrypted with a key derived from *both* the
@@ -98,13 +98,13 @@ network, no switching. Payments settle through the **public x402 facilitator**
 1. **Sign in** with email (embedded wallet created silently, guarded so it's never duplicated).
 2. **Authorize your agent** — delegated access; the webhook stores the encrypted share in Supabase.
 3. **Secure your agent** — set a password. The stored share is re-encrypted under it; the agent needs it to spend.
-4. **Add funds** — MoonPay card top-up (signed URL via the Dynamic SDK's `getMoonPayUrl`). Balance shows in USD. Note your **account code**.
-5. **Run the agent** for that account:
+4. **Add funds** — MoonPay card top-up (signed URL via the Dynamic SDK's `getMoonPayUrl`). Balance shows in USD. Note your **wallet address**.
+5. **Run the agent** for that wallet:
    ```bash
-   AGENT_PASSWORD=… pnpm agent <accountCode>   # or a 0x address; omit AGENT_PASSWORD to be prompted
+   AGENT_PASSWORD=… pnpm agent <walletAddress>   # omit AGENT_PASSWORD to be prompted
    ```
    ```
-   Account EA8CD66A → wallet 0x…
+   Wallet 0x…
    Balance: $25.00
    💳 Paying for service: …/api/services/azure-compute
    ✅ Service delivered (paid $0.01): { status: "provisioned", … }
@@ -138,7 +138,7 @@ Then:
   public policies — only the service-role key reads it.
 - **Owner-only spending.** The share is encrypted under a key derived from the
   server master key **and** the user's password (PBKDF2-SHA256 600k → HMAC), so the
-  public account code/address alone can't unlock funds — only the password-holder can.
+  public wallet address alone can't unlock funds — only the password-holder can.
 - **No raw keys in the agent.** All signing is inside Dynamic's MPC.
 - **Gasless.** x402 payments are EIP-3009 `transferWithAuthorization` — the
   facilitator pays gas; the user pays only the stablecoin amount.

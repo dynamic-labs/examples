@@ -1,19 +1,18 @@
 /**
  * The agent — runs server-side, no UI, no human in the loop.
  *
- * The agent is bound to ONE user's wallet via that user's account code (the
- * key that links a user to their delegated wallet — shown on the funding page,
- * derived deterministically from the wallet address in the delegation store).
+ * The agent is bound to ONE user's wallet via that wallet's address (shown on
+ * the funding page).
  *
  *   - First run, no binding yet → prints the funding URL so the user can sign up,
- *     authorize their agent, and fund. They then run `pnpm agent <accountCode>`
- *     once; the agent persists that code locally (agent/.agent-account).
+ *     authorize their agent, and fund. They then run `pnpm agent <walletAddress>`
+ *     once; the agent persists that address locally (agent/.agent-account).
  *   - Every later run → `pnpm agent` reuses the saved binding, with no argument.
  *
  * Owner-only access: a wallet must be password-protected on the website before
  * the agent will act on it. Decrypting the key share requires that password
  * (supply it via AGENT_PASSWORD, or the agent prompts for it). Knowing the
- * public address/code alone is not enough — only the owner who set the password
+ * public wallet address alone is not enough — only the owner who set the password
  * can authorize spending. See lib/shared/delegation-store.ts.
  *
  * Once bound, the agent:
@@ -24,7 +23,7 @@
  *   4. otherwise pays an x402-protected "cloud service" — a gasless USDC payment
  *      signed inside Dynamic's MPC — and uses the result.
  *
- * Run with: pnpm agent [accountCode|walletAddress]   (AGENT_PASSWORD optional)
+ * Run with: pnpm agent [walletAddress]   (AGENT_PASSWORD optional)
  */
 import "dotenv/config";
 import { readFileSync, writeFileSync } from "fs";
@@ -43,7 +42,6 @@ import {
 } from "../lib/shared/constants";
 import {
   getDelegationByAddress,
-  getDelegationByCode,
   getDelegationStatus,
   PasswordRequiredError,
   type DelegationRecord,
@@ -56,24 +54,24 @@ const SERVICE_URL =
 const FUNDING_URL = process.env.FUNDING_URL ?? "http://localhost:3000";
 const PRICE_USD_BASE_UNITS = BigInt(10_000); // $0.01 in USDC (6 decimals)
 
-// Where the agent remembers which account (user→wallet) it's bound to.
+// Where the agent remembers which wallet address it's bound to.
 const ACCOUNT_FILE = join(__dirname, ".agent-account");
 
-function readBoundAccount(): string | null {
+function readBoundAddress(): string | null {
   try {
-    const code = readFileSync(ACCOUNT_FILE, "utf8").trim();
-    return code || null;
+    const address = readFileSync(ACCOUNT_FILE, "utf8").trim();
+    return address || null;
   } catch {
     return null; // not bound yet
   }
 }
 
-function persistBoundAccount(selector: string) {
+function persistBoundAddress(address: string) {
   try {
-    writeFileSync(ACCOUNT_FILE, `${selector}\n`, "utf8");
+    writeFileSync(ACCOUNT_FILE, `${address}\n`, "utf8");
   } catch (err) {
     console.warn(
-      "⚠️  Could not persist the bound account:",
+      "⚠️  Could not persist the bound wallet address:",
       err instanceof Error ? err.message : err
     );
   }
@@ -126,36 +124,33 @@ function promptHiddenPassword(query: string): Promise<string> {
   });
 }
 
-function resolveBySelector(selector: string, password?: string) {
-  return selector.startsWith("0x")
-    ? getDelegationByAddress(selector, DELEGATION_CHAIN, password)
-    : getDelegationByCode(selector, DELEGATION_CHAIN, password);
-}
-
 /**
- * Resolve which delegated wallet this agent acts for.
+ * Resolve which delegated wallet this agent acts for, by wallet address.
  *
- * Precedence: explicit CLI arg / AGENT_ACCOUNT env → the saved local binding.
- * Secured wallets need their password (AGENT_PASSWORD, else an interactive
- * prompt). The agent refuses wallets that haven't been secured yet. Returns
- * null only when nothing is bound (first run → onboarding prompt).
+ * Precedence: explicit CLI arg / AGENT_WALLET_ADDRESS env → the saved local
+ * binding. Secured wallets need their password (AGENT_PASSWORD, else an
+ * interactive prompt). The agent refuses wallets that haven't been secured yet.
+ * Returns null only when nothing is bound (first run → onboarding prompt).
  */
 async function loadDelegation(): Promise<DelegationRecord | null> {
-  const explicit =
-    process.env.AGENT_ACCOUNT ?? process.argv[2] ?? process.env.AGENT_WALLET_ADDRESS;
-  const selector = explicit ?? readBoundAccount();
+  const explicit = process.argv[2] ?? process.env.AGENT_WALLET_ADDRESS;
+  const address = explicit ?? readBoundAddress();
 
-  if (!selector) return null;
+  if (!address) return null;
 
   let delegation: DelegationRecord | undefined;
   try {
-    delegation = await resolveBySelector(selector, process.env.AGENT_PASSWORD || undefined);
+    delegation = await getDelegationByAddress(
+      address,
+      DELEGATION_CHAIN,
+      process.env.AGENT_PASSWORD || undefined
+    );
   } catch (err) {
     if (!(err instanceof PasswordRequiredError)) throw err;
     // Secured wallet and no/!valid AGENT_PASSWORD — ask for it interactively.
     const password = await promptHiddenPassword("🔑 Wallet password: ");
     try {
-      delegation = await resolveBySelector(selector, password);
+      delegation = await getDelegationByAddress(address, DELEGATION_CHAIN, password);
     } catch (retryErr) {
       if (retryErr instanceof PasswordRequiredError) {
         throw new Error("Incorrect password.");
@@ -166,7 +161,7 @@ async function loadDelegation(): Promise<DelegationRecord | null> {
 
   if (!delegation) {
     throw new Error(
-      `No delegation found for "${selector}". Has the user authorized the agent ` +
+      `No delegation found for "${address}". Has the user authorized the agent ` +
         "(and did the Dynamic webhook store it)?"
     );
   }
@@ -175,8 +170,8 @@ async function loadDelegation(): Promise<DelegationRecord | null> {
   const { secured } = await getDelegationStatus(delegation.address, DELEGATION_CHAIN);
   if (!secured) throw new UnsecuredWalletError();
 
-  // Remember an explicitly-provided account so `pnpm agent` works with no args next time.
-  if (explicit) persistBoundAccount(delegation.code ?? selector);
+  // Remember an explicitly-provided address so `pnpm agent` works with no args next time.
+  if (explicit) persistBoundAddress(delegation.address);
 
   return delegation;
 }
@@ -208,7 +203,7 @@ async function main() {
     console.log("  4. Set a password to secure your agent");
     console.log("  5. Add funds via MoonPay");
     console.log(
-      "  6. Copy your account code from the page, then run: `pnpm agent <accountCode>`"
+      "  6. Copy your wallet address from the page, then run: `pnpm agent <walletAddress>`"
     );
     console.log(
       "     (the agent remembers it — after that, just `pnpm agent`)\n"
@@ -216,7 +211,7 @@ async function main() {
     return;
   }
 
-  console.log(`Account ${delegation.code} → wallet ${delegation.address}`);
+  console.log(`Wallet ${delegation.address}`);
 
   // 1. Check funds
   const balance = await getBalanceBaseUnits(delegation.address);

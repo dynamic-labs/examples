@@ -30,30 +30,12 @@ export interface DelegationRecord {
   chain: string;
   /** Dynamic wallet id. */
   walletId: string;
-  /** The wallet's EVM address. */
+  /** The wallet's EVM address — the handle the agent resolves against. */
   address: string;
-  /** Short, stable account code that maps to this wallet (derived on store; always set on reads). */
-  code?: string;
   /** Decrypted MPC key share (Dynamic ServerKeyShare / EcdsaKeygenResult). */
   delegatedShare: unknown;
   /** Decrypted wallet API key for Dynamic delegated signing. */
   walletApiKey: string;
-}
-
-/**
- * Derive a short, stable account code from a wallet address. Deterministic
- * (no DB round-trip, stable across re-delegations) and collision-resistant
- * (40 bits). This is the user↔wallet handle the agent resolves against —
- * it is NOT a secret and does not grant access to funds (the signing creds
- * stay encrypted in Supabase, only the server can decrypt them).
- */
-export function deriveAccountCode(address: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(address.toLowerCase())
-    .digest("hex")
-    .slice(0, 8)
-    .toUpperCase();
 }
 
 /** The sensitive subset we encrypt before persisting. */
@@ -173,14 +155,12 @@ export async function storeDelegation(record: DelegationRecord): Promise<void> {
     getEncryptionKey()
   );
 
-  const code = deriveAccountCode(record.address);
   const { error } = await supabase.from(TABLE).upsert(
     {
       user_id: record.userId,
       chain: record.chain,
       wallet_id: record.walletId,
       address: record.address.toLowerCase(),
-      code,
       secret_ciphertext: ciphertext,
       secret_iv: iv,
       secret_tag: tag,
@@ -193,7 +173,7 @@ export async function storeDelegation(record: DelegationRecord): Promise<void> {
 
   if (error) throw new Error(`Failed to store delegation: ${error.message}`);
   console.log(
-    `✅ Stored encrypted delegation for ${record.address} (${record.chain}) — account code ${code}`
+    `✅ Stored encrypted delegation for ${record.address} (${record.chain})`
   );
 }
 
@@ -202,7 +182,6 @@ interface RawRow {
   chain: string;
   wallet_id: string;
   address: string;
-  code?: string;
   secret_ciphertext: string;
   secret_iv: string;
   secret_tag: string;
@@ -237,27 +216,9 @@ function rowToRecord(row: RawRow, password?: string): DelegationRecord {
     chain: row.chain,
     walletId: row.wallet_id,
     address: row.address,
-    code: row.code ?? deriveAccountCode(row.address),
     delegatedShare: secret.delegatedShare,
     walletApiKey: secret.walletApiKey,
   };
-}
-
-/** Resolve a delegation by its short account code (how the agent picks a user's wallet). */
-export async function getDelegationByCode(
-  code: string,
-  chain: string = DELEGATION_CHAIN,
-  password?: string
-): Promise<DelegationRecord | undefined> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("*")
-    .eq("code", code.toUpperCase())
-    .eq("chain", chain)
-    .maybeSingle();
-  if (error) throw new Error(`Failed to read delegation: ${error.message}`);
-  return data ? rowToRecord(data as RawRow, password) : undefined;
 }
 
 export async function getDelegationByAddress(

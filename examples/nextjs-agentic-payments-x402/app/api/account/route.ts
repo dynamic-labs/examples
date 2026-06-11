@@ -1,19 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isAddress } from "viem";
-import {
-  deriveAccountCode,
-  getDelegationStatus,
-} from "@/lib/shared/delegation-store";
+import { getDelegationStatus } from "@/lib/shared/delegation-store";
 import { DELEGATION_CHAIN } from "@/lib/shared/constants";
 
 /**
- * Returns the short account code for a wallet address — shown to the user so an
- * operator/system can tell the agent which account to act for (`pnpm agent <code>`).
- *
- * The code is deterministic from the address, so we can return it immediately;
- * `delegated` reflects whether the authorize step has stored credentials yet.
- * The code is not a secret (it doesn't grant access to funds — signing creds
- * stay encrypted server-side), so a public address lookup is acceptable here.
+ * Returns delegation status for a wallet address: whether the authorize step has
+ * stored credentials (`delegated`) and whether the user has set a spending
+ * password (`secured`). On-chain addresses are public, so no auth is required.
  */
 export async function GET(request: NextRequest) {
   const address = request.nextUrl.searchParams.get("address");
@@ -25,10 +18,5 @@ export async function GET(request: NextRequest) {
   }
 
   const { exists, secured } = await getDelegationStatus(address, DELEGATION_CHAIN);
-  return NextResponse.json({
-    address,
-    code: deriveAccountCode(address),
-    delegated: exists,
-    secured,
-  });
+  return NextResponse.json({ address, delegated: exists, secured });
 }
