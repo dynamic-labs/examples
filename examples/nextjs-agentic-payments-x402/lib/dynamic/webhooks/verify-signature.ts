@@ -57,25 +57,16 @@ export async function verifyWebhookSignature(
     };
   }
 
-  // Parse the request body as JSON
-  // Note: We parse before verification, but only use it if signature is valid
-  let rawPayload: unknown;
-  try {
-    rawPayload = await request.json();
-  } catch (error) {
-    console.error("Failed to parse webhook payload:", error);
-    return {
-      success: false,
-      error: "Invalid JSON payload",
-      status: 400,
-    };
-  }
+  // Read the RAW request body. The HMAC must be computed over the exact bytes
+  // Dynamic signed — re-serializing parsed JSON (JSON.stringify(JSON.parse(...)))
+  // can change key order/whitespace/escaping and break the signature.
+  const rawBody = await request.text();
 
-  // Compute HMAC SHA256 signature of the payload
+  // Compute HMAC SHA256 over the raw body.
   // The signature format is: sha256=<hex-encoded-hmac>
   const payloadSignature = crypto
     .createHmac("sha256", webhookSecret)
-    .update(JSON.stringify(rawPayload))
+    .update(rawBody)
     .digest("hex");
   const trusted = Buffer.from(`sha256=${payloadSignature}`, "ascii");
   const untrusted = Buffer.from(signature, "ascii");
@@ -97,5 +88,11 @@ export async function verifyWebhookSignature(
     };
   }
 
-  return { success: true, payload: rawPayload };
+  // Signature verified — now parse the body for the handler.
+  try {
+    return { success: true, payload: JSON.parse(rawBody) };
+  } catch (error) {
+    console.error("Failed to parse webhook payload:", error);
+    return { success: false, error: "Invalid JSON payload", status: 400 };
+  }
 }
