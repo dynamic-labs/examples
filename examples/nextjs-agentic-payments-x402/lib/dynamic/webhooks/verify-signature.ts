@@ -57,35 +57,43 @@ export async function verifyWebhookSignature(
     };
   }
 
-  // Read the RAW request body. The HMAC must be computed over the exact bytes
-  // Dynamic signed — re-serializing parsed JSON (JSON.stringify(JSON.parse(...)))
-  // can change key order/whitespace/escaping and break the signature.
+  // Read the RAW request body once.
   const rawBody = await request.text();
 
-  // Compute HMAC SHA256 over the raw body.
-  // The signature format is: sha256=<hex-encoded-hmac>
-  const payloadSignature = crypto
-    .createHmac("sha256", webhookSecret)
-    .update(rawBody)
-    .digest("hex");
-  const trusted = Buffer.from(`sha256=${payloadSignature}`, "ascii");
-  const untrusted = Buffer.from(signature, "ascii");
+  // Dynamic's docs are inconsistent about what the HMAC covers: the prose says
+  // the "raw request body", but their reference code signs `JSON.stringify(payload)`
+  // (the re-parsed object), which can differ from the raw bytes. Accept either —
+  // both still require the webhook secret, so this doesn't weaken verification.
+  const signedCandidates = [rawBody];
+  try {
+    signedCandidates.push(JSON.stringify(JSON.parse(rawBody)));
+  } catch {
+    /* body isn't JSON — the raw candidate is all we need */
+  }
 
-  // crypto.timingSafeEqual throws if the buffers differ in length, so reject a
-  // wrong-length signature first (an attacker could otherwise force a 500).
-  // Use constant-time comparison to prevent timing attacks: the comparison takes
-  // the same time regardless of where the first difference occurs.
-  const isValid =
-    trusted.length === untrusted.length &&
-    crypto.timingSafeEqual(trusted, untrusted);
+  // The signature format is: sha256=<hex-encoded-hmac>. Compare in constant time;
+  // timingSafeEqual throws on length mismatch, so guard the length first.
+  const untrusted = Buffer.from(signature, "ascii");
+  const isValid = signedCandidates.some((body) => {
+    const expected = Buffer.from(
+      `sha256=${crypto
+        .createHmac("sha256", webhookSecret)
+        .update(body)
+        .digest("hex")}`,
+      "ascii"
+    );
+    return (
+      expected.length === untrusted.length &&
+      crypto.timingSafeEqual(expected, untrusted)
+    );
+  });
 
   if (!isValid) {
-    console.error("Invalid webhook signature");
-    return {
-      success: false,
-      error: "Invalid signature",
-      status: 401,
-    };
+    console.error(
+      "Invalid webhook signature (tried raw + canonical body) — verify " +
+        "DYNAMIC_WEBHOOK_SECRET matches the webhook's signing secret in the dashboard."
+    );
+    return { success: false, error: "Invalid signature", status: 401 };
   }
 
   // Signature verified — now parse the body for the handler.
