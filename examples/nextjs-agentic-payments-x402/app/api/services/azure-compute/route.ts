@@ -45,9 +45,8 @@ export const GET = withX402(
     description: "Provision an Azure-style compute unit (demo resource)",
     mimeType: "application/json",
   },
-  x402Server,
-  undefined, // paywallConfig
-  undefined, // paywall
-  // Sync supported kinds lazily on first request, not at build/startup.
-  false
+  x402Server
+  // syncFacilitatorOnStart defaults to true — the server fetches the public
+  // facilitator's supported kinds on startup so it knows it supports `exact`
+  // on Base Sepolia. (No CDP auth on the public facilitator, so this won't 401.)
 );
