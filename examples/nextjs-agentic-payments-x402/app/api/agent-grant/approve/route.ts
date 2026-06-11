@@ -2,10 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   extractDynamicJwt,
-  userOwnsAddress,
   verifyDynamicJWT,
 } from "@/lib/dynamic/auth";
 import { getPendingByUserCode, resolveGrant } from "@/lib/shared/agent-grants";
+import { getDelegationByAddress } from "@/lib/shared/delegation-store";
 
 /**
  * Approve or deny a pending agent grant — the owner-authorization step.
@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
   }
 
   // 4. Ownership check: the signed-in user must own that wallet.
-  if (!userOwnsAddress(user, pending.address)) {
+  //    The Dynamic SDK sends a minified JWT (verified_credentials stripped for
+  //    size), so we verify by comparing user.sub with the userId stored in the
+  //    delegation record — the authoritative server-side source of truth.
+  const delegation = await getDelegationByAddress(pending.address, pending.chain);
+  if (!delegation || delegation.userId !== user.sub) {
     return NextResponse.json(
       { error: "You don't own the wallet this agent is requesting" },
       { status: 403 }

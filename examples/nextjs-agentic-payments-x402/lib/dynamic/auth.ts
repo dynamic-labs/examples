@@ -2,9 +2,9 @@
  * Server-side verification of Dynamic session JWTs.
  *
  * The /authorize page sends the signed-in user's Dynamic JWT (cookie or Bearer)
- * to the grant-approval endpoint. We verify it against Dynamic's JWKS and read
- * the user's verified credentials so we can confirm they actually own the wallet
- * an agent is asking to act on.
+ * to the grant-approval endpoint. We verify it against Dynamic's JWKS and use
+ * the `sub` claim (user ID) to confirm wallet ownership against our delegation
+ * store — the Dynamic SDK sends a minified JWT that omits verified_credentials.
  *
  * @see https://docs.dynamic.xyz/authentication-methods/how-to-validate-users-on-the-backend
  */
@@ -12,21 +12,11 @@ import "server-only";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
-/** A verified credential (wallet/email) from a Dynamic JWT. */
-export interface JwtVerifiedCredential {
-  address?: string;
-  chain?: string;
-  format?: string;
-  wallet_name?: string;
-  wallet_provider?: string;
-}
-
 export interface DynamicJwtPayload extends JwtPayload {
   sub: string;
   /** Space-separated OAuth scopes; must include `user:basic` when auth is complete. */
   scope?: string;
   environment_id?: string;
-  verified_credentials: JwtVerifiedCredential[];
   email?: string;
 }
 
@@ -65,16 +55,6 @@ export async function verifyDynamicJWT(
     console.error("JWT verification failed:", error);
     return null;
   }
-}
-
-/** True if the authenticated user owns `address` (case-insensitive). */
-export function userOwnsAddress(
-  user: DynamicJwtPayload,
-  address: string
-): boolean {
-  return (user.verified_credentials ?? []).some(
-    (c) => c.address?.toLowerCase() === address.toLowerCase()
-  );
 }
 
 /** Pull the Dynamic JWT from an Authorization: Bearer header or the session cookie. */
