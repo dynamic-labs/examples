@@ -1,8 +1,9 @@
-import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
-import { updateUser } from "@dynamic-labs-sdk/client";
-import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { useDynamicContext } from "@/lib/dynamic";
 import { useState, useEffect } from "react";
-import { dynamicClient } from "@/lib/dynamic";
+import {
+  useRefreshUser,
+  useUserUpdateRequest,
+} from "@dynamic-labs/sdk-react-core";
 
 interface UserMetadata {
   blindpayReceiverId?: string;
@@ -11,16 +12,16 @@ interface UserMetadata {
 }
 
 export function useKYCStatus() {
-  const user = useUser();
-  const accounts = useWalletAccounts();
-  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const { user, primaryWallet } = useDynamicContext();
+  const { updateUser } = useUserUpdateRequest();
+  const refreshUser = useRefreshUser();
   const [receiverId, setReceiverId] = useState<string | null>(null);
   const [bankingId, setBankingId] = useState<string | null>(null);
   const [isKYCComplete, setIsKYCComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkUser = async () => {
+    const checkAndRefreshUser = async () => {
       if (user && user.metadata) {
         const metadata = user.metadata as UserMetadata;
         const blindpayReceiverId = metadata.blindpayReceiverId;
@@ -31,6 +32,12 @@ export function useKYCStatus() {
           setIsKYCComplete(true);
         } else {
           setIsKYCComplete(false);
+          // Refresh user if there's no receiver ID to get latest metadata
+          try {
+            await refreshUser();
+          } catch (error) {
+            console.warn("Failed to refresh user:", error);
+          }
         }
 
         if (blindpayBankingId) {
@@ -38,13 +45,21 @@ export function useKYCStatus() {
         }
       } else {
         setIsKYCComplete(false);
+        // Refresh user if there's no user or metadata
+        if (user) {
+          try {
+            await refreshUser();
+          } catch (error) {
+            console.warn("Failed to refresh user:", error);
+          }
+        }
       }
 
       setIsLoading(false);
     };
 
-    checkUser();
-  }, [user]);
+    checkAndRefreshUser();
+  }, [user, refreshUser]);
 
   const checkReceiverExists = async (): Promise<boolean> => {
     if (!user?.email) return false;
@@ -63,19 +78,28 @@ export function useKYCStatus() {
 
   const storeReceiverId = async (newReceiverId: string): Promise<boolean> => {
     try {
+      // Update local state_province_region
       setReceiverId(newReceiverId);
       setIsKYCComplete(true);
 
+      // Store in Dynamic user metadata
       const metadata = (user?.metadata as UserMetadata) || {};
       const updatedMetadata = {
         ...metadata,
         blindpayReceiverId: newReceiverId,
       };
 
-      await updateUser(
-        { userFields: { metadata: updatedMetadata } },
-        dynamicClient
-      );
+      // Use Dynamic's updateUser to store in metadata
+      const result = await updateUser({
+        metadata: updatedMetadata,
+      });
+
+      if (
+        result.isEmailVerificationRequired ||
+        result.isSmsVerificationRequired
+      ) {
+        return true;
+      }
 
       return true;
     } catch {
@@ -93,10 +117,16 @@ export function useKYCStatus() {
         blindpayBankingId: newBankingId,
       };
 
-      await updateUser(
-        { userFields: { metadata: updatedMetadata } },
-        dynamicClient
-      );
+      const result = await updateUser({
+        metadata: updatedMetadata,
+      });
+
+      if (
+        result.isEmailVerificationRequired ||
+        result.isSmsVerificationRequired
+      ) {
+        return true;
+      }
 
       return true;
     } catch {
@@ -116,10 +146,19 @@ export function useKYCStatus() {
         blindpayBankingId: newBankingId,
       };
 
-      await updateUser(
-        { userFields: { metadata: updatedMetadata } },
-        dynamicClient
-      );
+      const result = await updateUser({
+        metadata: updatedMetadata,
+      });
+
+      if (
+        result.isEmailVerificationRequired ||
+        result.isSmsVerificationRequired
+      ) {
+        setReceiverId(newReceiverId);
+        setBankingId(newBankingId);
+        setIsKYCComplete(true);
+        return true;
+      }
 
       setReceiverId(newReceiverId);
       setBankingId(newBankingId);
@@ -137,14 +176,18 @@ export function useKYCStatus() {
   const clearBothIds = async (): Promise<void> => {
     try {
       const metadata = (user?.metadata as UserMetadata) || {};
-      const updatedMetadata = { ...metadata };
+      const updatedMetadata = {
+        ...metadata,
+        blindpayReceiverId: undefined,
+        blindpayBankingId: undefined,
+      };
+
       delete updatedMetadata.blindpayReceiverId;
       delete updatedMetadata.blindpayBankingId;
 
-      await updateUser(
-        { userFields: { metadata: updatedMetadata } },
-        dynamicClient
-      );
+      await updateUser({
+        metadata: updatedMetadata,
+      });
     } catch {
     } finally {
       setReceiverId(null);

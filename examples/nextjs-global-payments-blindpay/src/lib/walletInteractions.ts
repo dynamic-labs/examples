@@ -1,18 +1,13 @@
-import { parseUnits, createPublicClient, http, type WalletClient } from "viem";
-import { baseSepolia } from "viem/chains";
+import { parseUnits } from "viem";
+import { writeContract, waitForTransactionReceipt } from "wagmi/actions";
 import { USDB_ABI } from "@/lib/abis/usdb";
+import { config as wagmiConfig } from "@/lib/wagmi";
 import { config } from "@/lib/config";
-
-const publicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http(),
-});
 
 /**
  * Approve USDB tokens for transfer
  */
 export async function approveUSDBTokens(
-  walletClient: WalletClient,
   contractAddress: string,
   spenderAddress: string,
   amount: string
@@ -28,20 +23,18 @@ export async function approveUSDBTokens(
       throw new Error(`Invalid approval amount: ${amount}`);
     }
 
-    const [account] = await walletClient.getAddresses();
-
-    // Execute the approval transaction
-    const hash = await walletClient.writeContract({
+    // Execute the approval transaction using the contract address from quote
+    const hash = await writeContract(wagmiConfig, {
       address: contractAddress as `0x${string}`,
       abi: USDB_ABI,
       functionName: "approve",
       args: [spenderAddress as `0x${string}`, BigInt(amount)],
-      account,
-      chain: baseSepolia,
     });
 
     // Wait for transaction confirmation
-    await publicClient.waitForTransactionReceipt({ hash });
+    await waitForTransactionReceipt(wagmiConfig, {
+      hash,
+    });
 
     return hash;
   } catch (error) {
@@ -57,7 +50,6 @@ export async function approveUSDBTokens(
  * Transfer USDB tokens to a specific address
  */
 export async function transferUSDBTokens(
-  walletClient: WalletClient,
   amount: number,
   toAddress: string
 ): Promise<string> {
@@ -65,20 +57,18 @@ export async function transferUSDBTokens(
     // Convert amount to proper decimals
     const amountInTokens = parseUnits(amount.toString(), 6);
 
-    const [account] = await walletClient.getAddresses();
-
     // Execute the transfer transaction
-    const hash = await walletClient.writeContract({
+    const hash = await writeContract(wagmiConfig, {
       address: config.contracts.usdb,
       abi: USDB_ABI,
       functionName: "transfer",
       args: [toAddress as `0x${string}`, amountInTokens],
-      account,
-      chain: baseSepolia,
     });
 
     // Wait for transaction confirmation
-    await publicClient.waitForTransactionReceipt({ hash });
+    await waitForTransactionReceipt(wagmiConfig, {
+      hash,
+    });
 
     return hash;
   } catch (error) {

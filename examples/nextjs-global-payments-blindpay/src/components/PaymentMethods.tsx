@@ -7,10 +7,7 @@ import {
   AccountClass,
   PaymentMethodType,
 } from "@/types/stablepay";
-import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
-import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
-import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
-import { baseSepolia } from "viem/chains";
+import { useDynamicContext } from "@/lib/dynamic";
 
 interface BankAccount {
   id: string;
@@ -39,8 +36,7 @@ export default function PaymentMethods({
   onUpdate?: () => void;
 }) {
   const { receiverId } = useKYCStatus();
-  const accounts = useWalletAccounts();
-  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const { primaryWallet } = useDynamicContext();
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [blockchainWallets, setBlockchainWallets] = useState<
     BlockchainWallet[]
@@ -207,16 +203,8 @@ export default function PaymentMethods({
         const messageData = await messageResponse.json();
         const messageToSign = messageData.message;
 
-        // Step 2: Sign the message using Dynamic wallet via viem wallet client
-        const walletClient = createWalletClientForWalletAccount({
-          walletAccount: primaryWallet,
-          chain: baseSepolia,
-        });
-        const [account] = await walletClient.getAddresses();
-        const signature = await walletClient.signMessage({
-          account,
-          message: messageToSign,
-        });
+        // Step 2: Sign the message using Dynamic wallet
+        const signature = await primaryWallet.signMessage(messageToSign);
 
         // Step 3: Create request body with signature and address
         requestBody = {

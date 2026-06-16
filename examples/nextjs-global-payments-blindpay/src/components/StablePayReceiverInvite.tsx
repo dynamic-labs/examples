@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDynamicContext } from "@/lib/dynamic";
 import { useKYCStatus } from "@/lib/hooks/useKYCStatus";
 import { config } from "@/lib/config";
 
 export default function StablePayReceiverInvite() {
+  const { primaryWallet, user } = useDynamicContext();
   const {
     receiverId,
     isKYCComplete,
     storeReceiverId,
     checkReceiverExists,
     clearBothIds,
-    user,
-    primaryWallet,
   } = useKYCStatus();
   const [isLoading, setIsLoading] = useState(false);
 

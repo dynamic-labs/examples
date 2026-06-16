@@ -12,11 +12,10 @@ import {
 } from "@/components/ui/card";
 import { useKYCStatus } from "@/lib/hooks/useKYCStatus";
 import { usePaymentMethods } from "@/lib/hooks/usePaymentMethods";
-import { useUser } from "@dynamic-labs-sdk/react-hooks";
+import { useAccount } from "wagmi";
 
 export default function PaymentMethodsPage() {
-  const user = useUser();
-  const isConnected = user !== null;
+  const { isConnected } = useAccount();
   const { receiverId, isKYCComplete, isLoading: kycLoading } = useKYCStatus();
 
   const {

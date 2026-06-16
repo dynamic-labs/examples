@@ -8,11 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useUser } from "@dynamic-labs-sdk/react-hooks";
+import { useAccount } from "wagmi";
 
 export default function TransactionsPage() {
-  const user = useUser();
-  const isConnected = user !== null;
+  const { isConnected } = useAccount();
 
   if (!isConnected) {
     return (

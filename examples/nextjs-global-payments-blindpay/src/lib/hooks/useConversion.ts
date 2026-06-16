@@ -1,15 +1,9 @@
 import { useState } from "react";
-import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
-import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
-import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
-import { baseSepolia } from "viem/chains";
 import { ConversionData, ConversionResult } from "@/types";
 import { ConversionService } from "@/lib/services/conversionService";
 import { approveUSDBTokens } from "@/lib/walletInteractions";
 
 export function useConversion() {
-  const accounts = useWalletAccounts();
-  const evmWallet = accounts.find(isEvmWalletAccount) ?? null;
   const [isConverting, setIsConverting] = useState(false);
   const [conversionResult, setConversionResult] =
     useState<ConversionResult | null>(null);
@@ -42,16 +36,7 @@ export function useConversion() {
           amount: approvalAmount,
         } = quoteResult.quote.contract;
 
-        if (!evmWallet) {
-          throw new Error("No EVM wallet connected");
-        }
-        const walletClient = createWalletClientForWalletAccount({
-          walletAccount: evmWallet,
-          chain: baseSepolia,
-        });
-
         approvalTxHash = await approveUSDBTokens(
-          walletClient,
           contractAddress,
           spenderAddress,
           approvalAmount
