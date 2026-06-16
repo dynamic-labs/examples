@@ -8,9 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
-    "@dynamic-labs-sdk/client": "1.4.0",
-    "@dynamic-labs-sdk/react-hooks": "1.4.0",
-    "@dynamic-labs-sdk/solana": "1.4.0",
+    "@dynamic-labs-sdk/client": "1.10.0",
+    "@dynamic-labs-sdk/react-hooks": "1.10.0",
+    "@dynamic-labs-sdk/solana": "1.10.0",
     "@solana-program/compute-budget": "^0.8.0",
     "@solana-program/memo": "^0.7.0",
     "@solana-program/system": "^0.7.0",

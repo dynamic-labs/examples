@@ -13,9 +13,9 @@
     "build:analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@dynamic-labs-sdk/client": "1.4.0",
-    "@dynamic-labs-sdk/evm": "1.4.0",
-    "@dynamic-labs-sdk/react-hooks": "1.4.0",
+    "@dynamic-labs-sdk/client": "1.10.0",
+    "@dynamic-labs-sdk/evm": "1.10.0",
+    "@dynamic-labs-sdk/react-hooks": "1.10.0",
     "@radix-ui/react-dialog": "1.1.15",
     "@radix-ui/react-dropdown-menu": "2.1.16",
     "@radix-ui/react-slot": "1.2.4",
