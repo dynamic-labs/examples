@@ -11,9 +11,10 @@
   },
   "dependencies": {
     "@apollo/client": "^4.0.1",
-    "@dynamic-labs-sdk/client": "1.10.0",
-    "@dynamic-labs-sdk/evm": "1.10.0",
-    "@dynamic-labs-sdk/react-hooks": "1.10.0",
+    "@dynamic-labs-sdk/client": "1.4.0",
+    "@dynamic-labs-sdk/evm": "1.4.0",
+    "@dynamic-labs-sdk/react-hooks": "1.4.0",
+    "@tanstack/react-query": "5.100.14",
     "@linera/client": "file:./linera-protocol/linera-web",
     "graphql": "^16.11.0",
     "graphql-ws": "^6.0.6",

@@ -9,9 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dynamic-labs-sdk/client": "1.10.0",
-    "@dynamic-labs-sdk/evm": "1.10.0",
-    "@dynamic-labs-sdk/react-hooks": "1.10.0",
+    "@dynamic-labs-sdk/client": "1.4.0",
+    "@dynamic-labs-sdk/evm": "1.4.0",
+    "@dynamic-labs-sdk/react-hooks": "1.4.0",
     "@mayanfinance/swap-sdk": "10.9.3",
     "lucide-react": "0.542.0",
     "@tanstack/react-query": "5.85.3",

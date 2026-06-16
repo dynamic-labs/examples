@@ -11,10 +11,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dynamic-labs-sdk/client": "1.10.0",
-    "@dynamic-labs-sdk/evm": "1.10.0",
-    "@dynamic-labs-sdk/react-hooks": "1.10.0",
-    "@dynamic-labs-sdk/solana": "1.10.0",
+    "@dynamic-labs-sdk/client": "1.4.0",
+    "@dynamic-labs-sdk/evm": "1.4.0",
+    "@dynamic-labs-sdk/react-hooks": "1.4.0",
+    "@dynamic-labs-sdk/solana": "1.4.0",
     "@solana/spl-token": "0.4.13",
     "@solana/web3.js": "1.98.4",
     "@t3-oss/env-nextjs": "0.13.8",

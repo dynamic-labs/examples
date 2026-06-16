@@ -1,10 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DynamicProvider, useEvent } from "@dynamic-labs-sdk/react-hooks";
 import { completeSocialRedirect, detectSocialRedirectUrl } from "@dynamic-labs-sdk/client";
 import { createWaasWalletAccounts, getChainsMissingWaasWalletAccounts } from "@dynamic-labs-sdk/client/waas";
 import { dynamicClient, initDynamic } from "./dynamic";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function DynamicBootstrap() {
   useEffect(() => {
@@ -41,9 +51,11 @@ function WalletBootstrap() {
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <DynamicProvider client={dynamicClient}>
-      <DynamicBootstrap />
-      <WalletBootstrap />
-      {children}
+      <QueryClientProvider client={queryClient}>
+        <DynamicBootstrap />
+        <WalletBootstrap />
+        {children}
+      </QueryClientProvider>
     </DynamicProvider>
   );
 }

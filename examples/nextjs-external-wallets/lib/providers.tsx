@@ -11,7 +11,17 @@ import {
 } from "@dynamic-labs-sdk/client/waas";
 import { DynamicProvider, useEvent } from "@dynamic-labs-sdk/react-hooks";
 import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/theme-provider";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 /**
  * Initializes the client, then completes the Google OAuth redirect (returns
@@ -76,9 +86,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <DynamicProvider client={dynamicClient}>
-        <DynamicBootstrap />
-        <WalletBootstrap />
-        {children}
+        <QueryClientProvider client={queryClient}>
+          <DynamicBootstrap />
+          <WalletBootstrap />
+          {children}
+        </QueryClientProvider>
       </DynamicProvider>
     </ThemeProvider>
   );

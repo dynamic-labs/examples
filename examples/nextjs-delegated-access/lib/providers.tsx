@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DynamicProvider, useEvent } from "@dynamic-labs-sdk/react-hooks";
 import {
   completeSocialRedirect,
@@ -12,6 +13,10 @@ import {
 } from "@dynamic-labs-sdk/client/waas";
 import { ThemeProvider } from "@/components/theme-provider";
 import { dynamicClient, initDynamic } from "@/lib/dynamic";
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+});
 
 /**
  * Initializes the Dynamic client on mount and completes the Google OAuth
@@ -70,9 +75,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <DynamicProvider client={dynamicClient}>
-        <DynamicBootstrap />
-        <WalletBootstrap />
-        {children}
+        <QueryClientProvider client={queryClient}>
+          <DynamicBootstrap />
+          <WalletBootstrap />
+          {children}
+        </QueryClientProvider>
       </DynamicProvider>
     </ThemeProvider>
   );
