@@ -1,10 +1,16 @@
+import { useEffect } from "react";
 import WalletControls from "./components/WalletControls";
 import { useDarkMode } from "./lib/useDarkMode";
 import DynamicMethods from "./components/Methods";
+import { initDynamic } from "./lib/dynamic";
 import "./App.css";
 
 function App() {
   const { isDarkMode } = useDarkMode();
+
+  useEffect(() => {
+    initDynamic();
+  }, []);
 
   return (
     <div className={`container ${isDarkMode ? "dark" : "light"}`}>

@@ -3,12 +3,12 @@
 /**
  * DynamicWidget
  *
- * Wrapper component for Dynamic's built-in widget.
- * Used on the Methods page to show the standard Dynamic UI.
+ * Auth widget used on the Methods page to show the user's auth state.
+ * Renders the DynamicAuthButton which handles login/logout with the new SDK.
  */
 
-import { DynamicWidget as DynamicWidgetComponent } from "@/lib/dynamic";
+import DynamicAuthButton from "./dynamic-auth-button";
 
 export default function DynamicWidget() {
-  return <DynamicWidgetComponent />;
+  return <DynamicAuthButton />;
 }

@@ -1,4 +1,7 @@
-import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { logout } from "@dynamic-labs-sdk/client";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { dynamicClient } from "../lib/dynamic";
 
 function shortenAddress(address: string): string {
   if (!address) return "";
@@ -6,12 +9,11 @@ function shortenAddress(address: string): string {
 }
 
 export default function WalletControls() {
-  const { sdkHasLoaded, primaryWallet, setShowAuthFlow, handleLogOut } =
-    useDynamicContext();
-  const isLoggedIn = useIsLoggedIn();
+  const user = useUser();
+  const { walletAccounts } = useWalletAccounts();
+  const isLoggedIn = user !== null;
 
-  if (!sdkHasLoaded) return null;
-
+  const primaryWallet = walletAccounts?.find(isEvmWalletAccount);
   const address = primaryWallet?.address || "";
 
   return (
@@ -19,12 +21,15 @@ export default function WalletControls() {
       {isLoggedIn && address ? (
         <>
           <span className="wallet-address">{shortenAddress(address)}</span>
-          <button className="docs-button" onClick={handleLogOut}>
+          <button className="docs-button" onClick={() => logout(dynamicClient)}>
             Disconnect
           </button>
         </>
       ) : (
-        <button className="get-started" onClick={() => setShowAuthFlow(true)}>
+        <button
+          className="get-started"
+          onClick={() => dynamicClient.ui.auth.show()}
+        >
           Connect Wallet
         </button>
       )}

@@ -1,9 +1,7 @@
 import { useState } from "react";
-import {
-  useDynamicContext,
-  DynamicConnectButton,
-} from "@dynamic-labs/sdk-react-core";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { dynamicClient } from "../lib/dynamic";
 import "./PaymentLinkGenerator.css";
 
 export default function PaymentLinkGenerator({
@@ -16,25 +14,25 @@ export default function PaymentLinkGenerator({
   const [reference, setReference] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
   const [copied, setCopied] = useState(false);
-  const { primaryWallet } = useDynamicContext();
+  const user = useUser();
+  const { walletAccounts } = useWalletAccounts();
+  const evmWallet = walletAccounts?.find(isEvmWalletAccount);
 
   const generatePaymentLink = async () => {
-    if (!primaryWallet?.address || !isEthereumWallet(primaryWallet)) {
+    if (!evmWallet?.address) {
       alert("Please connect an Ethereum wallet to generate payment links");
       return;
     }
 
     try {
-      // Get current network
-      const currentChainId = await primaryWallet.connector.getNetwork();
-
       // Create a payment link with preset parameters
+      // Base Sepolia is the configured network (set in Dynamic dashboard)
       const baseUrl = window.location.origin;
       const params = new URLSearchParams({
-        recipient: primaryWallet.address,
+        recipient: evmWallet.address,
         amount: amount,
         token: "USDC",
-        network: currentChainId?.toString() || "84532", // Default to Base Sepolia
+        network: "84532", // Base Sepolia
         ...(description && { description }),
         ...(reference && { reference }),
         timestamp: Date.now().toString(),
@@ -115,15 +113,18 @@ export default function PaymentLinkGenerator({
         </div>
 
         <div className="button-group">
-          {!primaryWallet ? (
-            <DynamicConnectButton buttonClassName="btn btn-primary">
+          {!user ? (
+            <button
+              className="btn btn-primary"
+              onClick={() => dynamicClient.ui.auth.show()}
+            >
               Connect Wallet
-            </DynamicConnectButton>
+            </button>
           ) : (
             <button
               className="btn btn-primary"
               onClick={generatePaymentLink}
-              disabled={!isEthereumWallet(primaryWallet)}
+              disabled={!evmWallet}
             >
               Generate Payment Link
             </button>
@@ -170,9 +171,9 @@ export default function PaymentLinkGenerator({
               )}
               <p>
                 <strong>Recipient:</strong>{" "}
-                {primaryWallet?.address?.substring(0, 8)}...
-                {primaryWallet?.address?.substring(
-                  primaryWallet.address.length - 6
+                {evmWallet?.address?.substring(0, 8)}...
+                {evmWallet?.address?.substring(
+                  evmWallet.address.length - 6
                 )}
               </p>
             </div>

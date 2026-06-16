@@ -1,21 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useDynamicContext, useIsLoggedIn } from "@/lib/dynamic";
+import { useUser } from "@dynamic-labs-sdk/react-hooks";
+import { logout } from "@dynamic-labs-sdk/client";
+import { dynamicClient } from "@/lib/dynamic";
 import { Button } from "../ui/button";
 
 export default function DynamicLogout() {
-  const { handleLogOut } = useDynamicContext();
-  const isLoggedIn = useIsLoggedIn();
+  const user = useUser();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
 
-  if (!isLoggedIn || !hasMounted) return null;
+  if (!user || !hasMounted) return null;
   return (
-    <Button variant="link" onClick={handleLogOut}>
+    <Button variant="link" onClick={() => logout(dynamicClient)}>
       Logout
     </Button>
   );

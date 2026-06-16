@@ -2,7 +2,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAuthToken } from "@dynamic-labs/sdk-react-core";
+import { dynamicClient } from "@/lib/dynamic";
 
 import { Skeleton } from "../ui/skeleton";
 import { UserCreditBalanceResponse } from "@/lib/rain";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatBalance } from "@/utils/format-balance";
 
 export default function CardBalance() {
-  const authToken = getAuthToken();
+  const authToken = dynamicClient.auth.token;
   const queryClient = useQueryClient();
 
   const { data, isLoading, isRefetching, refetch } = useQuery<{

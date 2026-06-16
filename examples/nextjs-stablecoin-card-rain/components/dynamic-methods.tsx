@@ -3,20 +3,18 @@
 import { useState, useEffect } from "react";
 import { redirect } from "next/navigation";
 import { Copy, Check } from "lucide-react";
-import {
-  useDynamicContext,
-  useIsLoggedIn,
-  useUserWallets,
-} from "@/lib/dynamic";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
+import { createPublicClient, http } from "viem";
 import DynamicWidget from "./dynamic/dynamic-widget";
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
 
 export default function DynamicMethods() {
-  const isLoggedIn = useIsLoggedIn();
-  const { sdkHasLoaded, primaryWallet, user } = useDynamicContext();
-  const userWallets = useUserWallets();
+  const user = useUser();
+  const walletAccounts = useWalletAccounts();
+  const evmWallet = walletAccounts.find(isEvmWalletAccount);
 
   const [isLoading, setIsLoading] = useState(true);
   const [result, setResult] = useState("");
@@ -25,8 +23,8 @@ export default function DynamicMethods() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (sdkHasLoaded && !isLoggedIn) redirect("/");
-  }, [sdkHasLoaded, isLoggedIn]);
+    if (!user) redirect("/");
+  }, [user]);
 
   const safeStringify = (obj: unknown): string => {
     const seen = new WeakSet();
@@ -46,12 +44,12 @@ export default function DynamicMethods() {
   };
 
   useEffect(() => {
-    if (sdkHasLoaded && isLoggedIn && primaryWallet) {
+    if (user && evmWallet) {
       setIsLoading(false);
     } else {
       setIsLoading(true);
     }
-  }, [sdkHasLoaded, isLoggedIn, primaryWallet]);
+  }, [user, evmWallet]);
 
   function clearResult() {
     setResult("");
@@ -71,7 +69,7 @@ export default function DynamicMethods() {
 
   function showUserWallets() {
     try {
-      setResult(safeStringify(userWallets));
+      setResult(safeStringify(walletAccounts));
       setError(null);
     } catch (err) {
       setError(
@@ -81,11 +79,11 @@ export default function DynamicMethods() {
   }
 
   async function fetchEthereumPublicClient() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+    if (!evmWallet) return;
     try {
       setIsLoading(true);
-      const result = await primaryWallet.getPublicClient();
-      setResult(safeStringify(result));
+      const publicClient = createPublicClient({ chain: evmWallet.network, transport: http() });
+      setResult(safeStringify(publicClient));
     } catch (error) {
       setResult(
         safeStringify({
@@ -99,11 +97,11 @@ export default function DynamicMethods() {
   }
 
   async function fetchEthereumWalletClient() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+    if (!evmWallet) return;
     try {
       setIsLoading(true);
-      const result = await primaryWallet.getWalletClient();
-      setResult(safeStringify(result));
+      const walletClient = await createWalletClientForWalletAccount({ walletAccount: evmWallet });
+      setResult(safeStringify(walletClient));
     } catch (error) {
       setResult(
         safeStringify({
@@ -117,10 +115,14 @@ export default function DynamicMethods() {
   }
 
   async function signEthereumMessage() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+    if (!evmWallet) return;
     try {
       setIsLoading(true);
-      const result = await primaryWallet.signMessage("Hello World");
+      const walletClient = await createWalletClientForWalletAccount({ walletAccount: evmWallet });
+      const result = await walletClient.signMessage({
+        account: evmWallet.address as `0x${string}`,
+        message: "Hello World",
+      });
       setResult(safeStringify(result));
     } catch (error) {
       setResult(
@@ -206,7 +208,7 @@ export default function DynamicMethods() {
             >
               Fetch User Wallets
             </Button>
-            {primaryWallet && isEthereumWallet(primaryWallet) && (
+            {evmWallet && (
               <div className="pt-2">
                 <div className="text-xs uppercase tracking-wide opacity-60 mb-2">
                   Wallet Methods

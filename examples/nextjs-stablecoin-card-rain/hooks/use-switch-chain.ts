@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 
 export interface UseSwitchChainOptions {
   targetChainId: string | number;
@@ -15,7 +16,8 @@ export function useSwitchChain(options: UseSwitchChainOptions) {
     onSwitchError,
     autoSwitch = true,
   } = options;
-  const { primaryWallet, network } = useDynamicContext();
+  const { walletAccounts } = useWalletAccounts();
+  const evmWallet = walletAccounts?.find(isEvmWalletAccount);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -25,40 +27,23 @@ export function useSwitchChain(options: UseSwitchChainOptions) {
   const hasAttemptedSwitch = useRef(false);
   const targetChainIdString = String(targetChainId);
 
-  const canSwitchNetwork = primaryWallet?.connector.supportsNetworkSwitching();
-  const isOnTargetChain = String(network) === targetChainIdString;
+  // Embedded WaaS wallets manage their network via dashboard configuration;
+  // network switching is not supported directly via the client SDK.
+  const canSwitchNetwork = false;
+  const currentChainId = evmWallet?.network?.id ? String(evmWallet.network.id) : undefined;
+  const isOnTargetChain = currentChainId === targetChainIdString;
 
   const switchChain = async () => {
-    if (!primaryWallet || !canSwitchNetwork) {
-      const err = new Error("Wallet does not support network switching");
-      setError(err);
-      onSwitchError?.(err);
-      return false;
-    }
-
     if (isOnTargetChain) {
       setHasSwitched(true);
       onSwitchSuccess?.();
       return true;
     }
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await primaryWallet.switchNetwork(targetChainId);
-      setHasSwitched(true);
-      onSwitchSuccess?.();
-      return true;
-    } catch (err) {
-      const error =
-        err instanceof Error ? err : new Error("Failed to switch chain");
-      setError(error);
-      onSwitchError?.(error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
+    const err = new Error("Network switching is managed via the Dynamic dashboard for embedded wallets");
+    setError(err);
+    onSwitchError?.(err);
+    return false;
   };
 
   // Auto-switch effect that ensures single execution
@@ -66,8 +51,7 @@ export function useSwitchChain(options: UseSwitchChainOptions) {
     if (
       autoSwitch &&
       !hasAttemptedSwitch.current &&
-      primaryWallet &&
-      canSwitchNetwork &&
+      evmWallet &&
       !isOnTargetChain &&
       !isLoading &&
       !hasSwitched
@@ -76,8 +60,7 @@ export function useSwitchChain(options: UseSwitchChainOptions) {
       switchChain();
     }
   }, [
-    primaryWallet,
-    canSwitchNetwork,
+    evmWallet,
     isOnTargetChain,
     autoSwitch,
     isLoading,
@@ -86,13 +69,13 @@ export function useSwitchChain(options: UseSwitchChainOptions) {
 
   // Reset attempted switch flag if wallet changes
   useEffect(() => {
-    if (primaryWallet) {
+    if (evmWallet) {
       // Reset the flag when wallet changes to allow switching on new wallet
       hasAttemptedSwitch.current = false;
       setHasSwitched(false);
       setError(null);
     }
-  }, [primaryWallet?.address]);
+  }, [evmWallet?.address]);
 
   const resetSwitch = () => {
     hasAttemptedSwitch.current = false;

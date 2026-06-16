@@ -9,7 +9,7 @@ import { CreditCard } from "@/components/credit-cards";
 import DynamicLogo from "@/components/dynamic/logo";
 import { Button } from "@/components/ui/button";
 
-import { useIsLoggedIn, useDynamicContext } from "@/lib/dynamic";
+import { useUser, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
 import { CreateCardForUserResponse } from "@/lib/rain/types";
 import { Skeleton } from "../ui/skeleton";
 
@@ -22,8 +22,10 @@ import StablecoinFaucet from "./stablecoin-faucet";
 import { TokenBalanceProvider } from "./token-balance-context";
 
 export default function DynamicCard() {
-  const isLoggedIn = useIsLoggedIn();
-  const { sdkHasLoaded, user } = useDynamicContext();
+  const user = useUser();
+  const initStatus = useInitStatus();
+  const isLoggedIn = user !== null;
+  const sdkHasLoaded = initStatus === "finished";
 
   const [hasMounted, setHasMounted] = useState(false);
   const [decryptedCardData, setDecryptedCardData] = useState<{

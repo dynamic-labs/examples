@@ -3,7 +3,9 @@
 import { LogOut, Menu, Monitor, Moon, Sun, X } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { useUser } from "@dynamic-labs-sdk/react-hooks";
+import { logout } from "@dynamic-labs-sdk/client";
+import { dynamicClient } from "@/lib/dynamic";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 
@@ -15,13 +17,13 @@ interface HamburgerMenuProps {
 export function HamburgerMenu({ children, className }: HamburgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { user, handleLogOut } = useDynamicContext();
+  const user = useUser();
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const handleThemeChange = (newTheme: string) => setTheme(newTheme);
 
   const onLogOut = async () => {
-    await handleLogOut();
+    await logout(dynamicClient);
     setIsOpen(false);
   };
 

@@ -11,18 +11,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { config } from "@/lib/config";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import { useKYCStatus } from "@/lib/hooks/useKYCStatus";
 import { usePaymentMethods } from "@/lib/hooks/usePaymentMethods";
 import { useConversion } from "@/lib/hooks/useConversion";
 import { useState } from "react";
-import { useAccount } from "wagmi";
 import { ConversionData } from "@/types";
 import { redirect } from "next/navigation";
 
 export default function ConversionsPage() {
-  const { primaryWallet } = useDynamicContext();
-  const { isConnected } = useAccount();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const isConnected = user !== null;
   const { receiverId, isKYCComplete, isLoading: kycLoading } = useKYCStatus();
 
   if (!isKYCComplete) redirect("/");

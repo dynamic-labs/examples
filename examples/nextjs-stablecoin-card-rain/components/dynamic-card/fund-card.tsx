@@ -7,7 +7,10 @@ import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { getAuthToken, useDynamicContext } from "@/lib/dynamic";
+import { getAuthToken } from "@dynamic-labs-sdk/client";
+import { useUser, useWalletAccounts, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { dynamicClient } from "@/lib/dynamic";
 import { UserDepositContractResponse } from "@/lib/rain";
 import { useDepositToken } from "@/hooks/use-deposit-tokens";
 import { getContractAddress } from "@/constants";
@@ -15,12 +18,17 @@ import DepositAccountLoading from "./deposit-account-loading";
 import WalletBalanceDisplay from "./wallet-balance-display";
 import { useTokenBalanceContext } from "./token-balance-context";
 
+const BASE_SEPOLIA_CHAIN_ID = 84532;
 const PRESET_AMOUNTS = [5, 10, 25];
 
 export default function FundCard() {
   const queryClient = useQueryClient();
   const { depositToken } = useDepositToken();
-  const { sdkHasLoaded, primaryWallet, network } = useDynamicContext();
+  const accounts = useWalletAccounts();
+  const initStatus = useInitStatus();
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const network: number | null = primaryWallet ? BASE_SEPOLIA_CHAIN_ID : null;
+  const sdkHasLoaded = initStatus === "finished";
   const { getBalanceByAddress, refetch: fetchAccountBalances } =
     useTokenBalanceContext();
 
@@ -50,7 +58,7 @@ export default function FundCard() {
     },
     retryDelay: 1500,
     queryFn: async () => {
-      const authToken = getAuthToken();
+      const authToken = getAuthToken(dynamicClient);
       const response = await fetch(`/api/contracts?chain=${network}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });

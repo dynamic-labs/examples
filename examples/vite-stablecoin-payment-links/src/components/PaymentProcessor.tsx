@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
+import { baseSepolia } from "viem/chains";
 import { parseUnits, erc20Abi } from "viem";
 import "./PaymentProcessor.css";
 
@@ -23,7 +25,9 @@ export default function PaymentProcessor({ isDarkMode }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
-  const { primaryWallet, user } = useDynamicContext();
+  const user = useUser();
+  const { walletAccounts } = useWalletAccounts();
+  const evmWallet = walletAccounts?.find(isEvmWalletAccount);
 
   // Extract payment parameters from URL
   useEffect(() => {
@@ -61,7 +65,7 @@ export default function PaymentProcessor({ isDarkMode }: Props) {
       return;
     }
 
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+    if (!evmWallet) {
       setError("Wallet not connected or not EVM compatible");
       return;
     }
@@ -70,69 +74,12 @@ export default function PaymentProcessor({ isDarkMode }: Props) {
     setError(null);
 
     try {
-      // Get enabled networks to check if Base Sepolia is available
-      const enabledNetworks = primaryWallet.connector.getEnabledNetworks();
-      console.log("enabledNetworks", enabledNetworks);
-      const baseSepoliaNetwork = enabledNetworks.find(
-        (network) => network.chainId === 84532
-      );
-
-      if (!baseSepoliaNetwork) {
-        setError(
-          "Base Sepolia network is not available in your wallet. Please add Base Sepolia network to your wallet."
-        );
-        return;
-      }
-
-      // Get current network
-      const currentChainId = await primaryWallet.connector.getNetwork();
-
-      console.log("currentChainId", currentChainId);
-
-      // Check if wallet is on Base Sepolia
-      if (currentChainId !== 84532) {
-        // Try to switch to Base Sepolia
-        if (primaryWallet.connector.supportsNetworkSwitching()) {
-          try {
-            setError("Switching to Base Sepolia Testnet...");
-            await primaryWallet.switchNetwork(84532);
-            // Verify the switch was successful
-            const newChainId = await primaryWallet.connector.getNetwork();
-            if (newChainId !== 84532) {
-              setError(
-                "Failed to switch to Base Sepolia Testnet. Please switch manually."
-              );
-              return;
-            }
-          } catch (switchError: unknown) {
-            setError(
-              `Failed to switch network: ${
-                switchError instanceof Error
-                  ? switchError.message
-                  : "Unknown error"
-              }. Please switch to Base Sepolia Testnet manually.`
-            );
-            return;
-          }
-        } else {
-          setError(
-            "Please switch to Base Sepolia Testnet. Your wallet doesn't support automatic network switching."
-          );
-          return;
-        }
-      }
-
-      // Double-check we're on Base Sepolia before proceeding
-      const finalChainId = await primaryWallet.connector.getNetwork();
-      if (finalChainId !== 84532) {
-        setError(
-          `Wallet is on wrong network. Expected Base Sepolia (84532), got ${finalChainId}`
-        );
-        return;
-      }
-
       // Get wallet client for Base Sepolia
-      const walletClient = await primaryWallet.getWalletClient();
+      // Embedded wallets handle network configuration via the Dynamic dashboard
+      const walletClient = await createWalletClientForWalletAccount({
+        walletAccount: evmWallet,
+        chain: baseSepolia,
+      });
 
       // Use Base Sepolia USDC contract address
       const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";

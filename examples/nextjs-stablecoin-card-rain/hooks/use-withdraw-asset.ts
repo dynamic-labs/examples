@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import { createPublicClient, http } from "viem";
+
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
 
 import { useToast } from "@/lib/toast-context";
 import { UserWithdrawalRequest } from "@/lib/rain";
 import { getAdminSignature } from "./get-admin-signature";
-import { isZeroDevConnector } from "@/lib/dynamic";
 import { ADMIN_NONCE_ABI, WITHDRAW_ASSET_ABI } from "@/constants";
 
 export interface UseWithdrawAssetOptions {
@@ -14,7 +16,7 @@ export interface UseWithdrawAssetOptions {
 }
 
 export function useWithdrawAsset(options?: UseWithdrawAssetOptions) {
-  const { primaryWallet, network } = useDynamicContext();
+  const { walletAccounts } = useWalletAccounts();
   const { success } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +28,8 @@ export function useWithdrawAsset(options?: UseWithdrawAssetOptions) {
     coordinatorAddress: string,
     data: UserWithdrawalRequest
   ) => {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+    const evmWallet = walletAccounts?.find(isEvmWalletAccount);
+    if (!evmWallet) {
       throw new Error("Wallet not connected or not EVM compatible");
     }
 
@@ -43,8 +46,8 @@ export function useWithdrawAsset(options?: UseWithdrawAssetOptions) {
     ] = data.parameters;
 
     try {
-      const walletClient = await primaryWallet.getWalletClient();
-      const publicClient = await primaryWallet.getPublicClient();
+      const walletClient = await createWalletClientForWalletAccount({ walletAccount: evmWallet });
+      const publicClient = createPublicClient({ chain: evmWallet.network, transport: http() });
 
       const nonce = await publicClient.readContract({
         address: collateralProxy as `0x${string}`,
@@ -52,12 +55,16 @@ export function useWithdrawAsset(options?: UseWithdrawAssetOptions) {
         functionName: "adminNonce",
       });
 
+      const chainId = evmWallet.network?.id;
+      if (!chainId) throw new Error("Network not found");
+
       // Generate admin signature
       const { salt: adminSalt, signature: adminSignature } =
         await getAdminSignature({
-          primaryWallet,
+          walletClient,
+          signerAddress: evmWallet.address,
           amount: Number(amountInCents),
-          chainId: Number(network),
+          chainId: Number(chainId),
           collateralProxyAddress: collateralProxy,
           recipientAddress: recipient,
           tokenAddress: assetAddress,
@@ -91,13 +98,7 @@ export function useWithdrawAsset(options?: UseWithdrawAssetOptions) {
       setTxHash(hash);
 
       // Wait for transaction receipt
-      const connector = primaryWallet.connector;
-      if (!connector || !isZeroDevConnector(connector)) {
-        throw new Error("Connector is not a ZeroDev connector");
-      }
-      const kernelClient = connector.getAccountAbstractionProvider();
-      if (!kernelClient) throw new Error("Kernel client not found");
-      await kernelClient.waitForUserOperationReceipt({ hash });
+      await publicClient.waitForTransactionReceipt({ hash });
 
       success("Withdrawal Confirmed");
       if (options?.onWithdrawSuccess) options.onWithdrawSuccess();

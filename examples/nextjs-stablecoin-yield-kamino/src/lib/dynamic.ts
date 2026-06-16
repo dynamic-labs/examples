@@ -1,20 +1,31 @@
-import { createDynamicClient, getNetworksData } from "@dynamic-labs-sdk/client";
-import { addSolanaExtension } from "@dynamic-labs-sdk/solana";
+import {
+  createDynamicClient,
+  initializeClient,
+  getNetworksData,
+  type DynamicClient,
+} from "@dynamic-labs-sdk/client";
+import { addWaasSolanaExtension } from "@dynamic-labs-sdk/solana/waas";
 
-// Create the Dynamic client once. Extensions must be registered immediately
-// after createDynamicClient() and before initialization completes.
-export const dynamicClient = createDynamicClient({
+export const dynamicClient: DynamicClient = createDynamicClient({
   environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID!,
+  autoInitialize: false,
   metadata: {
     name: "Kamino Earn with Dynamic",
   },
 });
 
-// Register Solana extension — takes NO arguments
-addSolanaExtension();
+let initialized = false;
 
-// No-op on clients that auto-initialize; called by useAuth on mount.
-export async function initDynamic(): Promise<void> {}
+/**
+ * Adds the Solana WaaS extension and initializes the client.
+ * Safe to call multiple times — initialization runs once.
+ */
+export async function initDynamic(): Promise<void> {
+  if (initialized) return;
+  initialized = true;
+  addWaasSolanaExtension(dynamicClient);
+  await initializeClient(dynamicClient);
+}
 
 /**
  * Returns the Solana RPC URL configured in the Dynamic dashboard.

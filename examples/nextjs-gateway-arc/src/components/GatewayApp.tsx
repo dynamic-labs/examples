@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DynamicButton from "@/components/dynamic/dynamic-button";
-import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
+import { useUser, useWalletAccounts, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import TransferForm from "@/components/TransferForm";
 import DepositForm from "@/components/DepositForm";
 import { DOMAIN } from "@/lib/chains";
@@ -37,15 +38,18 @@ async function gatewayBalances(
 }
 
 export default function GatewayApp() {
-  const isLoggedIn = useIsLoggedIn();
-  const { primaryWallet, sdkHasLoaded } = useDynamicContext();
-  const address = primaryWallet?.address;
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const initStatus = useInitStatus();
+  const evmWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const isLoggedIn = user !== null;
+  const address = evmWallet?.address;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Balance[]>([]);
 
   useEffect(() => {
-    if (!sdkHasLoaded || !address) return;
+    if (initStatus !== "finished" || !address) return;
     const run = async () => {
       setLoading(true);
       setError(null);
@@ -63,7 +67,7 @@ export default function GatewayApp() {
       }
     };
     run();
-  }, [sdkHasLoaded, address]);
+  }, [initStatus, address]);
 
   return (
     <div className="w-full max-w-xl space-y-4">

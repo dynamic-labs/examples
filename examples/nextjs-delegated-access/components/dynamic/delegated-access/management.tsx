@@ -11,31 +11,44 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import {
-  ChainEnum,
-  useDynamicContext,
-  useWalletDelegation,
-} from "@/lib/dynamic";
+  delegateWaasKeyShares,
+  hasDelegatedAccess,
+} from "@dynamic-labs-sdk/client/waas";
+import { dynamicClient } from "@/lib/dynamic";
 
 /**
  * DelegationManagement - Delegation with Custom UI (No Modal)
  *
  * This component demonstrates programmatic delegation without Dynamic's modal:
- * - delegateKeyShares() - Direct delegation without showing any UI
+ * - delegateWaasKeyShares() - Direct delegation without showing any UI
  * - Best for: Custom delegation flows where you want full UI control
  */
 export default function DelegationManagement() {
-  const { primaryWallet } = useDynamicContext();
-  const { delegateKeyShares, getWalletsDelegatedStatus } =
-    useWalletDelegation();
+  const accounts = useWalletAccounts();
+  const evmAccounts = accounts.filter(isEvmWalletAccount);
+  const primaryWallet = evmAccounts[0] ?? null;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Get delegation status for all wallets from the SDK
-  // This is the source of truth for which wallets are eligible for delegation
-  const allWalletStatuses = getWalletsDelegatedStatus();
+  // Derive delegation status for each EVM wallet account
+  const allWalletStatuses = evmAccounts.map((account) => {
+    let isDelegated = false;
+    try {
+      isDelegated = hasDelegatedAccess({ walletAccount: account }, dynamicClient);
+    } catch {
+      isDelegated = false;
+    }
+    return {
+      account,
+      address: account.address,
+      status: isDelegated ? "delegated" : "pending",
+    };
+  });
 
   // Wallets with status "pending" are eligible for delegation
   const pendingWallets = allWalletStatuses.filter(
@@ -70,12 +83,10 @@ export default function DelegationManagement() {
       setError(null);
       setSuccess(null);
 
-      await delegateKeyShares([
-        {
-          chainName: primaryWalletStatus.chain as ChainEnum,
-          accountAddress: primaryWalletStatus.address,
-        },
-      ]);
+      await delegateWaasKeyShares(
+        { walletAccount: primaryWallet },
+        dynamicClient
+      );
 
       setSuccess("Primary wallet delegated successfully!");
     } catch (err) {
@@ -102,12 +113,12 @@ export default function DelegationManagement() {
       setError(null);
       setSuccess(null);
 
-      const walletsToDelegate = pendingWallets.map((wallet) => ({
-        chainName: wallet.chain as ChainEnum,
-        accountAddress: wallet.address,
-      }));
-
-      await delegateKeyShares(walletsToDelegate);
+      for (const wallet of pendingWallets) {
+        await delegateWaasKeyShares(
+          { walletAccount: wallet.account },
+          dynamicClient
+        );
+      }
 
       setSuccess(`${pendingWallets.length} wallet(s) delegated successfully!`);
     } catch (err) {
@@ -136,7 +147,7 @@ export default function DelegationManagement() {
                 <Key className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm">delegateKeyShares()</h4>
+                <h4 className="font-medium text-sm">delegateWaasKeyShares()</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Delegates key shares programmatically without any UI. Build
                   your own consent flow and call this when ready.
@@ -299,22 +310,18 @@ function CodeExample() {
         </h4>
       </div>
       <pre className="text-xs bg-background rounded-lg p-3 overflow-x-auto border">
-        <code className="text-muted-foreground">{`const { delegateKeyShares } = useWalletDelegation();
+        <code className="text-muted-foreground">{`import { delegateWaasKeyShares } from "@dynamic-labs-sdk/client/waas";
+import { dynamicClient } from "@/lib/dynamic";
 
 // Delegate without showing any Dynamic UI
-const handleDelegate = async () => {
+const handleDelegate = async (walletAccount) => {
   try {
-    await delegateKeyShares([
-      { chainName: ChainEnum.Evm, accountAddress: '0x...' }
-    ]);
+    await delegateWaasKeyShares({ walletAccount }, dynamicClient);
     console.log('Delegation completed!');
   } catch (error) {
     console.error('Delegation failed:', error);
   }
-};
-
-// Or delegate all pending wallets at once
-await delegateKeyShares();`}</code>
+};`}</code>
       </pre>
     </div>
   );

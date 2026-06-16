@@ -1,32 +1,21 @@
 "use client";
 
-import { useDynamicModals, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
-import { useEffect, useState } from "react";
+import { useUser } from "@dynamic-labs-sdk/react-hooks";
 import DynamicActiveWallet from "@/components/dynamic/dynamic-active-wallet";
 import DynamicAuthButton from "@/components/dynamic/dynamic-auth-button";
 import DynamicWalletList from "@/components/dynamic/dynamic-wallet-list";
-import { Button } from "@/components/ui/button";
 
 /**
- * Main Page - External Wallet Management
+ * Main Page - Embedded Wallet Management
  *
- * Demonstrates Dynamic SDK's multi-wallet functionality:
- * - Login/logout with external wallets (connect-and-sign)
- * - Link additional wallets to the same account
- * - View and manage all connected wallets
- * - Switch between wallets and networks
+ * Demonstrates Dynamic JS SDK's embedded (MPC/WaaS) wallet functionality:
+ * - Login/logout with Google or Email OTP
+ * - Auto-created EVM and Solana embedded wallets
+ * - View active wallet and all wallet accounts
  */
 export default function Main() {
-  // Dynamic SDK hooks for modal control and auth state
-  const { setShowLinkNewWalletModal } = useDynamicModals();
-  const isLoggedIn = useIsLoggedIn();
-
-  // Track client-side mount to prevent hydration mismatch
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const user = useUser();
+  const isLoggedIn = user !== null;
 
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -34,18 +23,13 @@ export default function Main() {
         {/* Login/Logout button */}
         <DynamicAuthButton />
 
-        {/* Only show wallet management UI after mount (to prevent hydration issues) and when logged in */}
-        {mounted && isLoggedIn && (
+        {/* Show wallet management UI when logged in */}
+        {isLoggedIn && (
           <>
-            {/* Opens Dynamic's wallet linking modal */}
-            <Button onClick={() => setShowLinkNewWalletModal(true)}>
-              Link New Wallet
-            </Button>
-
-            {/* Shows the currently active (primary) wallet with network selector */}
+            {/* Shows the currently active embedded wallet */}
             <DynamicActiveWallet />
 
-            {/* Shows all wallets linked to this account */}
+            {/* Shows all embedded wallet accounts */}
             <DynamicWalletList />
           </>
         )}

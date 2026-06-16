@@ -1,14 +1,10 @@
-import {
-  createDynamicClient,
-  initializeClient,
-  type DynamicClient,
-} from "@dynamic-labs-sdk/client";
+import { createDynamicClient, initializeClient, type DynamicClient } from "@dynamic-labs-sdk/client";
 import { addWaasEvmExtension } from "@dynamic-labs-sdk/evm/waas";
 
 export const dynamicClient: DynamicClient = createDynamicClient({
-  environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID!,
+  environmentId: import.meta.env.VITE_DYNAMIC_ENVIRONMENT_ID,
   autoInitialize: false,
-  metadata: { name: "Delegated Access Demo" },
+  metadata: { name: "Stablecoin Payment Links" },
 });
 
 let initialized = false;

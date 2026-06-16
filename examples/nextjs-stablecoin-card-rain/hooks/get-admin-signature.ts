@@ -1,8 +1,9 @@
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import { type WalletClient } from "viem";
 import { randomBytes } from "crypto";
 
 type AdminSignatureOpts = {
-  primaryWallet: any;
+  walletClient: WalletClient;
+  signerAddress: string;
   chainId: number;
   collateralProxyAddress: string;
   recipientAddress: string;
@@ -18,7 +19,8 @@ type AdminSignatureOpts = {
  */
 export const getAdminSignature = async (opts: AdminSignatureOpts) => {
   const {
-    primaryWallet,
+    walletClient,
+    signerAddress,
     collateralProxyAddress,
     chainId,
     tokenAddress,
@@ -26,12 +28,6 @@ export const getAdminSignature = async (opts: AdminSignatureOpts) => {
     recipientAddress,
     nonce,
   } = opts;
-
-  if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
-    throw new Error("Wallet not connected or not EVM compatible");
-  }
-
-  const walletClient = await primaryWallet.getWalletClient();
 
   const salt = `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
   const domain = {
@@ -50,17 +46,17 @@ export const getAdminSignature = async (opts: AdminSignatureOpts) => {
       { name: "nonce", type: "uint256" },
     ],
   };
-  const signerAddress = primaryWallet.address;
 
   const message = {
-    user: signerAddress,
-    asset: tokenAddress,
+    user: signerAddress as `0x${string}`,
+    asset: tokenAddress as `0x${string}`,
     amount,
-    recipient: recipientAddress,
+    recipient: recipientAddress as `0x${string}`,
     nonce,
   };
 
   const signature = await walletClient.signTypedData({
+    account: signerAddress as `0x${string}`,
     primaryType: "Withdraw",
     domain,
     types: type,

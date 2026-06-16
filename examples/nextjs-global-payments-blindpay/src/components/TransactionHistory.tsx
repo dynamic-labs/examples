@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAccount, useChainId } from "wagmi";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { baseSepolia } from "viem/chains";
 import {
   formatCurrency,
   formatTokenAmount,
@@ -24,8 +26,12 @@ interface TrackingStep {
 }
 
 export default function TransactionHistory() {
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const evmWallet = accounts.find(isEvmWalletAccount);
+  const address = evmWallet?.address;
+  const isConnected = user !== null;
+  const chainId = baseSepolia.id;
   const { receiverId } = useKYCStatus();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);

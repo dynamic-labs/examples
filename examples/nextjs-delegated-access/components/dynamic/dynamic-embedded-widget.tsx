@@ -1,7 +1,7 @@
 "use client";
 
-import { DynamicEmbeddedWidget as DynamicEmbeddedWidgetComponent } from "@/lib/dynamic";
+import DynamicButton from "./dynamic-widget";
 
 export default function DynamicEmbeddedWidget() {
-  return <DynamicEmbeddedWidgetComponent background="default" />;
+  return <DynamicButton />;
 }

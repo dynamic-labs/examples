@@ -1,10 +1,9 @@
 import { useState } from "react";
+import { createPublicClient, http } from "viem";
 
-import {
-  useDynamicContext,
-  isEthereumWallet,
-  isZeroDevConnector,
-} from "@/lib/dynamic";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
 import { useToast } from "@/lib/toast-context";
 import { getContractAddress, RUSDC_ABI } from "../constants";
 
@@ -18,25 +17,27 @@ export interface UseMintTokensOptions {
 }
 
 export function useMintTokens(options?: UseMintTokensOptions) {
-  const { primaryWallet, network } = useDynamicContext();
+  const { walletAccounts } = useWalletAccounts();
   const { success, error } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const mintTokens = async (mintOptions: MintOptions) => {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+    const evmWallet = walletAccounts?.find(isEvmWalletAccount);
+    if (!evmWallet) {
       throw new Error("Wallet not connected or not EVM compatible");
     }
 
-    if (!network) throw new Error("Network not found");
-    const rusdcAddress = getContractAddress(network, "RUSDC");
+    const chainId = evmWallet.network?.id;
+    if (!chainId) throw new Error("Network not found");
+    const rusdcAddress = getContractAddress(chainId, "RUSDC");
     const { amountDollars } = mintOptions;
 
     try {
       setIsLoading(true);
 
-      const walletClient = await primaryWallet.getWalletClient();
+      const walletClient = await createWalletClientForWalletAccount({ walletAccount: evmWallet });
 
       // Use writeContract for ERC-20 transfers
       const hash = await walletClient.writeContract({
@@ -48,13 +49,9 @@ export function useMintTokens(options?: UseMintTokensOptions) {
 
       setTxHash(hash);
 
-      const connector = primaryWallet.connector;
-      if (!connector || !isZeroDevConnector(connector)) {
-        throw new Error("Connector is not a ZeroDev connector");
-      }
-      const kernelClient = connector.getAccountAbstractionProvider();
-      if (!kernelClient) throw new Error("Kernel client not found");
-      await kernelClient.waitForUserOperationReceipt({ hash });
+      // Wait for transaction receipt
+      const publicClient = createPublicClient({ chain: evmWallet.network, transport: http() });
+      await publicClient.waitForTransactionReceipt({ hash });
 
       success(
         "Stablecoin Claimed",

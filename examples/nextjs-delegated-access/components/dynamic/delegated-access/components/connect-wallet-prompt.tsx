@@ -1,20 +1,18 @@
 "use client";
 
-import { DynamicEmbeddedWidget } from "@dynamic-labs/sdk-react-core";
+import DynamicButton from "@/components/dynamic/dynamic-widget";
 
 /**
- * Wallet connection prompt with embedded Dynamic widget
+ * Wallet connection prompt
  *
- * Displayed when no wallet is connected. Uses Dynamic's embedded widget
- * to provide a seamless authentication experience directly in the UI.
- *
- * The widget styling is configured via cssOverrides in lib/providers.tsx.
+ * Displayed when no wallet is connected. Uses the DynamicButton component
+ * to provide an authentication entry point directly in the UI.
  */
 export default function ConnectWalletPrompt() {
   return (
     <div className="pt-8 pb-2 flex justify-center">
       <div className="w-full max-w-sm">
-        <DynamicEmbeddedWidget background="none" />
+        <DynamicButton />
       </div>
     </div>
   );

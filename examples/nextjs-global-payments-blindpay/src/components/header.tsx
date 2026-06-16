@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { HamburgerMenu } from "@/components/hamburger-menu";
-import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
 import DynamicLogo from "./dynamic/logo";
 import DynamicButton from "./dynamic/dynamic-button";
 
@@ -61,7 +60,7 @@ export function Header() {
       </div>
       <div className="hidden md:flex gap-2 pr-4">
         {navItems}
-        <DynamicWidget />
+        <DynamicButton />
         <ModeToggle />
       </div>
       <div className="md:hidden pr-4">

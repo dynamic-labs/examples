@@ -1,37 +1,65 @@
-/**
- * Application providers configuration
- *
- * This file sets up the root providers for the application:
- * - ThemeProvider: Handles light/dark mode switching
- * - DynamicContextProvider: Configures Dynamic SDK with wallet connectors
- *
- * CSS Overrides:
- * The cssOverrides prop customizes the Dynamic embedded widget appearance.
- * These styles target the Shadow DOM and use !important to override defaults.
- *
- * @see https://www.dynamic.xyz/docs/using-our-ui/design-customizations
- */
 "use client";
 
-import { ThemeProvider } from "@/components/theme-provider";
-import { env } from "@/env";
+import { useEffect } from "react";
+import { DynamicProvider, useEvent } from "@dynamic-labs-sdk/react-hooks";
 import {
-  DynamicContextProvider,
-  EthereumWalletConnectors,
-  ZeroDevSmartWalletConnectors,
-} from "@/lib/dynamic";
+  completeSocialRedirect,
+  detectSocialRedirectUrl,
+} from "@dynamic-labs-sdk/client";
+import {
+  createWaasWalletAccounts,
+  getChainsMissingWaasWalletAccounts,
+} from "@dynamic-labs-sdk/client/waas";
+import { ThemeProvider } from "@/components/theme-provider";
+import { dynamicClient, initDynamic } from "@/lib/dynamic";
 
-const cssOverrides = `
-  /* Hide the separator line above "Powered by" */
-  .dynamic-footer__top-border {
-    border-top: none !important;
-  }
-  
-  /* Style the "Log in or sign up" title with Dynamic blue */
-  .typography--primary {
-    color: #4679FE !important;
-  }
-`;
+/**
+ * Initializes the Dynamic client on mount and completes the Google OAuth
+ * redirect. Social sign-in returns to the app with a `?dynamicOauthCode=…`
+ * param — `completeSocialRedirect` consumes it to finish authentication.
+ * Without this the token is set but the user is never hydrated.
+ */
+function DynamicBootstrap() {
+  useEffect(() => {
+    let cancelled = false;
+    initDynamic().then(async () => {
+      if (cancelled || typeof window === "undefined") return;
+      try {
+        const url = new URL(window.location.href);
+        if (await detectSocialRedirectUrl({ url })) {
+          await completeSocialRedirect({ url });
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      } catch {
+        /* not a social redirect */
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return null;
+}
+
+/**
+ * Once a user signs in, ensure they have an embedded EVM wallet.
+ * Uses `getChainsMissingWaasWalletAccounts()` rather than guarding on
+ * `accounts.length === 0` — the account list can be momentarily stale right
+ * after auth, which would otherwise silently skip wallet creation.
+ */
+function WalletBootstrap() {
+  useEvent({
+    event: "userChanged",
+    listener: async (user) => {
+      if (!user) return;
+      const missing = getChainsMissingWaasWalletAccounts(dynamicClient);
+      if (missing.length > 0) {
+        await createWaasWalletAccounts({ chains: missing }, dynamicClient);
+      }
+    },
+  });
+  return null;
+}
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -41,19 +69,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <DynamicContextProvider
-        theme="auto"
-        settings={{
-          environmentId: env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
-          walletConnectors: [
-            EthereumWalletConnectors,
-            ZeroDevSmartWalletConnectors,
-          ],
-          cssOverrides,
-        }}
-      >
+      <DynamicProvider client={dynamicClient}>
+        <DynamicBootstrap />
+        <WalletBootstrap />
         {children}
-      </DynamicContextProvider>
+      </DynamicProvider>
     </ThemeProvider>
   );
 }

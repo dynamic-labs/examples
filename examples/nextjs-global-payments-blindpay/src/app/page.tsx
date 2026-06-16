@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/card";
 import { useKYCStatus } from "@/lib/hooks/useKYCStatus";
 import { usePaymentMethods } from "@/lib/hooks/usePaymentMethods";
-import { useAccount } from "wagmi";
+import { useUser } from "@dynamic-labs-sdk/react-hooks";
 import { ArrowRight, CreditCard, History, TrendingUp } from "lucide-react";
 
 export default function HomePage() {
-  const { isConnected } = useAccount();
+  const user = useUser();
+  const isConnected = user !== null;
   const { receiverId, isKYCComplete, isLoading: kycLoading } = useKYCStatus();
 
   const { hasPaymentMethods, hasBankAccounts, hasBlockchainWallets } =

@@ -3,16 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
-import {
-  useAccount,
-  useChainId,
-  useSwitchChain,
-  useWriteContract,
-  useWalletClient,
-} from "wagmi";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
+import { createPublicClient, http } from "viem";
 import { CONTRACTS, DOMAIN } from "@/lib/chains";
-import { arcTestnet, baseSepolia, sepolia } from "wagmi/chains";
+import { arcTestnet, baseSepolia, sepolia } from "viem/chains";
 import { GatewayAPI, burnIntent, burnIntentTypedData } from "@/lib/gateway";
 
 // Minimal ABI for gatewayMint
@@ -27,55 +23,35 @@ const gatewayMinterAbi = [
     outputs: [],
     stateMutability: "nonpayable",
   },
+] as const;
+
+type ChainKey = "sepolia" | "baseSepolia" | "arcTestnet";
+
+const CHAIN_MAP = {
+  sepolia: { chain: sepolia, domain: DOMAIN.sepolia },
+  baseSepolia: { chain: baseSepolia, domain: DOMAIN.baseSepolia },
+  arcTestnet: { chain: arcTestnet, domain: DOMAIN.arcTestnet },
+} as const;
+
+const CHAINS: { key: ChainKey; label: string }[] = [
+  { key: "sepolia", label: "Sepolia (domain 0)" },
+  { key: "baseSepolia", label: "Base Sepolia (domain 6)" },
+  { key: "arcTestnet", label: "Arc Testnet (domain 26)" },
 ];
 
 export default function TransferForm() {
-  const { address } = useAccount();
-  const { primaryWallet } = useDynamicContext();
-  const chainId = useChainId();
-  const { switchChainAsync } = useSwitchChain();
-  const { data: walletClient } = useWalletClient();
+  const accounts = useWalletAccounts();
+  const evmWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const address = evmWallet?.address as `0x${string}` | undefined;
   const [amountEth, setAmountEth] = useState("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const { writeContractAsync } = useWriteContract();
-
-  type ChainKey = "sepolia" | "baseSepolia" | "arcTestnet";
-  type ChainId =
-    | typeof sepolia.id
-    | typeof baseSepolia.id
-    | typeof arcTestnet.id;
-  const CHAINS: {
-    key: ChainKey;
-    label: string;
-    id: ChainId;
-    domain: number;
-  }[] = [
-    {
-      key: "sepolia",
-      label: "Sepolia (domain 0)",
-      id: sepolia.id,
-      domain: DOMAIN.sepolia,
-    },
-    {
-      key: "baseSepolia",
-      label: "Base Sepolia (domain 6)",
-      id: baseSepolia.id,
-      domain: DOMAIN.baseSepolia,
-    },
-    {
-      key: "arcTestnet",
-      label: "Arc Testnet (domain 26)",
-      id: arcTestnet.id,
-      domain: DOMAIN.arcTestnet,
-    },
-  ];
   const [source, setSource] = useState<ChainKey>("sepolia");
   const [destination, setDestination] = useState<ChainKey>("baseSepolia");
 
   const onTransfer = async () => {
-    if (!primaryWallet || !address) return;
+    if (!evmWallet || !address) return;
     setLoading(true);
     setError(null);
     setTxHash(null);
@@ -84,8 +60,8 @@ export default function TransferForm() {
         throw new Error("Source and destination must be different");
       }
 
-      const src = CHAINS.find((c) => c.key === source)!;
-      const dst = CHAINS.find((c) => c.key === destination)!;
+      const src = CHAIN_MAP[source];
+      const dst = CHAIN_MAP[destination];
 
       // Build burn intent for selected source → destination
       const intent = burnIntent({
@@ -105,10 +81,16 @@ export default function TransferForm() {
       });
 
       const typedData = burnIntentTypedData(intent);
-      // Sign EIP-712 typed data via Wagmi-connected wallet client
-      if (!walletClient) throw new Error("No wallet client available");
-      const signature = await walletClient.signTypedData({
-        account: address as `0x${string}`,
+
+      // Create wallet client for source chain to sign
+      const srcWalletClient = createWalletClientForWalletAccount({
+        walletAccount: evmWallet,
+        chain: src.chain,
+      });
+
+      // Sign EIP-712 typed data via Dynamic SDK wallet client
+      const signature = await srcWalletClient.signTypedData({
+        account: address,
         domain: typedData.domain as {
           name: string;
           version: string;
@@ -137,18 +119,26 @@ export default function TransferForm() {
 
       const { attestation, signature: attSig } = resp;
 
-      // Ensure wallet is on destination chain before mint
-      if (chainId !== dst.id) {
-        await switchChainAsync({ chainId: dst.id });
-      }
+      // Create wallet client for destination chain to mint
+      const dstWalletClient = createWalletClientForWalletAccount({
+        walletAccount: evmWallet,
+        chain: dst.chain,
+      });
+
+      const dstPublicClient = createPublicClient({
+        chain: dst.chain,
+        transport: http(),
+      });
 
       // Mint on destination chain
-      const hash = await writeContractAsync({
+      const hash = await dstWalletClient.writeContract({
         address: CONTRACTS.gatewayMinter as `0x${string}`,
         abi: gatewayMinterAbi,
         functionName: "gatewayMint",
         args: [attestation, attSig],
+        account: address,
       });
+      await dstPublicClient.waitForTransactionReceipt({ hash });
       setTxHash(hash);
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : "Failed to transfer";

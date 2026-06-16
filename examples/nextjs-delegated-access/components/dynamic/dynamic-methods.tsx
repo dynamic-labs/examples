@@ -1,21 +1,32 @@
 "use client";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
+
 import { Check, Copy } from "lucide-react";
 import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  useDynamicContext,
-  useIsLoggedIn,
-  useUserWallets,
-} from "@/lib/dynamic";
-import DynamicWidget from "./dynamic-widget";
+  useUser,
+  useWalletAccounts,
+  useInitStatus,
+} from "@dynamic-labs-sdk/react-hooks";
+import { getActiveNetworkData } from "@dynamic-labs-sdk/client";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import {
+  createWalletClientForWalletAccount,
+  createPublicClientFromNetworkData,
+} from "@dynamic-labs-sdk/evm/viem";
+import { dynamicClient } from "@/lib/dynamic";
+import DynamicButton from "./dynamic-widget";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 
 export default function DynamicMethods() {
-  const isLoggedIn = useIsLoggedIn();
-  const { sdkHasLoaded, primaryWallet, user } = useDynamicContext();
-  const userWallets = useUserWallets();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const initStatus = useInitStatus();
+  const sdkHasLoaded = initStatus === "finished";
+  const isLoggedIn = user !== null;
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
+
   const [isLoading, setIsLoading] = useState(true);
   const [result, setResult] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +77,7 @@ export default function DynamicMethods() {
 
   function showUserWallets() {
     try {
-      setResult(safeStringify(userWallets));
+      setResult(safeStringify(accounts));
       setError(null);
     } catch (err) {
       setError(
@@ -76,11 +87,19 @@ export default function DynamicMethods() {
   }
 
   async function fetchEthereumPublicClient() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+    if (!primaryWallet) return;
     try {
       setIsLoading(true);
-      const result = await primaryWallet.getPublicClient();
-      setResult(safeStringify(result));
+      const { networkData } = await getActiveNetworkData(
+        { walletAccount: primaryWallet },
+        dynamicClient
+      );
+      if (!networkData) {
+        setResult(safeStringify({ error: "No active network data found" }));
+        return;
+      }
+      const publicClient = createPublicClientFromNetworkData({ networkData });
+      setResult(safeStringify({ chain: publicClient.chain }));
     } catch (error) {
       setResult(
         safeStringify({
@@ -94,11 +113,14 @@ export default function DynamicMethods() {
   }
 
   async function fetchEthereumWalletClient() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+    if (!primaryWallet) return;
     try {
       setIsLoading(true);
-      const result = await primaryWallet.getWalletClient();
-      setResult(safeStringify(result));
+      const walletClient = await createWalletClientForWalletAccount(
+        { walletAccount: primaryWallet },
+        dynamicClient
+      );
+      setResult(safeStringify({ chain: walletClient.chain, account: walletClient.account }));
     } catch (error) {
       setResult(
         safeStringify({
@@ -112,11 +134,15 @@ export default function DynamicMethods() {
   }
 
   async function signEthereumMessage() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+    if (!primaryWallet) return;
     try {
       setIsLoading(true);
-      const result = await primaryWallet.signMessage("Hello World");
-      setResult(safeStringify(result));
+      const walletClient = await createWalletClientForWalletAccount(
+        { walletAccount: primaryWallet },
+        dynamicClient
+      );
+      const signature = await walletClient.signMessage({ message: "Hello World" });
+      setResult(safeStringify(signature));
     } catch (error) {
       setResult(
         safeStringify({
@@ -183,7 +209,7 @@ export default function DynamicMethods() {
         <div className="order-1 md:order-2">
           <div className="sticky flex flex-col gap-3">
             {!isLoading ? (
-              <DynamicWidget />
+              <DynamicButton />
             ) : (
               <Skeleton className="h-[40px] w-full bg-[#f7f7f9]" />
             )}
@@ -201,7 +227,7 @@ export default function DynamicMethods() {
             >
               Fetch User Wallets
             </Button>
-            {primaryWallet && isEthereumWallet(primaryWallet) && (
+            {primaryWallet && (
               <div className="pt-2">
                 <div className="text-xs uppercase tracking-wide opacity-60 mb-2">
                   Wallet Methods

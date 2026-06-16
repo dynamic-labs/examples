@@ -16,12 +16,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { OCCUPATION_OPTIONS, US_STATES } from "@/constants";
-import {
-  getAuthToken,
-  useDynamicContext,
-  useIsLoggedIn,
-  useRefreshUser,
-} from "@/lib/dynamic";
+import { getAuthToken } from "@dynamic-labs-sdk/client";
+import { useUser, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { dynamicClient } from "@/lib/dynamic";
 import type { CreateCardForUserResponse } from "@/lib/rain";
 import { cn } from "@/lib/utils";
 import {
@@ -33,9 +30,10 @@ import { formatSSN } from "@/utils/format-ssn";
 import { defaultValues, FormSchema, STEPS } from "./helpers";
 
 export default function ApplicationForm({ formId }: { formId: string }) {
-  const { sdkHasLoaded, user, setShowAuthFlow } = useDynamicContext();
-  const refreshUser = useRefreshUser();
-  const isLoggedIn = useIsLoggedIn();
+  const user = useUser();
+  const initStatus = useInitStatus();
+  const isLoggedIn = user !== null;
+  const sdkHasLoaded = initStatus === "finished";
 
   useEffect(() => {
     const metadata = user?.metadata as { rainCard?: CreateCardForUserResponse };
@@ -44,9 +42,10 @@ export default function ApplicationForm({ formId }: { formId: string }) {
 
   useEffect(() => {
     if (sdkHasLoaded && !isLoggedIn) {
-      setShowAuthFlow(true);
+      // Show auth flow via dynamicClient UI
+      dynamicClient.ui.auth.show();
     }
-  }, [sdkHasLoaded, isLoggedIn, setShowAuthFlow]);
+  }, [sdkHasLoaded, isLoggedIn]);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +96,7 @@ export default function ApplicationForm({ formId }: { formId: string }) {
           setSubmitResult(null);
 
           try {
-            const authToken = getAuthToken();
+            const authToken = getAuthToken(dynamicClient);
             if (!authToken) throw new Error("Not authenticated");
 
             const response = await fetch("/api/apply", {
@@ -116,7 +115,6 @@ export default function ApplicationForm({ formId }: { formId: string }) {
             }
 
             setSubmitResult({ ok: true, data: result });
-            refreshUser();
             redirect("/card");
           } catch (error) {
             const errorMessage =
