@@ -10,11 +10,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  ChainEnum,
-  useDynamicContext,
-  useWalletDelegation,
-} from "@/lib/dynamic";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { revokeWaasDelegation } from "@dynamic-labs-sdk/client/waas";
+import { dynamicClient } from "@/lib/dynamic";
 import { authFetch } from "@/lib/dynamic/auth-fetch";
 import { EcdsaKeygenResult } from "@dynamic-labs-wallet/node";
 import ResponseDisplay from "./components/response-display";
@@ -43,8 +42,9 @@ interface SignMessageResponse {
 type ActionType = "getKey" | "sign" | "revoke" | null;
 
 export default function DelegatedAccessMethods() {
-  const { user, primaryWallet } = useDynamicContext();
-  const { revokeDelegation } = useWalletDelegation();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
 
   const [result, setResult] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -59,16 +59,15 @@ export default function DelegatedAccessMethods() {
     setLastAction(null);
   }
 
-  async function handleRevokeDelegation(address: string) {
+  async function handleRevokeDelegation() {
+    if (!primaryWallet) return;
     try {
       setIsLoading(true);
       setActiveAction("revoke");
       setError(null);
       setResult("");
 
-      await revokeDelegation([
-        { accountAddress: address, chainName: ChainEnum.Evm },
-      ]);
+      await revokeWaasDelegation({ walletAccount: primaryWallet }, dynamicClient);
 
       setResult("Delegation revoked successfully");
       setLastAction("revoke");
@@ -283,7 +282,7 @@ export default function DelegatedAccessMethods() {
             <Button
               variant="outline"
               className="w-full border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950"
-              onClick={() => handleRevokeDelegation(primaryWallet?.address!)}
+              onClick={handleRevokeDelegation}
               disabled={!user?.userId || isLoading || !primaryWallet?.address}
             >
               {isLoading && activeAction === "revoke" ? (

@@ -1,4 +1,5 @@
-import { getAuthToken } from "@dynamic-labs/sdk-react-core";
+import { getAuthToken } from "@dynamic-labs-sdk/client";
+import { dynamicClient } from "@/lib/dynamic";
 
 /**
  * Error thrown when authentication is required but no token is available.
@@ -25,7 +26,7 @@ export async function authFetch(
   url: string,
   options?: RequestInit
 ): Promise<Response> {
-  const token = getAuthToken();
+  const token = getAuthToken(dynamicClient);
 
   if (!token) throw new AuthRequiredError();
   return fetch(url, {

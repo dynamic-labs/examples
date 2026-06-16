@@ -10,9 +10,6 @@
   "dependencies": {
     "@dynamic-labs-wallet/node": "0.0.320",
     "@dynamic-labs-wallet/node-evm": "0.0.320",
-    "@dynamic-labs/ethereum": "4.73.2",
-    "@dynamic-labs/ethereum-aa": "4.73.2",
-    "@dynamic-labs/sdk-react-core": "4.73.2",
     "@radix-ui/react-dropdown-menu": "2.1.16",
     "@radix-ui/react-slot": "1.2.3",
     "@t3-oss/env-nextjs": "0.13.8",
@@ -34,7 +31,11 @@
     "stream-browserify": "3.0.0",
     "tailwind-merge": "3.3.1",
     "viem": "2.38.5",
-    "zod": "4.1.12"
+    "zod": "4.1.12",
+    "@dynamic-labs-sdk/client": "1.4.0",
+    "@dynamic-labs-sdk/evm": "1.4.0",
+    "@dynamic-labs-sdk/react-hooks": "1.4.0",
+    "@tanstack/react-query": "5.100.14"
   },
   "devDependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

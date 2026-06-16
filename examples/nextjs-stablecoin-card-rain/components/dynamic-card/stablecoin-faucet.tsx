@@ -5,7 +5,6 @@ import { ArrowRight, Droplets, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useMintTokens } from "@/hooks/use-mint-tokens";
-import { useDynamicContext } from "@/lib/dynamic";
 import { getContractAddress } from "@/constants";
 import WalletBalanceDisplay from "./wallet-balance-display";
 import {
@@ -16,16 +15,16 @@ import {
 } from "@/components/ui/tooltip";
 import { useTokenBalanceContext } from "./token-balance-context";
 
+const BASE_SEPOLIA_CHAIN_ID = 84532;
+
 export default function StablecoinFaucet() {
   const { refetch: refetchBalances } = useTokenBalanceContext();
 
   const [fundingWallet, setFundingWallet] = useState(false);
-  const { network } = useDynamicContext();
 
   const rusdcAddress = useMemo(() => {
-    if (!network) return undefined;
-    return getContractAddress(network, "RUSDC");
-  }, [network]);
+    return getContractAddress(BASE_SEPOLIA_CHAIN_ID, "RUSDC");
+  }, []);
 
   const { mintTokens, resetMint, isPending } = useMintTokens({
     onMintSuccess: () => {

@@ -14,12 +14,11 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Code2 } from "lucide-react";
-import {
-  SpinnerIcon,
-  useDynamicContext,
-  useWalletDelegation,
-} from "@dynamic-labs/sdk-react-core";
+import { Sparkles, Code2, Loader2 } from "lucide-react";
+import { useUser, useWalletAccounts, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { hasDelegatedAccess } from "@dynamic-labs-sdk/client/waas";
+import { dynamicClient } from "@/lib/dynamic";
 
 import DelegatedAccessInit from "./init";
 import DelegatedAccessMethods from "./methods";
@@ -34,25 +33,43 @@ import DelegationInfoBox from "@/components/info/delegation-info-box";
 type DelegationTab = "modal" | "custom";
 
 export default function DelegatedAccess() {
-  const { sdkHasLoaded, primaryWallet } = useDynamicContext();
-  const {
-    delegatedAccessEnabled,
-    getWalletsDelegatedStatus,
-    requiresDelegation,
-  } = useWalletDelegation();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const initStatus = useInitStatus();
+  const sdkHasLoaded = initStatus === "finished";
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
   const [activeTab, setActiveTab] = useState<DelegationTab>("modal");
 
   if (!sdkHasLoaded) {
     return (
       <div className="flex items-center justify-center py-12">
-        <SpinnerIcon className="w-10 h-10 animate-spin text-dynamic" />
+        <Loader2 className="w-10 h-10 animate-spin text-dynamic" />
       </div>
     );
   }
 
-  const walletStatuses = getWalletsDelegatedStatus();
-  const primaryWalletDelegationStatus = walletStatuses.find(
-    (wallet) => wallet.address === primaryWallet?.address,
+  // Derive wallet delegation statuses from the new SDK
+  const walletStatuses = accounts
+    .filter(isEvmWalletAccount)
+    .map((account) => {
+      let isDelegated = false;
+      try {
+        isDelegated = hasDelegatedAccess({ walletAccount: account }, dynamicClient);
+      } catch {
+        isDelegated = false;
+      }
+      return {
+        address: account.address,
+        status: isDelegated ? "delegated" : "pending",
+      };
+    });
+
+  const primaryWalletDelegationStatus = primaryWallet
+    ? walletStatuses.find((wallet) => wallet.address === primaryWallet.address)
+    : undefined;
+
+  const delegatedAccessEnabled = walletStatuses.some(
+    (wallet) => wallet.status === "delegated"
   );
 
   return (
@@ -60,8 +77,8 @@ export default function DelegatedAccess() {
       {/* Main Status Card */}
       <div className="rounded-xl border bg-card overflow-hidden">
         <DelegationStatusHeader
-          isEnabled={delegatedAccessEnabled ?? false}
-          requiresDelegation={requiresDelegation}
+          isEnabled={delegatedAccessEnabled}
+          requiresDelegation={false}
         />
 
         <div className={primaryWallet ? "p-6 space-y-4" : "px-4 py-2"}>

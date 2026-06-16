@@ -1,11 +1,11 @@
 import type { Signer } from "@linera/client";
-import type { Wallet as DynamicWallet } from "@dynamic-labs/sdk-react-core";
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
+import type { EvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
 
 export class DynamicSigner implements Signer {
-  private dynamicWallet: DynamicWallet;
+  private dynamicWallet: EvmWalletAccount;
 
-  constructor(dynamicWallet: DynamicWallet) {
+  constructor(dynamicWallet: EvmWalletAccount) {
     this.dynamicWallet = dynamicWallet;
   }
 
@@ -38,9 +38,9 @@ export class DynamicSigner implements Signer {
       // the standard signing flow and use `personal_sign` directly on the wallet client.
       // DO NOT USE: this.dynamicWallet.signMessage(msgHex) - it would cause double-hashing
 
-      // Note: First cast the wallet to an Ethereum wallet to get the wallet client
-      if (!isEthereumWallet(this.dynamicWallet)) throw new Error();
-      const walletClient = await this.dynamicWallet.getWalletClient();
+      const walletClient = await createWalletClientForWalletAccount({
+        walletAccount: this.dynamicWallet,
+      });
       const signature = await walletClient.request({
         method: "personal_sign",
         params: [msgHex, address],

@@ -1,11 +1,12 @@
 "use client";
 
-import { useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
-import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
+import { useUser } from "@dynamic-labs-sdk/react-hooks";
+import DynamicButton from "@/components/dynamic-button";
 import GaslessTransactionDemo from "@/components/gasless-transaction-demo";
 
 export default function Home() {
-  const isLoggedIn = useIsLoggedIn();
+  const user = useUser();
+  const isLoggedIn = user !== null;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8">
@@ -15,7 +16,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center">
-          <DynamicWidget />
+          <DynamicButton />
         </div>
 
         {isLoggedIn && (
@@ -33,4 +34,3 @@ export default function Home() {
     </main>
   );
 }
-

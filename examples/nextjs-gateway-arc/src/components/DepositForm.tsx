@@ -3,16 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  useAccount,
-  useChainId,
-  usePublicClient,
-  useSwitchChain,
-  useWriteContract,
-} from "wagmi";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
+import { createPublicClient, http, parseUnits } from "viem";
 import { CONTRACTS } from "@/lib/chains";
-import { arcTestnet, baseSepolia, sepolia } from "wagmi/chains";
-import { parseUnits } from "viem";
+import { arcTestnet, baseSepolia, sepolia } from "viem/chains";
 
 const erc20Abi = [
   {
@@ -35,7 +31,7 @@ const erc20Abi = [
     ],
     outputs: [{ name: "", type: "bool", internalType: "bool" }],
   },
-];
+] as const;
 
 // Minimal ABI for GatewayWallet.deposit(address token, uint256 amount)
 const gatewayWalletAbi = [
@@ -49,23 +45,26 @@ const gatewayWalletAbi = [
     ],
     outputs: [],
   },
-];
+] as const;
 
 type ChainKey = "sepolia" | "baseSepolia" | "arcTestnet";
-type ChainId = typeof sepolia.id | typeof baseSepolia.id | typeof arcTestnet.id;
 
-const CHAINS: { key: ChainKey; label: string; id: ChainId }[] = [
-  { key: "sepolia", label: "Sepolia (domain 0)", id: sepolia.id },
-  { key: "baseSepolia", label: "Base Sepolia (domain 6)", id: baseSepolia.id },
-  { key: "arcTestnet", label: "Arc Testnet (domain 26)", id: arcTestnet.id },
+const CHAIN_MAP = {
+  sepolia: { chain: sepolia, label: "Sepolia (domain 0)" },
+  baseSepolia: { chain: baseSepolia, label: "Base Sepolia (domain 6)" },
+  arcTestnet: { chain: arcTestnet, label: "Arc Testnet (domain 26)" },
+} as const;
+
+const CHAINS: { key: ChainKey; label: string }[] = [
+  { key: "sepolia", label: "Sepolia (domain 0)" },
+  { key: "baseSepolia", label: "Base Sepolia (domain 6)" },
+  { key: "arcTestnet", label: "Arc Testnet (domain 26)" },
 ];
 
 export default function DepositForm() {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const { switchChainAsync } = useSwitchChain();
-  const { writeContractAsync } = useWriteContract();
-  const publicClient = usePublicClient();
+  const accounts = useWalletAccounts();
+  const evmWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const address = evmWallet?.address as `0x${string}` | undefined;
   const [amount, setAmount] = useState("1");
   const [source, setSource] = useState<ChainKey>("sepolia");
   const [loading, setLoading] = useState(false);
@@ -73,7 +72,7 @@ export default function DepositForm() {
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const onDeposit = async () => {
-    if (!address) return;
+    if (!address || !evmWallet) return;
     setLoading(true);
     setError(null);
     setTxHash(null);
@@ -83,36 +82,41 @@ export default function DepositForm() {
         throw new Error("Enter a positive amount");
       }
 
-      const selected = CHAINS.find((c) => c.key === source)!;
-      if (chainId !== selected.id) {
-        await switchChainAsync({ chainId: selected.id });
-      }
+      const selectedChain = CHAIN_MAP[source].chain;
+
+      const walletClient = createWalletClientForWalletAccount({
+        walletAccount: evmWallet,
+        chain: selectedChain,
+      });
+
+      const publicClient = createPublicClient({
+        chain: selectedChain,
+        transport: http(),
+      });
 
       const tokenAddress = CONTRACTS.usdc[source] as `0x${string}`;
       const gatewayWallet = CONTRACTS.gatewayWallet as `0x${string}`;
       const value = parseUnits(amount || "0", 6);
 
       // 1) Approve GatewayWallet to spend USDC
-      const approveHash = await writeContractAsync({
+      const approveHash = await walletClient.writeContract({
         address: tokenAddress,
         abi: erc20Abi,
         functionName: "approve",
         args: [gatewayWallet, value],
+        account: address,
       });
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
-      }
+      await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
       // 2) Call deposit on GatewayWallet
-      const depositHash = await writeContractAsync({
+      const depositHash = await walletClient.writeContract({
         address: gatewayWallet,
         abi: gatewayWalletAbi,
         functionName: "deposit",
         args: [tokenAddress, value],
+        account: address,
       });
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash: depositHash });
-      }
+      await publicClient.waitForTransactionReceipt({ hash: depositHash });
       setTxHash(depositHash);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to deposit";

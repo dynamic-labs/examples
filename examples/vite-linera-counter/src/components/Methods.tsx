@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import { lineraAdapter, type LineraProvider } from "../lib/linera-adapter";
 
 import "./Methods.css";
@@ -15,8 +16,11 @@ interface Block {
 }
 
 export default function DynamicMethods({ isDarkMode }: DynamicMethodsProps) {
-  const { sdkHasLoaded, primaryWallet } = useDynamicContext();
-  const isLoggedIn = useIsLoggedIn();
+  const user = useUser();
+  const { walletAccounts } = useWalletAccounts();
+  const isLoggedIn = user !== null;
+
+  const primaryWallet = walletAccounts?.find(isEvmWalletAccount);
 
   const [isLoading, setIsLoading] = useState(true);
   const [result, setResult] = useState("");
@@ -32,9 +36,9 @@ export default function DynamicMethods({ isDarkMode }: DynamicMethodsProps) {
   const [blocks, setBlocks] = useState<Block[]>([]);
 
   useEffect(() => {
-    if (sdkHasLoaded && isLoggedIn && primaryWallet) setIsLoading(false);
+    if (isLoggedIn && primaryWallet) setIsLoading(false);
     else setIsLoading(true);
-  }, [sdkHasLoaded, isLoggedIn, primaryWallet]);
+  }, [isLoggedIn, primaryWallet]);
 
   useEffect(() => {
     setChainConnected(lineraAdapter.isChainConnected());

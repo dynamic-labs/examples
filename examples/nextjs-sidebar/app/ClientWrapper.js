@@ -1,24 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useDynamicContext, DynamicWidget, DynamicUserProfile, getAuthToken } from "@dynamic-labs/sdk-react-core";
+import { useUser } from "@dynamic-labs-sdk/react-hooks";
+import { getAuthToken } from "@dynamic-labs-sdk/client";
 import Image from 'next/image';
+import DynamicButton from '../components/dynamic-button';
+import { dynamicClient } from '../lib/dynamic';
 
 export default function ClientWrapper({ children }) {
-  const { user, setShowAuthFlow, setShowDynamicUserProfile } = useDynamicContext();
+  const user = useUser();
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState(null);
-
-  const handleLogin = () => {
-    setShowAuthFlow(true);
-  };
 
   useEffect(() => {
     const verifyToken = async () => {
       if (user) {
         setIsVerifying(true);
         try {
-          const token = await getAuthToken();
+          const token = await getAuthToken(dynamicClient);
           const response = await fetch('/api/verify-jwt', {
             method: 'POST',
             headers: {
@@ -41,29 +40,12 @@ export default function ClientWrapper({ children }) {
     };
 
     verifyToken();
-  }, [user, getAuthToken]);
-
-  const SpinnerButton = ({ onClick, children }) => (
-    <button
-      onClick={onClick}
-      disabled={isVerifying}
-      className={`inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isVerifying ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      {isVerifying ? (
-        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-      ) : null}
-      {children}
-    </button>
-  );
+  }, [user]);
 
   return (
     <>
       <div className="min-h-screen bg-gradient-to-b from-blue-100 to-white">
         <header className="bg-white shadow">
-          <DynamicUserProfile/>
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%5BWordmark-primary%5D%20(2)-jSotf5LNO2iZLyHlkThBAGhwR2fVCb.svg"
@@ -72,15 +54,7 @@ export default function ClientWrapper({ children }) {
               height={24}
               className="h-6 w-auto"
             />
-            {user ? (
-              <SpinnerButton onClick={() => setShowDynamicUserProfile(true)}>
-                My Dynamic Profile
-              </SpinnerButton>
-            ) : (
-              <SpinnerButton onClick={handleLogin}>
-                Open Dynamic Sidebar Widget
-              </SpinnerButton>
-            )}
+            <DynamicButton />
           </div>
         </header>
 
@@ -97,15 +71,7 @@ export default function ClientWrapper({ children }) {
                 Experience the future of Web3 interactions with Dynamic&apos;s sleek Sidebar Widget. Inspired by industry leaders like Uniswap, Phantom, and Zerion, we&apos;ve created a compact, comprehensive wallet control panel that seamlessly integrates with your website.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row gap-4">
-                {user ? (
-                  <SpinnerButton onClick={() => setShowDynamicUserProfile(true)}>
-                    My Dynamic Profile
-                  </SpinnerButton>
-                ) : (
-                  <SpinnerButton onClick={handleLogin}>
-                    Open Dynamic Sidebar Widget
-                  </SpinnerButton>
-                )}
+                <DynamicButton />
                 <a
                   href="https://www.dynamic.xyz/blog/sidebar-widgets"
                   target="_blank"

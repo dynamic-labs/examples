@@ -1,8 +1,6 @@
 import './globals.css'
-import { DynamicContextProvider } from "@dynamic-labs/sdk-react-core";
-import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import Providers from './providers';
 import ClientWrapper from './ClientWrapper';
-import { customCSS } from './customCSS';
 
 export const metadata = {
   title: "Dynamic Sidebar Widget Demo",
@@ -30,20 +28,12 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-
-
   return (
     <html lang="en">
       <body>
-        <DynamicContextProvider
-          settings={{
-            environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID,
-            walletConnectors: [EthereumWalletConnectors],
-            cssOverrides: customCSS,
-          }}
-        >
+        <Providers>
           <ClientWrapper>{children}</ClientWrapper>
-        </DynamicContextProvider>
+        </Providers>
       </body>
     </html>
   );

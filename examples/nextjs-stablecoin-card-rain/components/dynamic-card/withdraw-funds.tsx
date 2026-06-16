@@ -12,17 +12,26 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { getAuthToken, useDynamicContext } from "@/lib/dynamic";
+import { getAuthToken } from "@dynamic-labs-sdk/client";
+import { useUser, useWalletAccounts, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { dynamicClient } from "@/lib/dynamic";
 import { UserDepositContractResponse, UserWithdrawalRequest } from "@/lib/rain";
 import { useWithdrawAsset } from "@/hooks/use-withdraw-asset";
 import { getContractAddress } from "@/constants";
 import { formatBalance } from "@/utils/format-balance";
 
+const BASE_SEPOLIA_CHAIN_ID = 84532;
 const PRESET_AMOUNTS = [5, 10, 25, 50];
 
 export default function WithdrawFunds() {
-  const authToken = getAuthToken();
-  const { sdkHasLoaded, primaryWallet, network, user } = useDynamicContext();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const initStatus = useInitStatus();
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
+  const network: number | null = primaryWallet ? BASE_SEPOLIA_CHAIN_ID : null;
+  const sdkHasLoaded = initStatus === "finished";
+  const authToken = getAuthToken(dynamicClient);
   const { withdrawAsset, isPending: isWithdrawPending } = useWithdrawAsset();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +54,7 @@ export default function WithdrawFunds() {
     queryKey: ["contracts", primaryWallet?.address, network],
     enabled: !!sdkHasLoaded && !!primaryWallet && !!network,
     queryFn: async () => {
-      const authToken = getAuthToken();
+      const authToken = getAuthToken(dynamicClient);
       const response = await fetch(`/api/contracts?chain=${network}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });

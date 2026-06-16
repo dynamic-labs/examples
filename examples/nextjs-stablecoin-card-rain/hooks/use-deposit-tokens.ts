@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { parseUnits, erc20Abi } from "viem";
+import { parseUnits, erc20Abi, createPublicClient, http } from "viem";
 
-import {
-  useDynamicContext,
-  isEthereumWallet,
-  isZeroDevConnector,
-} from "@/lib/dynamic";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { createWalletClientForWalletAccount } from "@dynamic-labs-sdk/evm/viem";
 import { useToast } from "@/lib/toast-context";
 
 export interface DepositTokenOptions {
@@ -20,7 +18,7 @@ export interface UseDepositTokenOptions {
 }
 
 export function useDepositToken(options?: UseDepositTokenOptions) {
-  const { primaryWallet } = useDynamicContext();
+  const { walletAccounts } = useWalletAccounts();
   const { success } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -29,14 +27,15 @@ export function useDepositToken(options?: UseDepositTokenOptions) {
   const depositToken = async (depositOptions: DepositTokenOptions) => {
     const { amount, token, to, decimals = 18 } = depositOptions;
 
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+    const evmWallet = walletAccounts?.find(isEvmWalletAccount);
+    if (!evmWallet) {
       throw new Error("Wallet not connected or not EVM compatible");
     }
 
     setIsLoading(true);
 
     try {
-      const walletClient = await primaryWallet.getWalletClient();
+      const walletClient = await createWalletClientForWalletAccount({ walletAccount: evmWallet });
 
       // Convert amount to token units based on decimals
       const amountInUnits = parseUnits(amount, decimals);
@@ -52,13 +51,8 @@ export function useDepositToken(options?: UseDepositTokenOptions) {
       setTxHash(hash);
 
       // Wait for transaction receipt
-      const connector = primaryWallet.connector;
-      if (!connector || !isZeroDevConnector(connector)) {
-        throw new Error("Connector is not a ZeroDev connector");
-      }
-      const kernelClient = connector.getAccountAbstractionProvider();
-      if (!kernelClient) throw new Error("Kernel client not found");
-      await kernelClient.waitForUserOperationReceipt({ hash });
+      const publicClient = createPublicClient({ chain: evmWallet.network, transport: http() });
+      await publicClient.waitForTransactionReceipt({ hash });
 
       success(
         "Deposit Processing",

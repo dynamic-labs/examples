@@ -1,7 +1,8 @@
 "use client";
 
-import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
-import { isSolanaWallet } from "@dynamic-labs/solana";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isSolanaWalletAccount, signTransaction } from "@dynamic-labs-sdk/solana";
+import { dynamicClient } from "@/lib/dynamic";
 import {
   updateOrAppendSetComputeUnitLimitInstruction,
   updateOrAppendSetComputeUnitPriceInstruction,
@@ -45,8 +46,10 @@ const CONFIG = {
 };
 
 export default function GaslessTransactionDemo() {
-  const isLoggedIn = useIsLoggedIn();
-  const { primaryWallet } = useDynamicContext();
+  const user = useUser();
+  const isLoggedIn = user !== null;
+  const accounts = useWalletAccounts();
+  const solanaWallet = accounts.find(isSolanaWalletAccount) ?? null;
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [transactionSignature, setTransactionSignature] = useState<
@@ -57,7 +60,7 @@ export default function GaslessTransactionDemo() {
 
   useEffect(() => {
     const fetchTokenBalance = async () => {
-      if (!primaryWallet || !isSolanaWallet(primaryWallet)) {
+      if (!solanaWallet) {
         setTokenBalance(null);
         return;
       }
@@ -66,7 +69,7 @@ export default function GaslessTransactionDemo() {
       try {
         const rpc = createSolanaRpc(CONFIG.solanaRpcUrl);
         const mintAddress = address(CONFIG.tokenMintAddress);
-        const ownerAddress = address(primaryWallet.address);
+        const ownerAddress = address(solanaWallet.address);
 
         const [ata] = await findAssociatedTokenPda({
           mint: mintAddress,
@@ -111,10 +114,10 @@ export default function GaslessTransactionDemo() {
     };
 
     fetchTokenBalance();
-  }, [primaryWallet]);
+  }, [solanaWallet]);
 
   const handleGaslessTransaction = async () => {
-    if (!primaryWallet || !isSolanaWallet(primaryWallet)) {
+    if (!solanaWallet) {
       setStatus("Error: Solana wallet not available or not properly connected");
       return;
     }
@@ -190,7 +193,7 @@ export default function GaslessTransactionDemo() {
       const initialPaymentResponse = await koraClient.getPaymentInstruction({
         transaction: initialEstimateBase64,
         fee_token: paymentToken,
-        source_wallet: primaryWallet.address,
+        source_wallet: solanaWallet.address,
       });
       let paymentInstruction: Instruction =
         initialPaymentResponse.payment_instruction;
@@ -236,7 +239,7 @@ export default function GaslessTransactionDemo() {
       const finalPaymentResponse = await koraClient.getPaymentInstruction({
         transaction: finalEstimateBase64,
         fee_token: paymentToken,
-        source_wallet: primaryWallet.address,
+        source_wallet: solanaWallet.address,
       });
       paymentInstruction = finalPaymentResponse.payment_instruction;
 
@@ -288,7 +291,7 @@ export default function GaslessTransactionDemo() {
       const message = originalTransaction.message;
       const numRequiredSignatures = message.header.numRequiredSignatures;
       const accountKeys = message.staticAccountKeys;
-      const userAddress = primaryWallet.address;
+      const userAddress = solanaWallet.address;
 
       let userSignatureIndex = -1;
       for (
@@ -308,9 +311,9 @@ export default function GaslessTransactionDemo() {
         );
       }
 
-      const signer = await primaryWallet.getSigner();
-      const signedTransaction = await signer.signTransaction(
-        originalTransaction as any
+      const signedTransaction = await signTransaction(
+        { transaction: originalTransaction as any, walletAccount: solanaWallet },
+        dynamicClient
       );
 
       const userSignature = signedTransaction.signatures[userSignatureIndex];
@@ -387,9 +390,7 @@ export default function GaslessTransactionDemo() {
       <div className="space-y-2">
         <div className="text-sm">
           <strong>Wallet:</strong>{" "}
-          {primaryWallet && isSolanaWallet(primaryWallet)
-            ? primaryWallet.address
-            : "Not connected"}
+          {solanaWallet ? solanaWallet.address : "Not connected"}
         </div>
         <div className="text-sm">
           <strong>Kora RPC:</strong> {CONFIG.koraRpcUrl}
@@ -397,7 +398,7 @@ export default function GaslessTransactionDemo() {
         <div className="text-sm">
           <strong>Solana RPC:</strong> {CONFIG.solanaRpcUrl}
         </div>
-        {primaryWallet && isSolanaWallet(primaryWallet) && (
+        {solanaWallet && (
           <div className="text-sm">
             <strong>
               Token Balance ({CONFIG.tokenMintAddress.slice(0, 8)}...):
@@ -415,12 +416,7 @@ export default function GaslessTransactionDemo() {
 
       <button
         onClick={handleGaslessTransaction}
-        disabled={
-          !isLoggedIn ||
-          !primaryWallet ||
-          !isSolanaWallet(primaryWallet) ||
-          loading
-        }
+        disabled={!isLoggedIn || !solanaWallet || loading}
         className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? "Processing..." : "Send Gasless Transaction"}

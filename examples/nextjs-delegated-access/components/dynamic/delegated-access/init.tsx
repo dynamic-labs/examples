@@ -3,20 +3,22 @@
 import { useState } from "react";
 import { Lock, Zap, Loader2, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDynamicContext, useWalletDelegation } from "@/lib/dynamic";
+import { useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { delegateWaasKeyShares } from "@dynamic-labs-sdk/client/waas";
+import { dynamicClient } from "@/lib/dynamic";
 
 /**
- * DelegatedAccessInit - Delegation with Dynamic's Built-in Modal UI
+ * DelegatedAccessInit - Delegate the primary EVM wallet key share
  *
- * This component demonstrates using initDelegationProcess() which:
- * - Opens Dynamic's pre-built delegation modal
- * - Handles the entire user flow automatically
- * - Shows consent screens and progress indicators
+ * This component demonstrates using delegateWaasKeyShares() which:
+ * - Silently delegates the MPC key share to the server
+ * - Handles key generation and storage automatically
  * - Best for: Quick integration with minimal custom UI work
  */
 export default function DelegatedAccessInit() {
-  const { primaryWallet } = useDynamicContext();
-  const { initDelegationProcess } = useWalletDelegation();
+  const accounts = useWalletAccounts();
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function DelegatedAccessInit() {
     try {
       setIsLoading(true);
       setError(null);
-      await initDelegationProcess({ wallets: [primaryWallet] });
+      await delegateWaasKeyShares({ walletAccount: primaryWallet }, dynamicClient);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Delegation failed";
@@ -53,11 +55,11 @@ export default function DelegatedAccessInit() {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm">
-                  initDelegationProcess()
+                  delegateWaasKeyShares()
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Opens Dynamic&apos;s modal to guide users through delegation.
-                  Handles consent, key generation, and success/error states automatically.
+                  Delegates the MPC key share to the server programmatically.
+                  Handles key generation and encrypted storage automatically.
                 </p>
               </div>
             </div>
@@ -65,12 +67,12 @@ export default function DelegatedAccessInit() {
             {/* What happens */}
             <div className="space-y-2 pt-2 border-t">
               <p className="text-xs font-medium text-muted-foreground">
-                When triggered, the modal will:
+                When triggered, the delegation will:
               </p>
               <div className="space-y-1.5">
-                <FlowStep number={1} text="Display delegation consent to user" />
-                <FlowStep number={2} text="Generate and encrypt MPC key share" />
-                <FlowStep number={3} text="Store encrypted share on server" />
+                <FlowStep number={1} text="Generate and encrypt MPC key share" />
+                <FlowStep number={2} text="Store encrypted share on server" />
+                <FlowStep number={3} text="Enable server-side signing" />
               </div>
             </div>
 
@@ -83,12 +85,12 @@ export default function DelegatedAccessInit() {
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Opening Modal...
+                  Delegating...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <Zap className="w-4 h-4" />
-                  Open Delegation Modal
+                  Delegate Key Share
                 </span>
               )}
             </Button>
@@ -137,20 +139,18 @@ function CodeExample() {
         </h4>
       </div>
       <pre className="text-xs bg-background rounded-lg p-3 overflow-x-auto border">
-        <code className="text-muted-foreground">{`const { initDelegationProcess } = useWalletDelegation();
+        <code className="text-muted-foreground">{`import { delegateWaasKeyShares } from "@dynamic-labs-sdk/client/waas";
+import { dynamicClient } from "@/lib/dynamic";
 
-// Opens Dynamic's modal UI for delegation
-const handleDelegate = async () => {
+// Delegates the key share to the server
+const handleDelegate = async (walletAccount) => {
   try {
-    await initDelegationProcess();
+    await delegateWaasKeyShares({ walletAccount }, dynamicClient);
     console.log('Delegation completed!');
   } catch (error) {
-    console.error('User cancelled or error:', error);
+    console.error('Delegation failed:', error);
   }
-};
-
-// Or delegate specific wallets only
-await initDelegationProcess({ wallets: [primaryWallet] });`}</code>
+};`}</code>
       </pre>
     </div>
   );

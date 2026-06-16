@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { ShieldAlert, ShieldCheck, Loader2, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import { authFetch } from "@/lib/dynamic/auth-fetch";
 import ResponseDisplay from "./components/response-display";
 
@@ -25,7 +26,9 @@ interface SignTestResult {
  * mode is active (403) or inactive (sign succeeds).
  */
 export default function RecoveryOnlyFlagTest() {
-  const { user, primaryWallet } = useDynamicContext();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const primaryWallet = accounts.find(isEvmWalletAccount) ?? null;
   const [isLoading, setIsLoading] = useState(false);
   const [testResult, setTestResult] = useState<SignTestResult | null>(null);
 

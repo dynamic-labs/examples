@@ -4,7 +4,7 @@ import initLinera, {
   Wallet,
   Application,
 } from "@linera/client";
-import type { Wallet as DynamicWallet } from "@dynamic-labs/sdk-react-core";
+import type { EvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import { DynamicSigner } from "./dynamic-signer";
 import { LINERA_RPC_URL, COUNTER_APP_ID } from "../constants";
 
@@ -32,7 +32,7 @@ export class LineraAdapter {
   }
 
   async connect(
-    dynamicWallet: DynamicWallet,
+    dynamicWallet: EvmWalletAccount,
     rpcUrl?: string
   ): Promise<LineraProvider> {
     if (this.provider) return this.provider;

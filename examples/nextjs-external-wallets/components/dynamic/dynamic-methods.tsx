@@ -8,30 +8,26 @@
  *
  * Available methods:
  * - Fetch User: Shows the current user object
- * - Fetch User Wallets: Shows all wallets linked to the user
- * - Fetch PublicClient: Gets viem PublicClient (Ethereum only)
- * - Fetch WalletClient: Gets viem WalletClient (Ethereum only)
- * - Sign Message: Signs a test message with the wallet (Ethereum only)
+ * - Fetch Wallet Accounts: Shows all embedded wallet accounts
+ * - Sign Message: Signs a test message with the EVM embedded wallet
  */
 
-import { isEthereumWallet } from "@dynamic-labs/ethereum";
 import { Check, Copy } from "lucide-react";
 import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  useDynamicContext,
-  useIsLoggedIn,
-  useUserWallets,
-} from "@/lib/dynamic";
+import { useUser, useWalletAccounts, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
 import DynamicWidget from "./dynamic-widget";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 
 export default function DynamicMethods() {
   // Dynamic SDK hooks
-  const isLoggedIn = useIsLoggedIn();
-  const { sdkHasLoaded, primaryWallet, user } = useDynamicContext();
-  const userWallets = useUserWallets();
+  const user = useUser();
+  const accounts = useWalletAccounts();
+  const initStatus = useInitStatus();
+  const isLoggedIn = user !== null;
+  const evmAccount = accounts.find(isEvmWalletAccount);
 
   // UI state
   const [isLoading, setIsLoading] = useState(true);
@@ -41,12 +37,20 @@ export default function DynamicMethods() {
 
   // Redirect to home if not logged in (after SDK loads)
   useEffect(() => {
-    if (sdkHasLoaded && !isLoggedIn) redirect("/");
-  }, [sdkHasLoaded, isLoggedIn]);
+    if (initStatus === "finished" && !isLoggedIn) redirect("/");
+  }, [initStatus, isLoggedIn]);
+
+  // Update loading state based on SDK readiness
+  useEffect(() => {
+    if (initStatus === "finished" && isLoggedIn) {
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+  }, [initStatus, isLoggedIn]);
 
   /**
    * Safely stringifies objects, handling circular references.
-   * Dynamic SDK objects often have circular refs that break JSON.stringify.
    */
   const safeStringify = (obj: unknown): string => {
     const seen = new WeakSet();
@@ -62,15 +66,6 @@ export default function DynamicMethods() {
       2
     );
   };
-
-  // Update loading state based on SDK readiness
-  useEffect(() => {
-    if (sdkHasLoaded && isLoggedIn && primaryWallet) {
-      setIsLoading(false);
-    } else {
-      setIsLoading(true);
-    }
-  }, [sdkHasLoaded, isLoggedIn, primaryWallet]);
 
   /** Clears the result panel */
   function clearResult() {
@@ -90,10 +85,10 @@ export default function DynamicMethods() {
     }
   }
 
-  /** Displays all wallets linked to the user */
-  function showUserWallets() {
+  /** Displays all embedded wallet accounts linked to the user */
+  function showWalletAccounts() {
     try {
-      setResult(safeStringify(userWallets));
+      setResult(safeStringify(accounts));
       setError(null);
     } catch (err) {
       setError(
@@ -102,49 +97,15 @@ export default function DynamicMethods() {
     }
   }
 
-  /** Fetches the viem PublicClient from the Ethereum wallet */
-  async function fetchEthereumPublicClient() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
+  /** Signs a test message using the EVM embedded wallet */
+  async function signEvmMessage() {
+    if (!evmAccount) return;
     try {
       setIsLoading(true);
-      const client = await primaryWallet.getPublicClient();
-      setResult(safeStringify(client));
-    } catch (err) {
-      setResult(
-        safeStringify({
-          error: err instanceof Error ? err.message : "Unknown error occurred",
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  /** Fetches the viem WalletClient from the Ethereum wallet */
-  async function fetchEthereumWalletClient() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
-    try {
-      setIsLoading(true);
-      const client = await primaryWallet.getWalletClient();
-      setResult(safeStringify(client));
-    } catch (err) {
-      setResult(
-        safeStringify({
-          error: err instanceof Error ? err.message : "Unknown error occurred",
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  /** Signs a test message using the Ethereum wallet */
-  async function signEthereumMessage() {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return;
-    try {
-      setIsLoading(true);
-      const signature = await primaryWallet.signMessage("Hello World");
+      const { signMessage } = await import("@dynamic-labs-sdk/client");
+      const { signature } = await signMessage({ walletAccount: evmAccount, message: "Hello World" });
       setResult(safeStringify(signature));
+      setError(null);
     } catch (err) {
       setResult(
         safeStringify({
@@ -211,7 +172,7 @@ export default function DynamicMethods() {
         {/* Methods Panel */}
         <div className="order-1 md:order-2">
           <div className="sticky flex flex-col gap-3">
-            {/* Dynamic Widget or Loading State */}
+            {/* Auth widget or loading state */}
             {!isLoading ? (
               <DynamicWidget />
             ) : (
@@ -229,35 +190,21 @@ export default function DynamicMethods() {
             <Button
               variant="outline"
               className="cursor-pointer"
-              onClick={showUserWallets}
+              onClick={showWalletAccounts}
             >
-              Fetch User Wallets
+              Fetch Wallet Accounts
             </Button>
 
-            {/* Ethereum-specific Methods */}
-            {primaryWallet && isEthereumWallet(primaryWallet) && (
+            {/* EVM Wallet Methods */}
+            {evmAccount && (
               <div className="pt-2">
                 <div className="text-xs uppercase tracking-wide opacity-60 mb-2">
-                  Ethereum Wallet Methods
+                  EVM Wallet Methods
                 </div>
                 <div className="flex flex-col gap-3">
                   <Button
                     variant="outline"
-                    onClick={fetchEthereumPublicClient}
-                    className="cursor-pointer"
-                  >
-                    Fetch PublicClient
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={fetchEthereumWalletClient}
-                    className="cursor-pointer"
-                  >
-                    Fetch WalletClient
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={signEthereumMessage}
+                    onClick={signEvmMessage}
                     className="cursor-pointer"
                   >
                     Sign Message

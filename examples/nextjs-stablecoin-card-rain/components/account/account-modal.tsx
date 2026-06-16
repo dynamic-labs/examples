@@ -2,9 +2,11 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Copy, Check, LogOut, Coins, Wallet2, CreditCard } from "lucide-react";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import { logout } from "@dynamic-labs-sdk/client";
+import { isEvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { dynamicClient } from "@/lib/dynamic";
 import { useQuery } from "@tanstack/react-query";
-import { getAuthToken } from "@dynamic-labs/sdk-react-core";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,19 +23,21 @@ interface AccountModalProps {
 }
 
 export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
-  const { primaryWallet, network, handleLogOut, user } = useDynamicContext();
-  const enabledNetworks = primaryWallet?.connector.getEnabledNetworks();
-  const authToken = getAuthToken();
+  const user = useUser();
+  const { walletAccounts } = useWalletAccounts();
+  const evmWallet = walletAccounts?.find(isEvmWalletAccount);
+  const authToken = dynamicClient.auth.token;
   const { getBalanceByAddress, isLoading: isLoadingBalances } =
     useTokenBalanceContext();
   const [copied, setCopied] = useState<string | null>(null);
   const [addressContainerWidth, setAddressContainerWidth] = useState<number>(0);
   const addressContainerRef = useRef<HTMLDivElement>(null);
 
+  const chainId = evmWallet?.network?.id;
   const rusdcAddress = useMemo(() => {
-    if (!network) return undefined;
-    return getContractAddress(network, "RUSDC");
-  }, [network]);
+    if (!chainId) return undefined;
+    return getContractAddress(chainId, "RUSDC");
+  }, [chainId]);
   const walletBalance = getBalanceByAddress(rusdcAddress || "");
 
   // Fetch card balance
@@ -72,30 +76,27 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
   };
 
   const handleLogout = () => {
-    handleLogOut();
+    logout(dynamicClient);
     onClose();
   };
 
-  // Resolve current network info directly from Dynamic's enabled networks
+  // Resolve current network info from evmWallet
   const currentNetwork = useMemo(() => {
-    const found = enabledNetworks?.find(
-      (n) => String(n.chainId || n.networkId) === String(network)
-    );
-
-    if (!found) {
+    const network = evmWallet?.network;
+    if (!network) {
       return {
-        id: String(network || ""),
-        name: `Network ${network ?? ""}`,
+        id: "",
+        name: "Unknown Network",
         iconUrl: undefined,
       };
     }
 
     return {
-      id: String(found.chainId || found.networkId || ""),
-      name: found.vanityName || found.name,
-      iconUrl: found.iconUrls?.[0] || undefined,
+      id: String(network.id),
+      name: network.name ?? `Network ${network.id}`,
+      iconUrl: undefined,
     };
-  }, [primaryWallet, network]);
+  }, [evmWallet]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="">
@@ -125,15 +126,7 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                 <div>
                   <p className="font-medium text-sm">{user?.email}</p>
                   <div className="flex items-center gap-2">
-                    {currentNetwork.iconUrl ? (
-                      <img
-                        src={currentNetwork.iconUrl}
-                        alt=""
-                        className="w-4 h-4 rounded-full"
-                      />
-                    ) : (
-                      <span className="inline-block w-3 h-3 rounded-full bg-white/30" />
-                    )}
+                    <span className="inline-block w-3 h-3 rounded-full bg-white/30" />
                     <p className="text-xs opacity-70">{currentNetwork.name}</p>
                   </div>
                 </div>
@@ -143,8 +136,8 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                 size="sm"
                 className="h-8 w-8 p-0 text-white hover:bg-white/20"
                 onClick={() =>
-                  primaryWallet?.address &&
-                  copyToClipboard(primaryWallet.address, "address")
+                  evmWallet?.address &&
+                  copyToClipboard(evmWallet.address, "address")
                 }
               >
                 {copied === "address" ? (
@@ -158,8 +151,8 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
             <div className="pt-2">
               <p className="text-xs opacity-70 mb-1">Address</p>
               <div ref={addressContainerRef} className="font-mono text-sm">
-                {primaryWallet?.address
-                  ? formatAddress(primaryWallet.address, addressContainerWidth)
+                {evmWallet?.address
+                  ? formatAddress(evmWallet.address, addressContainerWidth)
                   : "Not connected"}
               </div>
             </div>
