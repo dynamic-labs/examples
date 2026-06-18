@@ -44,11 +44,5 @@
   },
   "browser": {
     "crypto": false
-  },
-  "pnpm": {
-    "overrides": {
-      "@solana/web3.js": "1.98.4",
-      "@kamino-finance/farms-sdk": "3.2.24"
-    }
   }
 }
