@@ -1,14 +1,7 @@
-import { createDynamicClient } from "@dynamic-labs-sdk/client";
-import { addEvmExtension } from "@dynamic-labs-sdk/evm";
-
-export const dynamicClient = createDynamicClient({
-  environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID!,
-  metadata: { name: "Pods Yield" },
-});
-
-if (typeof window !== "undefined") {
-  addEvmExtension();
-}
-
-// No-op on clients that auto-initialize; called by useAuth on mount.
-export async function initDynamic(): Promise<void> {}
+export * from "@dynamic-labs/ethereum";
+export {
+  isZeroDevConnector,
+  ZeroDevSmartWalletConnectors,
+  ZeroDevSmartWalletConnectorsWithConfig,
+} from "@dynamic-labs/ethereum-aa";
+export * from "@dynamic-labs/sdk-react-core";

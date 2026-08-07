@@ -1,5 +1,5 @@
-import { YieldInterface } from "@/components/YieldInterface";
+import { ClientOnlyBatchedPodsDeposit } from "@/components/ClientOnlyBatchedPodsDeposit";
 
-export default function Main() {
-  return <YieldInterface />;
+export default function Page() {
+  return <ClientOnlyBatchedPodsDeposit />;
 }

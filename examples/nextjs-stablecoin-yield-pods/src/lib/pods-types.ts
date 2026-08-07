@@ -1,183 +1,114 @@
-// Type definitions for Deframe Pods API
+export type Hex = `0x${string}`;
 
-export interface Strategy {
-  asset: string;
-  protocol: string;
-  assetName: string;
-  network: string;
-  networkId: string;
-  implementationSelector: string;
-  startDate: string;
-  underlyingAsset: string;
-  assetDecimals: number;
-  underlyingDecimals: number;
-  isActive?: boolean;
-  id: string;
-  fee: string;
-  metadata?: {
-    PT?: {
-      risk: string;
-      volatility: string;
-      description: string;
-    };
-    EN?: {
-      risk: string;
-      volatility: string;
-      description: string;
-    };
-    category?: string;
-    [key: string]: unknown;
-  };
-  logourl?: string;
-  // Optional APY fields that may be returned by the API
-  spotPosition?: {
-    apy: number;
-    inceptionApy: number;
-    avgApy: number;
-  };
+export type OperationStage =
+  | "setup"
+  | "input"
+  | "request"
+  | "batch"
+  | "submitted"
+  | "not_included";
+
+export type DepositStage =
+  | "setup"
+  | "input"
+  | "request"
+  | "batch"
+  | "submitted"
+  | "confirmed"
+  | "not_included";
+
+export interface PodsBytecodeCall {
+  to: Hex;
+  data: Hex;
+  value: string;
 }
 
-export interface TokenInfo {
-  address: string;
-  decimals: string;
-  symbol: string;
-  name: string;
-}
-
-export interface Balance {
-  raw: string;
-  humanized: number;
-  decimals: string;
-}
-
-export interface Reward {
-  token: {
-    address: string;
-    symbol: string;
-    decimals: string;
-  };
+export interface DepositBytecodeRequest {
+  strategyId: string;
+  chainId: number;
   amount: string;
-  amountUSD: string;
+  asset: Hex;
+  wallet: Hex;
 }
 
-export interface Position {
-  name: string;
-  protocol: string;
-  asset: TokenInfo;
-  balance: Balance;
-  balanceUSD: string;
-  earnedUSD: string;
-  apy: string;
-  strategyId?: string;
+export interface DepositBytecodeResponse {
+  id?: string;
+  chainId?: number | string;
+  bytecode: PodsBytecodeCall[];
+  requestUrl?: string;
+  raw?: unknown;
 }
 
-export interface WalletPositions {
-  address: string;
-  positions: Position[];
-}
-
-// Internal response types for PodsClient
-export interface StrategyDetailResponse {
-  spotPosition: {
-    apy: number;
-    inceptionApy: number;
-    avgApy: number;
-  };
-  strategy: Strategy;
-}
-
-export interface BytecodeResponse {
-  bytecode: Array<{
-    to: string;
-    value: string;
-    data: string;
-  }>;
-}
-
-export interface StrategiesResponse {
-  data: Strategy[];
-  pagination: {
-    totalRecords: number;
-    limit: number;
-    totalPages: number;
-    page: number;
-    hasPrevPage: boolean;
-    hasNextPage: boolean;
-    prevPage: number | null;
-    nextPage: number | null;
-  };
-}
-
-// Transaction operation types
-export interface TransactionCall {
-  to: `0x${string}`;
+export interface BatchCall {
+  to: Hex;
   value: bigint;
-  data: `0x${string}`;
+  data: Hex;
 }
 
-// Component prop types
-export interface PositionCardProps {
-  position: Position;
-  isOperating: boolean;
-  onWithdraw: (position: Position, amount: string) => void;
+export interface BatchSubmissionResponse {
+  submittedHash: Hex;
+  transactionHash?: Hex;
+  inclusion?: UserOperationInclusionResponse;
 }
 
-export interface StrategyCardProps {
-  strategy: Strategy;
-  isOperating: boolean;
-  primaryWallet: { address: string } | null;
-  onDeposit: (strategy: Strategy, amount: string) => void;
-  onWithdraw: (strategy: Strategy, amount: string) => void;
+export interface EntryPointUserOperationLog {
+  address: Hex;
+  blockNumber?: Hex;
+  logIndex?: Hex;
+  topics: Hex[];
+  transactionHash?: Hex;
 }
 
-// Raw API response types matching the actual /wallets/{address} schema
-export interface RawCurrentPosition {
-  value?: string;
-  decimals?: number;
-  humanized?: string;
-  symbol?: string;
-  asset?: string;
+export interface UserOperationSenderState {
+  assetBalance?: string;
+  balance: string;
+  code: Hex;
+  transactionCount: string;
 }
 
-export interface RawSpotPosition {
-  currentPosition?: RawCurrentPosition;
-  underlyingBalanceUSD?: number;
-  apy?: number;
-  inceptionApy?: number;
-  avgApy?: number;
-  profit?: RawCurrentPosition & { afterFees?: string };
-  principal?: RawCurrentPosition;
+export interface UserOperationInclusionRequest {
+  asset?: Hex;
+  fromBlock?: Hex;
+  sender: Hex;
+  userOperationHash: Hex;
 }
 
-export interface RawWalletPosition {
-  spotPosition?: RawSpotPosition;
-  strategy?: {
-    _id?: string;
-    id?: string;
-    slug?: string;
-    name?: string;
-    assetName?: string;
-    protocol?: string;
-    network?: string;
-    networkId?: string;
-    // asset is a string address in this endpoint (not a nested object)
-    asset?: string;
-    underlyingAsset?: string;
-    assetDecimals?: number;
-    underlyingDecimals?: number;
-    apy?: number;
-    tvl?: string;
-    paused?: boolean;
-  };
-  balance?: string;
-  balanceUSD?: string;
-  earned?: string;
-  earnedUSD?: string;
+export interface UserOperationInclusionResponse {
+  entryPointLogs: EntryPointUserOperationLog[];
+  fromBlock: Hex;
+  included: boolean;
+  latestBlock: Hex;
+  searchedBlocks: number;
+  searchedEntryPoints: Hex[];
+  senderState: UserOperationSenderState;
+  toBlock: Hex;
+  transactionHash?: Hex;
+  userOperationHash: Hex;
 }
 
-export interface RawWalletPositions {
-  address?: string;
-  positions?: RawWalletPosition[];
-  totalValueUSD?: string;
+export interface NormalizedError {
+  stage: OperationStage;
+  message: string;
+  status?: number;
+  details?: unknown;
 }
 
+export type ApiEnvelope<T> =
+  | {
+      ok: true;
+      data: T;
+    }
+  | {
+      ok: false;
+      error: NormalizedError;
+    };
+
+export type ValidationResult<T> =
+  | {
+      ok: true;
+      value: T;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
