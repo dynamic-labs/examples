@@ -16,7 +16,6 @@ import {
   RefreshCw,
   RotateCcw,
 } from "lucide-react";
-import { DynamicWidget } from "@/lib/dynamic";
 import { hasDynamicEnvironment } from "@/lib/providers";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,23 +111,17 @@ function ConnectedBatchedPodsDeposit() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f8fb] text-slate-950">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 px-4 py-4 sm:flex-row sm:items-center sm:px-6">
-          <div>
-            <h1 className="text-xl font-semibold tracking-normal">
-              Pods ZeroDev batched deposit
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Dynamic smart wallet, Pods bytecode, one ZeroDev batch.
-            </p>
-          </div>
-          <DynamicWidget />
-        </div>
-      </header>
+    <section className="mx-auto grid max-w-6xl gap-5 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+      <div className="col-span-full">
+        <h1 className="text-2xl font-semibold text-[#030303]">
+          Pods ZeroDev batched deposit
+        </h1>
+        <p className="mt-1 text-sm text-[#606060]">
+          Dynamic smart wallet, Pods bytecode, one ZeroDev batch.
+        </p>
+      </div>
 
-      <main className="mx-auto grid max-w-6xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
-        <Card className="h-fit min-w-0 rounded-md border-slate-300 shadow-none">
+      <Card className="h-fit min-w-0 rounded-md border-[#DADADA] shadow-none">
           <CardHeader>
             <CardTitle className="text-lg">Deposit request</CardTitle>
             <CardDescription>
@@ -174,7 +167,7 @@ function ConnectedBatchedPodsDeposit() {
                 inputMode="numeric"
               />
 
-              <dl className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+              <dl className="rounded-md border border-[#DADADA] bg-[#F9F9F9] p-3 text-sm">
                 <SummaryRow
                   label="Smart wallet"
                   value={summary.smartWalletAddress}
@@ -191,7 +184,7 @@ function ConnectedBatchedPodsDeposit() {
                   type="submit"
                   disabled={!operation.canSubmit || state.busy}
                   title={operation.disabledReason}
-                  className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                  className="gap-2"
                 >
                   {state.busy ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />
@@ -205,7 +198,7 @@ function ConnectedBatchedPodsDeposit() {
                   variant="outline"
                   onClick={resetAll}
                   disabled={state.busy}
-                  className="gap-2 border-slate-900 bg-white text-slate-950"
+                  className="gap-2"
                 >
                   <RotateCcw className="h-4 w-4" />
                   Reset
@@ -228,7 +221,7 @@ function ConnectedBatchedPodsDeposit() {
         </Card>
 
         <section className="min-w-0 space-y-5">
-          <Card className="min-w-0 rounded-md border-slate-300 shadow-none">
+          <Card className="min-w-0 rounded-md border-[#DADADA] shadow-none">
             <CardHeader>
               <CardTitle className="text-lg">Execution stages</CardTitle>
               <CardDescription>
@@ -255,7 +248,7 @@ function ConnectedBatchedPodsDeposit() {
                             ? "border-blue-300 bg-blue-50 text-blue-950"
                             : complete
                               ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                              : "border-slate-200 bg-white text-slate-600",
+                              : "border-[#DADADA] bg-white text-[#606060]",
                       ].join(" ")}
                     >
                       <span className="flex items-center gap-2 font-medium">
@@ -275,7 +268,7 @@ function ConnectedBatchedPodsDeposit() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 rounded-md border-slate-300 shadow-none">
+          <Card className="min-w-0 rounded-md border-[#DADADA] shadow-none">
             <CardHeader>
               <CardTitle className="text-lg">Diagnostics</CardTitle>
               <CardDescription>
@@ -289,7 +282,7 @@ function ConnectedBatchedPodsDeposit() {
                 aria-live="polite"
                 className="space-y-4 outline-none"
               >
-                <dl className="grid min-w-0 gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm sm:grid-cols-2">
+                <dl className="grid min-w-0 gap-3 rounded-md border border-[#DADADA] bg-white p-4 text-sm sm:grid-cols-2">
                   <SummaryRow label="Action id" value={summary.actionId} />
                   <SummaryRow
                     label="Bytecode calls"
@@ -327,8 +320,8 @@ function ConnectedBatchedPodsDeposit() {
                 {state.error && <ErrorPanel error={state.error} />}
 
                 {summary.requestUrl && (
-                  <details className="min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white p-3 text-sm">
-                    <summary className="cursor-pointer font-medium text-slate-900">
+                  <details className="min-w-0 overflow-hidden rounded-md border border-[#DADADA] bg-white p-3 text-sm">
+                    <summary className="cursor-pointer font-medium text-[#030303]">
                       Pods request URL
                     </summary>
                     <pre className="mt-3 max-w-full overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-slate-950 p-3 text-xs text-slate-50">
@@ -338,8 +331,8 @@ function ConnectedBatchedPodsDeposit() {
                 )}
 
                 {state.calls.length > 0 && (
-                  <details open className="min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white p-3 text-sm">
-                    <summary className="flex cursor-pointer items-center gap-2 font-medium text-slate-900">
+                  <details open className="min-w-0 overflow-hidden rounded-md border border-[#DADADA] bg-white p-3 text-sm">
+                    <summary className="flex cursor-pointer items-center gap-2 font-medium text-[#030303]">
                       <Layers3 className="h-4 w-4" />
                       Batched calls
                     </summary>
@@ -357,15 +350,14 @@ function ConnectedBatchedPodsDeposit() {
             </CardContent>
           </Card>
         </section>
-      </main>
-    </div>
+    </section>
   );
 }
 
 function MissingEnvironment() {
   return (
-    <div className="min-h-screen bg-[#f7f8fb] p-6 text-slate-950">
-      <Card className="mx-auto max-w-xl rounded-md border-slate-300 shadow-none">
+    <div className="mx-auto max-w-xl px-4 py-8 text-[#030303]">
+      <Card className="rounded-md border-[#DADADA] shadow-none">
         <CardHeader>
           <CardTitle className="text-lg">Missing Dynamic environment</CardTitle>
           <CardDescription>
@@ -394,7 +386,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="text-sm font-medium text-slate-900">
+      <label htmlFor={id} className="text-sm font-medium text-[#030303]">
         {label}
       </label>
       <input
@@ -402,9 +394,9 @@ function Field({
         value={value}
         onChange={onChange}
         inputMode={inputMode}
-        className="mt-2 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="mt-2 h-10 w-full rounded-md border border-[#DADADA] bg-white px-3 text-sm text-[#030303] outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
       />
-      <p className="mt-1 text-xs text-slate-500">{description}</p>
+      <p className="mt-1 text-xs text-[#606060]">{description}</p>
     </div>
   );
 }
@@ -412,10 +404,10 @@ function Field({
 function SummaryRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-semibold uppercase tracking-normal text-slate-500">
+      <dt className="text-xs font-semibold uppercase tracking-normal text-[#606060]">
         {label}
       </dt>
-      <dd className="mt-1 min-h-5 break-all font-mono text-xs text-slate-950">
+      <dd className="mt-1 min-h-5 break-all font-mono text-xs text-[#030303]">
         {value || "Not available"}
       </dd>
     </div>
@@ -450,25 +442,25 @@ function ErrorPanel({ error }: { error: NormalizedError }) {
 
 function CallPreview({ calls }: { calls: BatchCall[] }) {
   return (
-    <div className="mt-3 max-w-full overflow-x-auto rounded-md border border-slate-200">
-      <div className="grid min-w-[640px] grid-cols-[52px_minmax(0,1fr)_88px_88px] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-normal text-slate-500">
+    <div className="mt-3 max-w-full overflow-x-auto rounded-md border border-[#DADADA]">
+      <div className="grid min-w-[640px] grid-cols-[52px_minmax(0,1fr)_88px_88px] bg-[#F9F9F9] px-3 py-2 text-xs font-semibold uppercase tracking-normal text-[#606060]">
         <span>#</span>
         <span>To</span>
         <span>Value</span>
         <span>Data bytes</span>
       </div>
-      <ul className="min-w-[640px] divide-y divide-slate-200 bg-white text-xs">
+      <ul className="min-w-[640px] divide-y divide-[#DADADA] bg-white text-xs">
         {calls.map((call, index) => (
           <li
             key={`${call.to}-${index}`}
             className="grid grid-cols-[52px_minmax(0,1fr)_88px_88px] px-3 py-2"
           >
-            <span className="font-mono text-slate-500">{index + 1}</span>
-            <span className="break-all font-mono text-slate-950">{call.to}</span>
-            <span className="font-mono text-slate-950">
+            <span className="font-mono text-[#606060]">{index + 1}</span>
+            <span className="break-all font-mono text-[#030303]">{call.to}</span>
+            <span className="font-mono text-[#030303]">
               {call.value.toString()}
             </span>
-            <span className="font-mono text-slate-950">
+            <span className="font-mono text-[#030303]">
               {Math.max(0, (call.data.length - 2) / 2)}
             </span>
           </li>
@@ -492,9 +484,9 @@ function OperationLog({
   return (
     <details
       open
-      className="min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white p-3 text-sm"
+      className="min-w-0 overflow-hidden rounded-md border border-[#DADADA] bg-white p-3 text-sm"
     >
-      <summary className="cursor-pointer font-medium text-slate-900">
+      <summary className="cursor-pointer font-medium text-[#030303]">
         {title}
       </summary>
       <ol
@@ -506,13 +498,13 @@ function OperationLog({
         {visibleEntries.map((entry, index) => (
           <li
             key={`${entry.at}-${entry.message}-${index}`}
-            className="min-w-0 rounded-md border border-slate-100 bg-slate-50 p-2"
+            className="min-w-0 rounded-md border border-[#F0F0F0] bg-[#F9F9F9] p-2"
           >
             <div className="grid min-w-0 gap-1 sm:grid-cols-[96px_minmax(0,1fr)]">
-              <time className="font-mono text-xs text-slate-500">
+              <time className="font-mono text-xs text-[#606060]">
                 {entry.at}
               </time>
-              <p className="min-w-0 break-words text-sm font-medium text-slate-950">
+              <p className="min-w-0 break-words text-sm font-medium text-[#030303]">
                 {entry.message}
               </p>
             </div>
