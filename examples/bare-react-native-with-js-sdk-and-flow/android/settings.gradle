@@ -1,0 +1,23 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'com.dynamiclabs.examples.bareflowmetamaskdemo'
+
+// JitPack hosts a native artifact @walletconnect/react-native-compat needs
+// on Android — required for the Trust Wallet button (trustWalletConnect.ts)
+// and addWalletConnectEvmExtension (dynamicClient.ts) to work at all. Per
+// https://www.dynamic.xyz/docs/javascript/react-native/bare-react-native
+// google()/mavenCentral() are kept alongside it (the doc snippet only shows
+// jitpack.io) since this project had no explicit dependencyResolutionManagement
+// block before this — omitting them risked losing every other dependency's
+// default resolution rather than just adding the one this needs.
+dependencyResolutionManagement {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+  }
+}
+
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
