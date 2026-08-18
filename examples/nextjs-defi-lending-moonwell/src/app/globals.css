@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/*
+ * Dynamic's example palette, shared with the other recipe apps in
+ * dynamic-labs-oss/examples (see nextjs-defi-lending-morpho).
+ */
+@theme inline {
+  --color-brand: #4779ff;
+  --color-chip: #e8f0fe;
+  --color-chip-ink: #1967d2;
+  --color-ink: #030303;
+  --color-muted: #606060;
+  --color-line: #dadada;
+  --color-surface: #f9f9f9;
+
+  --font-sans: var(--font-roboto), system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-ink font-sans;
+  }
+
+  /* Figures align in columns without changing typeface. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
