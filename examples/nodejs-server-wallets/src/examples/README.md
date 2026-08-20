@@ -33,7 +33,7 @@ pnpm example:transfer --chain evm --delegated --to 0xRecipient --amount 0.0001 -
 | --- | --- | --- |
 | `--chain` | yes | `evm` or `svm` |
 | `--to` | yes | Recipient address |
-| `--amount` | yes | Decimal string in whole units (`"1.5"`), not base units |
+| `--amount` | yes | Decimal string in whole units (`"1.5"`), not base units. Must be > 0, and the sender needs that balance — sponsorship covers the fee, not the amount ([funding a Solana wallet](../svm/README.md#funding-a-wallet-only-for-value-transfers)) |
 | `--idempotency-key` | yes | Same key never executes twice |
 | `--token` | no | ERC-20 address or SPL mint. Omit for the native asset |
 | `--decimals` | no | Read from chain when omitted; supplied values are **verified**, and a mismatch refuses the transfer |

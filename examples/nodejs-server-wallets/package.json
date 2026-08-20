@@ -20,9 +20,9 @@
     "smoke": "tsx src/smoke.ts"
   },
   "dependencies": {
-    "@dynamic-labs-wallet/node": "1.0.105",
-    "@dynamic-labs-wallet/node-evm": "1.0.105",
-    "@dynamic-labs-wallet/node-svm": "1.0.105",
+    "@dynamic-labs-wallet/node": "1.0.109",
+    "@dynamic-labs-wallet/node-evm": "1.0.109",
+    "@dynamic-labs-wallet/node-svm": "1.0.109",
     "@solana/spl-token": "0.4.15",
     "@solana/web3.js": "1.98.4",
     "dotenv": "17.2.3",

@@ -53,7 +53,11 @@ import type { Transaction, VersionedTransaction } from "@solana/web3.js";
 
 import { SOLANA_RPC_URL } from "../../../constants";
 
-import { authenticatedSvmClient, getLamportBalance } from "../../lib/clients/svm";
+import {
+  authenticatedSvmClient,
+  getLamportBalance,
+  type SvmClient,
+} from "../../lib/clients/svm";
 import {
   broadcastSigned,
   resolvePriorBroadcast,
@@ -66,8 +70,6 @@ import { getSolanaTransactionLink } from "../../lib/utils";
 import { getOrCreateWallet, type WalletInfo } from "../../lib/wallet-helpers";
 import { buildDemoTransfer } from "../../svm/transaction";
 import type { IdempotencyDemoOptions } from "./types";
-
-type SvmClient = Awaited<ReturnType<typeof authenticatedSvmClient>>;
 
 const formatSol = (lamports: number) => `${lamports / 1e9} SOL (${lamports} lamports)`;
 

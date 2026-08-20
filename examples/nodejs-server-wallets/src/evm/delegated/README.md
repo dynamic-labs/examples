@@ -18,6 +18,7 @@ Create a `wallet.json` file in this directory with the following structure:
 {
   "address": "0x...",
   "walletId": "wallet-uuid-here",
+  "userId": "end-user-uuid-here",
   "walletApiKey": "api-key-here",
   "delegatedShare": "delegated-key-share-here",
   "shareSetId": "share-set-uuid-here"
@@ -28,13 +29,15 @@ See `wallet.json.example` for a template.
 
 `shareSetId` is optional — omit it and Dynamic resolves the correct share set from `walletId`. When you do supply it, use the `shareSetId` from the `wallet.delegation.created` webhook payload, not `keyShares[].id` from a `byWalletAddress` lookup (those are different primary keys).
 
+`userId` is the UUID of the end user who owns the wallet, from the same webhook payload. It is **required** for gas sponsorship: a delegated wallet always belongs to an end user, so a sponsored transaction has to be attributed to them rather than to the calling service.
+
 > ⚠️ `walletApiKey` and `delegatedShare` are credentials that together can sign on the user's behalf. `wallet.json` is gitignored, but for anything beyond local testing keep them in a secrets manager (Vault, AWS/GCP Secret Manager) rather than on disk.
 
 ### How to Obtain Delegated Access
 
 1. The wallet owner initiates delegation through your frontend application
 2. They approve your application to sign on their behalf
-3. Your `wallet.delegation.created` webhook receives the delegation credentials (`walletId`, `walletApiKey`, key share, `shareSetId`)
+3. Your `wallet.delegation.created` webhook receives the delegation credentials (`walletId`, `userId`, `walletApiKey`, key share, `shareSetId`)
 4. Store these credentials securely for future use
 
 ## Available Scripts
@@ -62,25 +65,35 @@ halves are genuinely separable: signing needs the delegated credentials, relayin
 needs only your environment API token, and the payload can travel between them as
 JSON at any point inside `validForSeconds` (10 minutes by default).
 
-This is the **only** route to that split for a delegated wallet — the SDK's own
-`signSponsoredTransaction` signs with caller-held key shares, which a delegated
-wallet by definition does not have. The payload's field set is identical to that
-function's output, so the relay accepts either interchangeably.
+`delegatedSignSponsoredTransaction` produces the same field set as the SDK's
+`signSponsoredTransaction`, so the relay accepts either interchangeably. The plain
+version can't be used here: it signs with caller-held key shares, which a delegated
+wallet by definition does not have.
+
+This mode also passes `autoDelegate: false`, so it needs no `RPC_URL` at all — the
+signing half has no chain dependency. See [autoDelegate](#autodelegate-and-rpc_url).
 
 ## How Gasless Signing Works Here
 
 For a **server wallet** you hold the key shares, so the SDK's `sendSponsoredTransaction` signs the sponsorship intent for you in one call.
 
-A **delegated wallet's** share stays with Dynamic behind a wallet-scoped API key, so the SDK cannot sign the intent from caller-held shares. `src/lib/gasless/evm.ts` therefore assembles the intent explicitly:
+A **delegated wallet's** share stays with Dynamic behind a wallet-scoped API key, so the intent can't be signed from caller-held shares. SDK 1.0.106 added a first-class API for exactly this case, and `src/lib/gasless/evm.ts` is a thin wrapper over it:
 
-1. Look up an available relayer for the chain (`getAvailableEvmGaslessRelayer`) — the relayer address is signed into the intent, so it has to be resolved first.
-2. If the wallet isn't delegated yet, sign the one-time EIP-7702 authorization with `delegatedSignAuthorization`. This persists on-chain and is reused afterwards.
-3. Sign the EIP-712 `AuthorizedExecutions` intent with `delegatedSignTypedData`, using the SDK's exported `AUTHORIZED_EXECUTIONS_TYPES`, `BATCH_CALL_OPDATA_AUTH_MODE`, and `DELEGATION_CONTRACT_ADDRESS`.
-4. Relay the finished payload with `sendSponsoredTransaction({ signedTransaction })`, which needs only your environment API token — no wallet key material.
+| | Signs | Relays |
+| --- | --- | --- |
+| `delegatedSendSponsoredTransaction` | ✅ | ✅ |
+| `delegatedSignSponsoredTransaction` | ✅ | — (payload is yours to relay) |
 
-Steps 3–4 are the same "sign in one process, relay from another" split the SDK supports natively; only the signing primitive differs.
+One call does the whole thing: sign the intent with the user's delegated share, attribute it to `userId`, resolve the one-time EIP-7702 authorization if needed, relay through Dynamic's relayer, and poll `pending → submitted → success`.
 
-> ⚠️ Because there is no first-class delegated sponsorship API, this path depends on the intent structure the SDK builds internally. The constants are imported from the SDK rather than copied, so a change to the delegate contract or mode is picked up automatically — but a change to the intent's *shape* would need this code updated.
+### autoDelegate and `RPC_URL`
+
+`autoDelegate` (on by default) signs the one-time EIP-7702 authorization for you the first time a wallet is sponsored. It is the *only* reason this path needs `RPC_URL`, and both of its calls are reads:
+
+- `eth_getCode` — is the EOA already delegated to the gasless contract?
+- `eth_getTransactionCount` — an EIP-7702 authorization commits to the EOA's current nonce.
+
+The delegation lives on-chain, not in the Dynamic dashboard, which is why it can't be looked up through the API. Once a wallet is delegated, pass `autoDelegate: false` to skip the RPC entirely — that's what `--pre-sign` does. A wallet that *isn't* yet delegated will fail to send with `autoDelegate: false`.
 
 ## Security Considerations
 
@@ -99,4 +112,4 @@ Steps 3–4 are the same "sign in one process, relay from another" split the SDK
 | Creation        | You create the wallet             | User creates, delegates to you          |
 | Use Case        | Treasury, omnibus accounts        | User operations on their behalf         |
 | Revocation      | N/A (you control)                 | User can revoke access                  |
-| Gasless signing | Built in (`walletMetadata`+shares) | Intent signed via delegated credentials |
+| Gasless signing | `sendSponsoredTransaction`         | `delegatedSendSponsoredTransaction`     |

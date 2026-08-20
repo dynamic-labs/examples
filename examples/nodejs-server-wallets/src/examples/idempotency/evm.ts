@@ -40,7 +40,7 @@
 import { deriveIdempotencyNonce } from "../../lib/gasless/evm";
 import { encodeFunctionData, erc20Abi, type Hex } from "viem";
 
-import { CONTRACTS, DEFAULT_CHAIN, RPC_URL, TOKEN_ABI, USDC_DECIMALS } from "../../../constants";
+import { CONTRACTS, DEFAULT_CHAIN, evmRpcUrl, TOKEN_ABI, USDC_DECIMALS } from "../../../constants";
 import { authenticatedEvmClient } from "../../lib/clients/evm";
 import { getTransfer, patchTransfer, putTransfer } from "../../lib/transfer/store";
 import { getTransactionLink } from "../../lib/utils";
@@ -62,7 +62,7 @@ async function readUsdcBalance(
 ): Promise<bigint> {
   const publicClient = evmClient.createViemPublicClient({
     chain: DEFAULT_CHAIN,
-    rpcUrl: RPC_URL,
+    rpcUrl: evmRpcUrl(),
   });
 
   return publicClient.readContract({
@@ -157,7 +157,7 @@ async function confirmAndSettle(
 ): Promise<boolean> {
   const publicClient = evmClient.createViemPublicClient({
     chain: DEFAULT_CHAIN,
-    rpcUrl: RPC_URL,
+    rpcUrl: evmRpcUrl(),
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({
@@ -212,7 +212,7 @@ async function relayWithDerivedNonce(
     }),
     calls,
     chainId: DEFAULT_CHAIN.id,
-    rpcUrl: RPC_URL,
+    rpcUrl: evmRpcUrl(),
     nonce,
     ...(password && { password }),
   });

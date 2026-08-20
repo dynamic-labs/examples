@@ -42,22 +42,20 @@
  */
 
 import { runScript } from "../../lib/cli";
-import { authenticatedSvmClient, delegatedSvmClient } from "../../lib/clients/svm";
+import { delegatedSvmClient } from "../../lib/clients/svm";
 import { sendDelegatedSponsoredTransaction } from "../../lib/gasless/svm";
 import { buildDemoTransfer } from "../transaction";
 import { getSolanaTransactionLink } from "../../lib/utils";
 import { loadSvmDelegatedCredentials } from "./credentials";
 
 /**
- * Step 1: Build clients and send the sponsored transaction
+ * Step 1: Build the delegated client and send the sponsored transaction
  *
- * Two clients, and the split is the point:
- * - the delegated client signs, using the user's delegated credentials
- * - the API-token client requests sponsorship, needing no wallet key material
+ * One client does both halves: `sponsor: true` has Dynamic swap in its own fee
+ * payer, and the user's delegated credentials sign the result.
  */
 async function sendTransaction() {
   const delegatedClient = delegatedSvmClient();
-  const svmClient = await authenticatedSvmClient();
 
   // Credentials come from your delegation webhook
   const credentials = loadSvmDelegatedCredentials();
@@ -73,9 +71,8 @@ async function sendTransaction() {
     senderAddress: credentials.address,
   });
 
-  // Step 2: Sponsor, then sign with delegated credentials, then broadcast
+  // Step 2: Sponsor + sign with the delegated credentials, then broadcast
   const signature = await sendDelegatedSponsoredTransaction({
-    svmClient,
     delegatedClient,
     credentials,
     transaction,

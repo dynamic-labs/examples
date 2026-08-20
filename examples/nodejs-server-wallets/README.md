@@ -177,11 +177,13 @@ The wallet keeps its own address, so the sender is identical in sponsored and un
    | ------------------------ | -------- | --------------------------------------------------------------------------------------------------------------- |
    | `DYNAMIC_API_TOKEN`      | Yes      | Environment API token from the Dynamic dashboard                                                                |
    | `DYNAMIC_ENVIRONMENT_ID` | Yes      | Your Dynamic environment ID                                                                                     |
-   | `RPC_URL`                | No       | Read-only EVM RPC for delegation checks and nonces. Defaults to the public Base Sepolia endpoint (rate limited)  |
+   | `RPC_URL`                | For EVM  | Read-only EVM RPC, used for EIP-7702 delegation checks, EOA nonces, and receipts. No public fallback — see below |
    | `SOLANA_RPC_URL`         | No       | Solana RPC — used for reads **and** broadcasting. Defaults to public devnet (rate limited)                       |
    | `SOLANA_CLUSTER`         | No       | Cluster label for explorer links. Defaults to `devnet`                                                          |
 
-   Set `RPC_URL` to your own provider before running the omnibus demo — its concurrent delegation checks will hit public-endpoint rate limits.
+   `RPC_URL` has no default on purpose: the public Base Sepolia endpoint is heavily rate limited and
+   intermittently unavailable, which makes a correct setup look broken. Point it at a provider you
+   control. The Solana examples, message signing, and wallet management don't need it.
 
 ## 🎯 Running the Examples
 
@@ -266,7 +268,16 @@ pnpm svm:delegated:sign-msg "Hello, World!"
 # Send gasless transaction with delegated wallet
 pnpm evm:delegated:send-txn
 pnpm svm:delegated:send-txn
+
+# Sign now, relay later: prints the signed intent as JSON, then relays it.
+# Signing needs the delegated credentials; relaying needs only the API token.
+pnpm evm:delegated:send-txn --pre-sign
 ```
+
+Delegated sponsorship uses the SDK's delegated gasless API (`delegatedSendSponsoredTransaction`,
+new in 1.0.106). On EVM it auto-signs the one-time EIP-7702 authorization on first use, which is
+the only reason that path needs `RPC_URL` — details in
+[`src/evm/delegated/README.md`](src/evm/delegated/README.md#autodelegate-and-rpc_url).
 
 ### End-to-End Examples
 
@@ -360,7 +371,7 @@ Persist **both** at creation time:
 
 ### Pass `walletMetadata` whole — don't trim it
 
-Tempting to reduce it to the fields TypeScript marks required. **That fails at runtime.** The type is inaccurate in both directions — measured against SDK 1.0.105 for `signMessage` with caller-held shares:
+Tempting to reduce it to the fields TypeScript marks required. **That fails at runtime.** The type is inaccurate in both directions — measured against SDK 1.0.107 for `signMessage` with caller-held shares:
 
 | Field | Type says | Actually needed |
 | ----- | --------- | --------------- |

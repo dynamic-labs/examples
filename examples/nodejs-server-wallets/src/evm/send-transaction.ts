@@ -30,7 +30,7 @@
 
 import { zeroAddress } from "viem";
 
-import { DEFAULT_CHAIN, RPC_URL } from "../../constants";
+import { DEFAULT_CHAIN, evmRpcUrl } from "../../constants";
 import { parseArgs, runScript } from "../lib/cli";
 import { authenticatedEvmClient, type EvmClient } from "../lib/clients/evm";
 import {
@@ -59,7 +59,7 @@ async function sendTransactionStandard(
       externalServerKeyShares: wallet.externalServerKeyShares,
     }),
     chain: DEFAULT_CHAIN,
-    rpcUrl: RPC_URL,
+    rpcUrl: evmRpcUrl(),
     password,
   });
 

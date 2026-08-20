@@ -177,7 +177,6 @@ async function sign(
 
     case "delegated":
       return signDelegatedSponsoredTransaction({
-        svmClient,
         delegatedClient: requireClient(
           request.clients.svmDelegatedClient,
           "svmDelegatedClient",

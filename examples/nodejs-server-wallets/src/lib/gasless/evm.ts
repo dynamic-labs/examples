@@ -22,15 +22,10 @@
  * support: you hold the wallet's key shares, so `evmClient` signs the intent
  * directly.
  *
- * **Delegated wallets** (`sendDelegatedSponsoredTransaction`) need the intent
- * assembled by hand. The SDK's `signSponsoredTransaction` signs with
- * caller-held key shares, which a delegated wallet by definition does not have —
- * its share lives with Dynamic behind a wallet-scoped API key. So we build the
- * same EIP-712 intent from the SDK's exported primitives, sign it with the
- * delegated signing functions, then hand the finished payload to
- * `sendSponsoredTransaction({ signedTransaction })`. That relay step only needs
- * your environment API token, not wallet key material — the same
- * "sign in one process, relay from another" split the SDK supports natively.
+ * **Delegated wallets** (`sendDelegatedSponsoredTransaction`) use the SDK's
+ * delegated gasless API, added in 1.0.106. The user's share lives with Dynamic
+ * behind a wallet-scoped API key, so the delegated client signs on their behalf and
+ * relays in the same call — `userId` attributes it to the wallet's owner.
  *
  * ## Requirements
  *
@@ -41,27 +36,20 @@
  *   Sepolia (11155111) are the supported testnets.
  */
 
-import { randomBytes } from "node:crypto";
-
 import type { ServerKeyShare, WalletMetadata } from "@dynamic-labs-wallet/node";
 import {
-  AUTHORIZED_EXECUTIONS_TYPES,
-  BATCH_CALL_OPDATA_AUTH_MODE,
-  DEFAULT_VALID_FOR_SECONDS,
-  DELEGATION_CONTRACT_ADDRESS,
   type DelegatedEvmWalletClient,
-  delegatedSignAuthorization,
-  delegatedSignTypedData,
+  delegatedSendSponsoredTransaction,
+  type DelegatedSignSponsoredTransactionParams,
+  delegatedSignSponsoredTransaction,
   type DynamicEvmWalletClient,
-  type SerializedAuthorization,
   type SignedSponsoredTransaction,
   type SponsoredTransactionCall,
-  UGD_ABI,
 } from "@dynamic-labs-wallet/node-evm";
 import { keccak256, toHex } from "viem";
-import type { Chain, Hex, PublicClient, TypedData } from "viem";
+import type { Chain, Hex } from "viem";
 
-import { DEFAULT_CHAIN, RPC_URL } from "../../../constants";
+import { DEFAULT_CHAIN, evmRpcUrl } from "../../../constants";
 import type { DelegatedCredentialsBase } from "../delegated-credentials";
 
 /** Credentials a user grants when delegating their wallet to your app. */
@@ -98,17 +86,32 @@ export interface SendSponsoredTransactionOptions extends ChainOptions {
   nonce?: bigint;
 }
 
-/** Parameters for sponsoring from a wallet a user delegated to you. */
+/**
+ * Parameters for sponsoring from a wallet a user delegated to you.
+ *
+ * No API-token client here: the delegated client signs *and* relays. `userId`
+ * travels on `credentials`, since it arrives on the same delegation webhook.
+ */
 export interface SendDelegatedSponsoredTransactionOptions extends ChainOptions {
-  /** API-token client, used to look up the relayer and to relay the intent. */
-  evmClient: DynamicEvmWalletClient;
   /** Delegated client, used to sign with the user's delegated share. */
   delegatedClient: DelegatedEvmWalletClient;
   credentials: DelegatedCredentials;
   calls: SponsoredTransactionCall[];
   /** How long the signed intent stays valid. Defaults to 10 minutes. */
   validForSeconds?: number;
-  userId?: string;
+  /**
+   * Sign the one-time EIP-7702 authorization when the wallet isn't delegated yet.
+   * Defaults to true.
+   *
+   * Leaving it on costs one `eth_getCode` read per call, to decide whether the
+   * authorization is needed. Set it to false **only if you already know the wallet
+   * is delegated** — that fact is permanent once true, so recording it per
+   * wallet-and-chain when the first sponsored transaction succeeds lets later calls
+   * skip the read, and removes the RPC from the path entirely.
+   *
+   * Don't set it to false speculatively: an undelegated wallet's intent will fail.
+   */
+  autoDelegate?: boolean;
   /**
    * Single-use bitmap nonce. Omit and a fresh random one is generated per call,
    * which makes retries unsafe. See `deriveIdempotencyNonce`.
@@ -131,7 +134,7 @@ export async function sendSponsoredTransaction({
   userId,
   nonce,
   chain = DEFAULT_CHAIN,
-  rpcUrl = RPC_URL,
+  rpcUrl = evmRpcUrl(),
 }: SendSponsoredTransactionOptions): Promise<{ transactionHash: Hex }> {
   return evmClient.sendSponsoredTransaction({
     walletMetadata,
@@ -153,170 +156,82 @@ export async function sendSponsoredTransaction({
 /**
  * Send a gasless transaction from a delegated wallet.
  *
- * Signs the sponsorship intent with the user's delegated share, then relays it
- * with your environment API token.
+ * A first-class SDK API as of 1.0.106: it signs the EIP-712 intent with the user's
+ * delegated share, resolves the one-time EIP-7702 authorization when the wallet is
+ * not yet delegated, relays it, and polls until it lands. The plain
+ * `signSponsoredTransaction` can't do this — it signs with caller-held key shares,
+ * which a delegated wallet by definition does not have.
+ *
+ * Note `userId` is required, and comes from the delegation webhook: a delegated
+ * wallet always belongs to an end user, so the relay is attributed to them rather
+ * than to the calling service.
  */
-export async function sendDelegatedSponsoredTransaction({
-  userId,
-  ...options
-}: SendDelegatedSponsoredTransactionOptions): Promise<{
-  transactionHash: Hex;
-}> {
-  const signedTransaction = await signDelegatedSponsoredTransaction(options);
-
-  return options.evmClient.sendSponsoredTransaction({
-    signedTransaction,
-    ...(userId && { userId }),
-  });
+export async function sendDelegatedSponsoredTransaction(
+  options: SendDelegatedSponsoredTransactionOptions,
+): Promise<{ transactionHash: Hex }> {
+  return delegatedSendSponsoredTransaction(
+    options.delegatedClient,
+    delegatedGaslessParams(options),
+  );
 }
 
 /**
- * Build and sign a sponsorship intent for a delegated wallet without relaying it.
+ * Sign a delegated wallet's sponsorship intent without relaying it.
  *
- * The result is a plain JSON-serializable payload, so you can sign in one process
- * and relay from another — or hold it and relay later, within `validForSeconds`.
- *
- * This is the **only** way to split signing from relaying for a delegated wallet:
- * the SDK's own `signSponsoredTransaction` requires caller-held key shares, which
- * a delegated wallet by definition does not have. Use
- * `sendDelegatedSponsoredTransaction` above for the one-shot path; see
- * `src/evm/delegated/send-transaction.ts --pre-sign` for the split.
- *
- * The returned field set matches the SDK's `signSponsoredTransaction` output
- * exactly — same eight keys, with `deadline` and `nonce` serialized as decimal
- * strings rather than bigints — so `sendSponsoredTransaction({ signedTransaction })`
- * accepts either interchangeably.
+ * The result is a plain JSON payload, so signing and relaying can live in different
+ * processes: hold it and submit it later with
+ * `sendSponsoredTransaction({ signedTransaction })`, which needs only your
+ * environment API token and no wallet key material.
  */
-export async function signDelegatedSponsoredTransaction({
-  evmClient,
-  delegatedClient,
+export async function signDelegatedSponsoredTransaction(
+  options: SendDelegatedSponsoredTransactionOptions,
+): Promise<SignedSponsoredTransaction> {
+  return delegatedSignSponsoredTransaction(
+    options.delegatedClient,
+    delegatedGaslessParams(options),
+  );
+}
+
+/**
+ * Map this repo's option shape onto the SDK's parameter shape.
+ *
+ * `autoDelegate` defaults to true: sign the one-time 7702 authorization on a
+ * wallet's first sponsored transaction rather than making the caller sequence it.
+ * Use `delegatedSign7702Authorization` if you want that step explicit.
+ *
+ * `autoDelegate` is the sole reason this path needs an RPC, so the URL is resolved
+ * only when it's on. Note this has to stay lazy: `evmRpcUrl()` throws when
+ * `RPC_URL` is unset, and a destructuring default would fire that even with
+ * `autoDelegate: false` — which is exactly the case that needs no RPC.
+ */
+function delegatedGaslessParams({
   credentials,
   calls,
-  nonce: providedNonce,
-  validForSeconds = DEFAULT_VALID_FOR_SECONDS,
+  nonce,
+  validForSeconds,
+  autoDelegate = true,
   chain = DEFAULT_CHAIN,
-  rpcUrl = RPC_URL,
-}: Omit<
-  SendDelegatedSponsoredTransactionOptions,
-  "userId"
->): Promise<SignedSponsoredTransaction> {
-  const chainId = chain.id;
-  const publicClient = evmClient.createViemPublicClient({ chain, rpcUrl });
-
-  // The relayer address is signed into the intent, so it must be resolved
-  // before signing — the relay will reject an intent naming a different one.
-  const [{ relayerAddress }, authorization, resolvedNonce] = await Promise.all([
-    evmClient.getAvailableEvmGaslessRelayer({ chainId }),
-    resolveDelegatedAuthorization({
-      evmClient,
-      delegatedClient,
-      credentials,
-      chainId,
-      rpcUrl,
-      publicClient,
-    }),
-    // A caller-supplied nonce is used as-is; otherwise generate a random one.
-    providedNonce !== undefined
-      ? Promise.resolve(providedNonce)
-      : generateIntentNonce(publicClient, credentials.address),
-  ]);
-  const nonce = resolvedNonce;
-
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + validForSeconds);
-
-  const signature = await delegatedSignTypedData(delegatedClient, {
-    walletId: credentials.walletId,
-    walletApiKey: credentials.walletApiKey,
-    keyShare: credentials.keyShare,
-    ...(credentials.shareSetId && { shareSetId: credentials.shareSetId }),
-    // The SDK types this parameter as `TypedData` (the types map alone), but it
-    // hashes the full EIP-712 payload with viem's `hashTypedData`. Cast so we
-    // can pass the whole intent, exactly as the server-wallet path does.
-    typedData: {
-      domain: { chainId, verifyingContract: DELEGATION_CONTRACT_ADDRESS },
-      message: {
-        calls: calls.map(({ data, target, value }) => ({ data, target, value })),
-        deadline,
-        mode: BATCH_CALL_OPDATA_AUTH_MODE,
-        nonce,
-        relayer: relayerAddress,
-      },
-      primaryType: "AuthorizedExecutions",
-      types: AUTHORIZED_EXECUTIONS_TYPES,
-    } as unknown as TypedData,
-  });
-
-  return {
-    ...(authorization && { authorization }),
-    calls,
-    chainId,
-    deadline: String(deadline),
-    nonce: String(nonce),
-    relayer: relayerAddress as Hex,
-    signature: signature as Hex,
-    walletAddress: credentials.address,
-  };
-}
-
-/**
- * Sign the one-time EIP-7702 authorization that delegates the wallet's EOA to
- * Dynamic's gasless delegate contract.
- *
- * Returns `undefined` when the delegation is already active on-chain — it
- * persists, so it only needs signing once per wallet per chain.
- */
-async function resolveDelegatedAuthorization({
-  evmClient,
-  delegatedClient,
-  credentials,
-  chainId,
   rpcUrl,
-  publicClient,
-}: {
-  evmClient: DynamicEvmWalletClient;
-  delegatedClient: DelegatedEvmWalletClient;
-  credentials: DelegatedCredentials;
-  chainId: number;
-  rpcUrl: string;
-  publicClient: PublicClient;
-}): Promise<SerializedAuthorization | undefined> {
-  const isDelegated = await evmClient.is7702DelegationActive({
-    walletAddress: credentials.address,
-    chainId,
-    rpcUrl,
-  });
-  if (isDelegated) return undefined;
-
-  // An EIP-7702 authorization commits to the EOA's own transaction nonce.
-  const nonce = Number(
-    await publicClient.getTransactionCount({ address: credentials.address }),
-  );
-
-  const signature = await delegatedSignAuthorization(delegatedClient, {
+}: SendDelegatedSponsoredTransactionOptions): DelegatedSignSponsoredTransactionParams {
+  return {
     walletId: credentials.walletId,
     walletApiKey: credentials.walletApiKey,
     keyShare: credentials.keyShare,
+    walletAddress: credentials.address,
+    userId: requireUserId(credentials),
     ...(credentials.shareSetId && { shareSetId: credentials.shareSetId }),
-    authorization: {
-      address: DELEGATION_CONTRACT_ADDRESS,
-      chainId,
-      nonce,
-    },
-  });
-
-  if (signature.yParity === undefined) {
-    throw new Error("Signed EIP-7702 authorization is missing yParity");
-  }
-
-  return {
-    address: DELEGATION_CONTRACT_ADDRESS,
-    chainId,
-    nonce,
-    r: signature.r,
-    s: signature.s,
-    yParity: signature.yParity,
+    calls,
+    chainId: chain.id,
+    // Only needed for the delegation check and the EOA nonce that a 7702
+    // authorization commits to — both are reads, and both are skippable when
+    // autoDelegate is off.
+    ...(autoDelegate && { rpcUrl: rpcUrl ?? evmRpcUrl() }),
+    autoDelegate,
+    ...(nonce !== undefined && { nonce }),
+    ...(validForSeconds !== undefined && { validForSeconds }),
   };
 }
+
 
 /**
  * Derive a stable 256-bit intent nonce from an application-level idempotency key.
@@ -344,31 +259,19 @@ export function deriveIdempotencyNonce(key: string): bigint {
 }
 
 /**
- * Generate a single-use bitmap nonce for the intent.
+ * Sponsorship needs the wallet owner's `userId`; plain signing does not.
  *
- * The delegate contract tracks spent nonces in a bitmap rather than a counter,
- * so intents don't have to land in order. A 256-bit random value makes
- * collisions negligible; the on-chain check is a cheap extra guard.
+ * Checked here rather than when loading credentials, so message and typed-data
+ * signing keep working on a `wallet.json` that predates this requirement.
  */
-async function generateIntentNonce(
-  publicClient: PublicClient,
-  walletAddress: Hex,
-): Promise<bigint> {
-  const randomNonce = () => BigInt(`0x${randomBytes(32).toString("hex")}`);
-  const nonce = randomNonce();
-
-  try {
-    const isUsed = await publicClient.readContract({
-      address: walletAddress,
-      abi: UGD_ABI,
-      functionName: "isNonceUsed",
-      args: [nonce],
-    });
-    if (isUsed) return randomNonce();
-  } catch {
-    // A wallet that isn't delegated yet has no delegate code, so this call
-    // reverts. Harmless — the random value is safe either way.
+function requireUserId(credentials: DelegatedCredentials): string {
+  if (!credentials.userId) {
+    throw new Error(
+      "userId is required to sponsor a delegated transaction — a delegated wallet " +
+        "is always owned by an end user, so the relay has to be attributed to them. " +
+        "Add the `userId` from your wallet.delegation.created webhook to wallet.json.",
+    );
   }
 
-  return nonce;
+  return credentials.userId;
 }

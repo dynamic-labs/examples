@@ -27,7 +27,7 @@ Dynamic swaps the transaction's fee payer for its own sponsor account and signs 
 
 Two consequences that bite in practice:
 
-- Transactions are built as **v0 `VersionedTransaction`**, because Dynamic's sponsorship endpoint always returns versioned — building v0 keeps the type stable end to end. (Legacy `Transaction` inputs also work as of SDK 1.0.105; on 1.0.101 and earlier they threw.)
+- Transactions are built as **v0 `VersionedTransaction`**, because Dynamic's sponsorship endpoint always returns versioned — building v0 keeps the type stable end to end. (Legacy `Transaction` inputs also work as of SDK 1.0.107; on 1.0.101 and earlier they threw.)
 - Blockhashes are fetched at **`finalized`**, not `confirmed`. Sponsorship plus MPC signing adds round trips, and public RPC is load-balanced, so a just-confirmed blockhash may be unknown to whichever node simulates the transaction.
 
 ---
@@ -78,6 +78,35 @@ On EVM you pin a nonce. There is no nonce on Solana, and **rebuilding takes a fr
 The retry window is bounded by blockhash validity (~60–90s); past that the transaction is permanently dead and a retry must rebuild, which needs an application-level guard. See [IDEMPOTENCY.md](../../IDEMPOTENCY.md).
 
 ---
+
+
+## Funding a wallet (only for value transfers)
+
+Sponsorship pays the **network fee**, not the **amount you send**. Those are separate
+costs, and only the first is covered:
+
+| Cost | Paid by |
+| --- | --- |
+| Transaction fee (the fee payer's lamports) | Dynamic's sponsor |
+| The SOL or SPL tokens actually transferred | The wallet itself |
+
+So a 0-balance wallet can send a **0-lamport** transaction all day — which is exactly
+what `svm:send-txn` and `pnpm example:idempotency --chain svm` do, since their point
+is to show who pays the fee. But moving real value needs real balance, so
+`pnpm example:transfer --chain svm` fails on an unfunded wallet.
+
+To fund one on devnet:
+
+```bash
+solana airdrop 0.05 <address> --url devnet
+```
+
+If you don't have the Solana CLI, or that returns `Internal error` (the RPC faucet is
+heavily rate-limited and frequently down), use the web faucet at
+[faucet.solana.com](https://faucet.solana.com) instead — it is noticeably more
+reliable. 0.05 SOL is plenty; transfer amounts here can be fractions of a cent.
+
+`pnpm svm:wallet --list` shows each saved wallet's balance.
 
 ## Sign message
 

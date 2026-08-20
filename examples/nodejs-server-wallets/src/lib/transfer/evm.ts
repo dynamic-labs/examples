@@ -19,7 +19,7 @@
 
 import { encodeFunctionData, erc20Abi, type Hex } from "viem";
 
-import { DEFAULT_CHAIN, RPC_URL } from "../../../constants";
+import { DEFAULT_CHAIN, evmRpcUrl } from "../../../constants";
 import {
   deriveIdempotencyNonce,
   type DelegatedCredentials,
@@ -62,7 +62,7 @@ async function resolveDecimals(request: TransferRequest): Promise<number> {
     "evmClient",
   ).createViemPublicClient({
     chain: DEFAULT_CHAIN,
-    rpcUrl: request.rpcUrl ?? RPC_URL,
+    rpcUrl: request.rpcUrl ?? evmRpcUrl(),
   });
 
   const onChain = await readEvmTokenDecimals(
@@ -112,7 +112,7 @@ async function transfer(
     "evmClient",
   ).createViemPublicClient({
     chain: DEFAULT_CHAIN,
-    rpcUrl: request.rpcUrl ?? RPC_URL,
+    rpcUrl: request.rpcUrl ?? evmRpcUrl(),
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({
@@ -152,7 +152,7 @@ async function relay(
   nonce: bigint,
 ): Promise<{ transactionHash: Hex }> {
   const evmClient = requireClient(request.clients.evmClient, "evmClient");
-  const rpcUrl = request.rpcUrl ?? RPC_URL;
+  const rpcUrl = request.rpcUrl ?? evmRpcUrl();
   const signer = request.signer;
 
   switch (signer.kind) {
@@ -169,7 +169,6 @@ async function relay(
 
     case "delegated":
       return sendDelegatedSponsoredTransaction({
-        evmClient,
         delegatedClient: requireClient(
           request.clients.evmDelegatedClient,
           "evmDelegatedClient",

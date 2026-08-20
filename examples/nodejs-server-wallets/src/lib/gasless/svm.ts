@@ -19,7 +19,7 @@
  * ## Two signing paths
  *
  * **Server wallets** use `signTransaction({ sponsor: true })`, which since SDK
- * 1.0.105 sponsors, signs, attaches the signature, and returns the transaction in
+ * 1.0.107 sponsors, signs, attaches the signature, and returns the transaction in
  * one call.
  *
  * **Delegated wallets** have to split it: they hold no caller-side key shares, so
@@ -82,11 +82,14 @@ export interface SendSponsoredTransactionOptions {
   rpcUrl?: string;
 }
 
-/** Parameters for sponsoring from a wallet a user delegated to you. */
+/**
+ * Parameters for sponsoring from a wallet a user delegated to you.
+ *
+ * No API-token client needed: `sponsor: true` has the delegated client request
+ * sponsorship itself. `userId` travels on `credentials`, from the same webhook.
+ */
 export interface SendDelegatedSponsoredTransactionOptions {
-  /** API-token client, used to request sponsorship. */
-  svmClient: DynamicSvmWalletClient;
-  /** Delegated client, used to sign with the user's delegated share. */
+  /** Delegated client, used to sponsor and to sign with the user's delegated share. */
   delegatedClient: DelegatedSvmWalletClient;
   credentials: DelegatedCredentials;
   transaction: Transaction | VersionedTransaction;
@@ -111,10 +114,10 @@ export async function sendSponsoredTransaction(
  * and rebroadcast these exact bytes on retry rather than rebuilding. See
  * IDEMPOTENCY.md.
  *
- * `sponsor: true` does the whole job in one call as of SDK 1.0.105: it sponsors,
+ * `sponsor: true` does the whole job in one call as of SDK 1.0.107: it sponsors,
  * signs the sponsored message, attaches the signature, and returns the transaction
  * alongside it. The signed message and the broadcast message are therefore identical
- * by construction. (Before 1.0.105 the flag sponsored into a local variable and
+ * by construction. (Before 1.0.107 the flag sponsored into a local variable and
  * returned only a signature, so the caller never got the transaction that was
  * signed — which is why this used to sponsor and attach by hand.)
  */
@@ -176,29 +179,32 @@ export async function sendDelegatedSponsoredTransaction(
 /**
  * Sponsor and sign with delegated credentials, without broadcasting.
  *
+ * `sponsor: true` does both steps in one call as of SDK 1.0.106 — it requests
+ * sponsorship, then signs the *sponsored* message, so the order that matters here
+ * is guaranteed by construction rather than by the caller sequencing it.
+ *
+ * `signerAddress` is still required: without it the SDK signs as the fee payer,
+ * which sponsorship has just replaced with Dynamic's sponsor account — and we have
+ * no authority for that. `userId` attributes the sponsorship to the wallet's owner.
+ *
  * Same reasoning as `signSponsoredTransaction`: hold these bytes for retries.
  */
 export async function signDelegatedSponsoredTransaction({
-  svmClient,
   delegatedClient,
   credentials,
   transaction,
 }: SendDelegatedSponsoredTransactionOptions): Promise<
   Transaction | VersionedTransaction
 > {
-  // Step 1: swap in Dynamic's sponsor as fee payer. Must happen before signing.
-  const sponsored = await svmClient.sponsorTransaction({ transaction });
-
-  // Step 2: sign as the instruction signer, not the fee payer. Without
-  // `signerAddress` the SDK would default to the fee payer, which is now the
-  // sponsor — and we have no authority to sign for that.
   return delegatedSignTransaction(delegatedClient, {
     walletId: credentials.walletId,
     walletApiKey: credentials.walletApiKey,
     keyShare: credentials.keyShare,
     ...(credentials.shareSetId && { shareSetId: credentials.shareSetId }),
-    transaction: sponsored,
+    transaction,
     signerAddress: credentials.address,
+    sponsor: true,
+    userId: requireUserId(credentials),
   });
 }
 
@@ -433,4 +439,23 @@ function findUnsignedVersioned(transaction: VersionedTransaction): string[] {
       signature.every((byte) => byte === 0) ? keys[index].toBase58() : null,
     )
     .filter((address): address is string => address !== null);
+}
+
+/**
+ * Sponsorship needs the wallet owner's `userId`; plain signing does not.
+ *
+ * Checked here rather than when loading credentials, so message signing keeps
+ * working on a `wallet.json` that predates this requirement.
+ */
+function requireUserId(credentials: DelegatedCredentials): string {
+  if (!credentials.userId) {
+    throw new Error(
+      "userId is required to sponsor a delegated transaction — a delegated wallet " +
+        "is always owned by an end user, so the sponsorship has to be attributed to " +
+        "them. Add the `userId` from your wallet.delegation.created webhook to " +
+        "wallet.json.",
+    );
+  }
+
+  return credentials.userId;
 }

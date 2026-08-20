@@ -2,7 +2,7 @@
 
 How to retry a gas-sponsored transaction without executing it twice, on EVM and SVM.
 
-Everything here was verified against `@dynamic-labs-wallet/*` **1.0.105** on Base Sepolia and Solana devnet. Runnable example: [`src/examples/idempotency/`](src/examples/idempotency) (`pnpm example:idempotency`, `--chain svm` for the Solana mechanism).
+Everything here was measured against `@dynamic-labs-wallet/*` **1.0.107** on Base Sepolia and Solana devnet, and re-checked on **1.0.109**. Runnable example: [`src/examples/idempotency/`](src/examples/idempotency) (`pnpm example:idempotency`, `--chain svm` for the Solana mechanism).
 
 ---
 
@@ -96,7 +96,7 @@ Demonstrated: bypassing layer 2 and relaying a second intent under the same nonc
 
 It resolves as soon as a hash exists, which happens at relay status **`submitted`** — before mining. Measured: resolved at 5013ms with status `submitted`, and the relay still reported `submitted` after the transaction had mined.
 
-(Dynamic's docs state it "resolves on `success`". Measured against 1.0.105, it does not.)
+(Dynamic's docs state it "resolves on `success`". Measured against 1.0.107, it does not.)
 
 Consequences:
 

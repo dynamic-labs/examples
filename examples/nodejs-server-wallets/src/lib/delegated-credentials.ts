@@ -26,6 +26,8 @@ interface DelegatedWalletFile {
   walletApiKey: string;
   /** Opaque MPC key share — passed straight back to the SDK, never parsed. */
   delegatedShare: unknown;
+  /** UUID of the end user who owns the wallet. Required only to sponsor gas. */
+  userId?: string;
   shareSetId?: string;
 }
 
@@ -35,6 +37,17 @@ export interface DelegatedCredentialsBase {
   walletId: string;
   walletApiKey: string;
   keyShare: ServerKeyShare;
+  /**
+   * UUID of the end user who owns this wallet — the `userId` field of the
+   * delegation webhook payload.
+   *
+   * Optional here because plain signing (messages, typed data, transactions) does
+   * not need it. The **gasless** APIs on both chains do require it: a delegated
+   * wallet always belongs to an end user, so a sponsored transaction has to be
+   * attributed to them rather than to the calling service. The gasless helpers
+   * check for it and fail with an actionable message.
+   */
+  userId?: string;
   shareSetId?: string;
 }
 
@@ -92,6 +105,7 @@ export function loadDelegatedCredentials(
     walletApiKey: file.walletApiKey,
     // Opaque MPC material the SDK hands out and takes back verbatim.
     keyShare: file.delegatedShare as ServerKeyShare,
+    ...(file.userId && { userId: file.userId }),
     ...(file.shareSetId && { shareSetId: file.shareSetId }),
   };
 }

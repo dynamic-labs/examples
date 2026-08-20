@@ -16,6 +16,7 @@ Gasless sends additionally require gas sponsorship to be enabled for your enviro
 {
   "address": "<base58 Solana address>",
   "walletId": "wallet-uuid-here",
+  "userId": "end-user-uuid-here",
   "walletApiKey": "api-key-here",
   "delegatedShare": "delegated-key-share-here",
   "shareSetId": "share-set-uuid-here"
@@ -23,6 +24,8 @@ Gasless sends additionally require gas sponsorship to be enabled for your enviro
 ```
 
 See `wallet.json.example` for a template. `shareSetId` is optional — omit it and Dynamic resolves the correct share set from `walletId`.
+
+`userId` is the UUID of the end user who owns the wallet, from the same webhook payload. It is **required** for gas sponsorship: a delegated wallet always belongs to an end user, so a sponsored transaction has to be attributed to them rather than to the calling service.
 
 > ⚠️ `walletApiKey` and `delegatedShare` together can sign on the user's behalf. `wallet.json` is gitignored, but for anything beyond local testing keep them in a secrets manager rather than on disk.
 
@@ -47,11 +50,15 @@ pnpm svm:delegated:send-txn
 
 Solana sponsorship is mechanically simpler than the EVM equivalent — no delegation contract, no signed intent, no relayer. Dynamic swaps the transaction's **fee payer** for its own sponsor account and signs as that fee payer. Your server broadcasts the result.
 
-For a **server wallet**, `signTransaction` can sign the sponsored transaction directly because you hold the key shares. For a **delegated wallet** the two steps split:
+For a **server wallet**, `signTransaction({ sponsor: true })` sponsors and signs in one call because you hold the key shares. A **delegated wallet** uses the delegated equivalent, `delegatedSignTransaction(delegatedClient, { transaction, sponsor: true, signerAddress, userId })`:
 
-1. **Sponsor.** `svmClient.sponsorTransaction({ transaction })` on the API-token client returns the transaction with Dynamic's sponsor as fee payer. No wallet key material is involved.
-2. **Sign.** `delegatedSignTransaction(delegatedClient, { transaction: sponsored, signerAddress })` signs with the user's delegated share. `signerAddress` is essential: without it the SDK signs as the fee payer, which is now Dynamic's sponsor — an account you have no authority over.
-3. **Broadcast.** Your server submits the fully signed transaction.
+- `sponsor: true` has Dynamic replace the fee payer with its own sponsor account and sign as it.
+- `signerAddress` is essential — without it the SDK signs as the fee payer, which is now Dynamic's sponsor, an account you have no authority over.
+- `userId` attributes the sponsorship to the wallet's owner; it is required on every delegated gasless call.
+
+Your server then broadcasts the fully signed transaction — Dynamic pays the fee but does not submit on SVM.
+
+Earlier SDK versions needed a separate `svmClient.sponsorTransaction` call on an API-token client first; 1.0.106 folded that into the delegated signing call.
 
 **Order matters.** Replacing the fee payer changes the transaction message, and therefore what has to be signed. Sponsoring after signing would invalidate the user's signature.
 

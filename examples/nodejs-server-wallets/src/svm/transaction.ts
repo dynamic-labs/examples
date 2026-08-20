@@ -29,7 +29,7 @@ import { SOLANA_RPC_URL } from "../../constants";
  * whatever you send it, so building v0 up front keeps input and output types
  * aligned and avoids a surprise type change mid-flow.
  *
- * Passing a legacy `Transaction` does work as of SDK 1.0.105 — `sponsorTransaction`
+ * Passing a legacy `Transaction` does work as of SDK 1.0.107 — `sponsorTransaction`
  * now always deserializes the response as versioned. On 1.0.101 and earlier it
  * deserialized by *input* type, so a legacy input threw "Versioned messages must be
  * deserialized with VersionedMessage.deserialize()".

@@ -7,15 +7,30 @@ export const DYNAMIC_API_TOKEN = process.env.DYNAMIC_API_TOKEN!;
 export const DYNAMIC_ENVIRONMENT_ID = process.env.DYNAMIC_ENVIRONMENT_ID!;
 
 /**
- * RPC endpoint used for reads only (EIP-7702 delegation status, EOA nonces,
- * transaction receipts). Dynamic's relayer broadcasts sponsored transactions,
- * so this is never used to submit them.
+ * EVM RPC endpoint. **Required** for any EVM on-chain operation.
  *
- * Defaults to the public Base Sepolia endpoint, which is heavily rate limited —
- * set RPC_URL to your own provider before running the omnibus demo.
+ * Deliberately has no public-endpoint fallback. Falling back silently to
+ * `sepolia.base.org` looks convenient but produces confusing failures: it is
+ * heavily rate limited, and it returns "no backend is currently healthy to serve
+ * traffic" often enough that a working setup appears broken.
+ *
+ * Read through a function, not a constant, so it throws only when an EVM path
+ * actually needs it — the Solana examples, message signing, wallet management, and
+ * the offline argument checks all run without it.
  */
-export const RPC_URL =
-  process.env.RPC_URL || baseSepolia.rpcUrls.default.http[0];
+export function evmRpcUrl(): string {
+  const url = process.env.RPC_URL;
+
+  if (!url) {
+    throw new Error(
+      "RPC_URL is required for EVM operations. Set it in .env to an endpoint you " +
+        "control — see .example.env. (Solana examples and message signing do not " +
+        "need it.)",
+    );
+  }
+
+  return url;
+}
 
 /**
  * Default EVM chain for the examples.
