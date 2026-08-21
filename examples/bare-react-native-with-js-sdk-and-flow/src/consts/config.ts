@@ -22,7 +22,7 @@ export const config = {
     /** Required. https://app.dynamic.xyz/dashboard/developer/api */
     environmentId: process.env.DYNAMIC_ENVIRONMENT_ID,
     /** Optional. Empty/undefined lets the SDK use its own default (production). */
-    apiBaseUrl: process.env.DYNAMIC_API_BASE_URL || undefined,
+    apiBaseUrl: process.env.DYNAMIC_API_BASE_URL || 'https://app.dynamicauth.com/api/v0',
     /**
      * Sandbox-only Dynamic API key (flow.write scope) — see .env.example.
      * Used directly by src/utils/createDepositFlow.ts and
