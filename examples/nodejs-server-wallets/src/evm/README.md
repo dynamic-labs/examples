@@ -62,6 +62,32 @@ Gasless keeps the wallet's own address as sender — no smart-account wrapper �
 
 ---
 
+## Transfer token
+
+`transfer-token.ts` — moves an ERC-20 balance. Defaults to a 0-amount self-transfer of the example USDC, so it runs with no arguments and no funding.
+
+```bash
+pnpm evm:transfer-token                                 # 0 USDC to self, wallet pays gas
+pnpm evm:transfer-token --to 0xRecipient --amount 1.5
+pnpm evm:transfer-token --token 0xToken --amount 10
+pnpm evm:transfer-token --sponsored                     # Dynamic pays gas
+```
+
+| Flag | Default | Notes |
+| --- | --- | --- |
+| `--to` | the wallet itself | A self-transfer is always a valid recipient |
+| `--amount` | `0` | Whole units (`1.5`), not base units |
+| `--token` | example USDC | Any ERC-20 on this chain |
+| `--sponsored` | off | Wallet needs no ETH |
+
+Where a native send puts value in the transaction's `value` field, a token transfer calls the contract: `to` is the token, `value` is `0`, and the recipient and amount are in the calldata.
+
+`decimals()` is read from the contract, so `--amount` is in whole units. An amount the token can't represent is **rejected** rather than rounded — viem's `parseUnits` would turn `1.999999999` into `2` at 6 decimals, silently moving more than you asked.
+
+Not retry-safe on its own: call it twice and it transfers twice. Use `pnpm example:transfer --token ...` when you need idempotency.
+
+---
+
 ## Sign message
 
 `sign-message.ts` — ECDSA `personal_sign`, off-chain, no sponsorship needed.

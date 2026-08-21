@@ -43,7 +43,7 @@ import {
   signDelegatedSponsoredTransaction,
   signSponsoredTransaction,
 } from "../gasless/svm";
-import { readSvmTokenDecimals } from "../token/svm";
+import { ERROR_MISSING_ATA, readSvmTokenDecimals } from "../token/svm";
 import { patchTransfer, putTransfer } from "./store";
 import {
   assertDecimalsMatch,
@@ -56,12 +56,6 @@ import {
   type TransferResult,
 } from "./types";
 import { getSolanaTransactionLink } from "../utils";
-
-/** Raised when the recipient has no token account and rent is unfunded. */
-const ERROR_MISSING_ATA =
-  "Recipient has no associated token account for this mint. Gas sponsorship " +
-  "covers fees but not account rent, so this transfer will not create one — " +
-  "have the recipient create their ATA first, or fund its rent separately.";
 
 /** SVM implementation of the transfer contract. */
 export const svmTransferAdapter: ChainTransferAdapter = {

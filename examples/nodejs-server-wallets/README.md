@@ -12,6 +12,7 @@ src/
 │   ├── README.md               # EVM examples guide
 │   ├── wallet.ts               # Create, list, delete wallets
 │   ├── send-transaction.ts     # Send txns (standard or gasless)
+│   ├── transfer-token.ts       # Transfer ERC-20 tokens
 │   ├── sign-message.ts         # Sign messages for authentication
 │   ├── sign-typed-data.ts      # Sign EIP-712 structured data
 │   └── delegated/              # EVM delegated wallet operations
@@ -25,6 +26,7 @@ src/
 │   ├── README.md               # SVM examples guide + EVM/SVM differences
 │   ├── wallet.ts               # Create, list, delete wallets
 │   ├── send-transaction.ts     # Send txns (standard or gasless)
+│   ├── transfer-token.ts       # Transfer SPL tokens
 │   ├── sign-message.ts         # Sign messages (Ed25519, base58)
 │   ├── transaction.ts          # Demo transaction builder
 │   └── delegated/              # Solana delegated wallet operations
@@ -87,6 +89,7 @@ Each example directory has its own README with full flag reference:
 - Password protection for enhanced security
 - List and manage saved wallets with local storage
 - Send transactions with or without gas sponsorship
+- Transfer ERC-20 and SPL tokens, with decimals read from chain
 - Sign messages, and EIP-712 typed data on EVM
 
 ### Delegated Wallet Operations (`src/evm/delegated/`, `src/svm/delegated/`)
@@ -253,6 +256,38 @@ pnpm evm:send-txn gasless --order-id order-1
 pnpm svm:send-txn gasless --order-id order-2
 ```
 
+### Transfer Tokens
+
+Native value moves in a transaction's `value` field; a token balance is state inside
+a contract, so moving it means calling that contract. These mirror the sends above.
+
+```bash
+# 0-amount self-transfer of the example USDC — runs with no funding
+pnpm evm:transfer-token
+pnpm svm:transfer-token
+
+# Real amounts. Decimals are read from the token, so --amount is in whole units
+pnpm evm:transfer-token --to 0xRecipient --amount 1.5
+pnpm svm:transfer-token --to <base58> --amount 1.5
+
+# Pick the token (SVM also accepts --mint)
+pnpm evm:transfer-token --token 0xToken --amount 10
+pnpm svm:transfer-token --mint <mint> --amount 10
+
+# Dynamic pays the fee, so the wallet needs no native balance
+pnpm evm:transfer-token --sponsored
+pnpm svm:transfer-token --sponsored
+```
+
+Neither is retry-safe on its own — a repeated call transfers again. For that use
+[`pnpm example:transfer --token ...`](#unified-transfer-chain-agnostic), which adds
+idempotency on top.
+
+On Solana a token balance lives in a per-(owner, mint) **associated token account**
+rather than the wallet, and both sides need one. Creating one costs rent, which
+sponsorship doesn't cover, so a missing account is a clear error rather than
+something the script creates.
+
 ### Delegated Wallet Operations
 
 > ⚠️ Requires that chain's `wallet.json` with delegated credentials:
@@ -353,10 +388,21 @@ pnpm smoke --svm --signing      # Solana signing steps only
 
 Delegated steps require that chain's `wallet.json` and are opt-in via `--delegated` so a fresh clone stays green. If a required file is missing the runner names it and exits rather than failing mid-run. Exits non-zero if any step fails.
 
-Two things are deliberately **not** covered:
+A few things are deliberately **not** covered:
 
 - **`standard` (non-sponsored) sends**, which need a funded wallet. Run `pnpm evm:send-txn standard` / `pnpm svm:send-txn standard` yourself.
 - **The omnibus sweep**, which creates N+1 wallets and relays 2N sponsored transactions — too heavy for a smoke run. Use `pnpm example:omnibus 2`.
+- **`svm:transfer-token` on chain.** A fresh wallet has no associated token account for the mint, and the script won't create one (rent isn't sponsored), so it can't run unattended. `evm:transfer-token --sponsored` *is* covered — an ERC-20 needs no per-holder account, so a 0-amount self-transfer works on a brand-new wallet.
+- **`example:transfer` on chain.** It rejects an amount of zero, so it structurally needs a wallet that already holds the asset — which a fresh clone doesn't have. Only its argument handling is covered; run it yourself against a funded wallet:
+
+  ```bash
+  pnpm example:transfer --chain evm --address <addr> --to <addr> --amount 1 \
+    --token <erc20> --idempotency-key key-1
+  pnpm example:transfer --chain svm --address <addr> --to <addr> --amount 0.001 \
+    --idempotency-key key-2
+  ```
+
+  Repeat either with the same `--idempotency-key` and it should report a no-op and hand back the original transaction id.
 
 ## 🔑 Persisting Wallets
 

@@ -108,6 +108,43 @@ reliable. 0.05 SOL is plenty; transfer amounts here can be fractions of a cent.
 
 `pnpm svm:wallet --list` shows each saved wallet's balance.
 
+## Transfer token
+
+`transfer-token.ts` — moves an SPL balance with `TransferChecked`. Defaults to a 0-amount self-transfer of devnet USDC.
+
+```bash
+pnpm svm:transfer-token                                 # 0 USDC to self, wallet pays the fee
+pnpm svm:transfer-token --to <base58> --amount 1.5
+pnpm svm:transfer-token --mint <mint> --amount 10       # --token also accepted
+pnpm svm:transfer-token --sponsored                     # Dynamic pays the fee
+```
+
+### Balances live in a separate account
+
+A Solana token balance isn't held by the wallet. Each (owner, mint) pair gets its own **associated token account** (ATA) at a derived address, so a transfer moves value between two ATAs while the wallet signs as owner.
+
+Both ATAs must already exist. Creating one costs rent, which fee sponsorship does not cover — and under sponsorship the payer isn't known until sponsorship runs, so it can't be named as rent payer at build time. A missing ATA is therefore a clear error rather than something this script creates:
+
+- **Sender has none** → the wallet holds none of that token. Receiving a transfer creates it.
+- **Recipient has none** → they need to create it, or you fund its rent separately.
+
+To create one yourself so this script can run, any funded payer will do:
+
+```bash
+spl-token create-account <mint> --owner <wallet address> --url devnet
+```
+
+The account only has to *exist* — a 0-amount transfer from an empty one is valid, so
+you don't need to acquire the token just to try the script. Rent is about 0.002 SOL.
+
+This is the main thing that differs from the EVM script, where a balance is just a number in the contract's storage and no extra account exists.
+
+### Why `TransferChecked`
+
+It carries the expected decimals and the token program rejects the instruction if they disagree with the mint — so a stale decimals value fails loudly instead of moving the wrong amount by a factor of ten. Decimals are read from the mint account.
+
+Unlike the EVM default (a test token with an open `mint`), devnet USDC can't be minted on demand, so any non-zero amount means acquiring some first.
+
 ## Sign message
 
 `sign-message.ts` — Ed25519 signing, returned base58-encoded (the Solana convention, unlike hex on EVM). Off-chain, no sponsorship needed.

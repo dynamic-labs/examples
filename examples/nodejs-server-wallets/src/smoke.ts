@@ -31,9 +31,15 @@
  * The delegated steps need that chain's src/{evm,svm}/delegated/wallet.json, so
  * they are opt-in via --delegated to keep the default run green on a fresh clone.
  *
- * Two things are deliberately not covered:
+ * Deliberately not covered:
  *   - `standard` (non-sponsored) sends, which need a funded wallet
  *   - the omnibus sweep, which is far heavier than the other commands
+ *   - a *successful* svm:transfer-token, which needs the wallet's associated token
+ *     account to already exist (a 0-amount transfer is fine, but the account costs
+ *     rent, which sponsorship does not cover); the missing-account path is covered
+ *     instead
+ *   - example:transfer on chain, which rejects a zero amount and so needs a wallet
+ *     already holding the asset; only its argument handling is covered
  * Run those directly: `pnpm evm:send-txn standard`, `pnpm example:omnibus 2`.
  */
 
@@ -78,13 +84,22 @@ const tsx = (script: string, ...args: string[]) => ({
 });
 
 /**
- * Idempotency key for the on-chain retry assertion, unique per smoke run.
+ * Idempotency keys for the on-chain retry assertions, unique per smoke run.
  *
- * Two steps share it: the first must execute, the second must no-op. A fixed key
- * would only execute on the very first run ever, and would eventually break once
- * the recorded signature aged out of the RPC's queryable history.
+ * Two steps share each key: the first must execute, the second must no-op. A fixed
+ * key would only execute on the very first run ever, and would eventually break
+ * once the recorded signature aged out of the RPC's queryable history.
+ *
+ * One key per chain, because the store keys on the order id alone and rejects a key
+ * that was already used on the other chain.
+ *
+ * Both pairs assert on the "relayed / executed this run" line rather than the
+ * balance delta. That line is driven by the persisted record, so it is
+ * deterministic; the delta depends on the RPC reflecting the mint by the time the
+ * balance is read, which is not guaranteed and does intermittently report 0.
  */
-const SMOKE_IDEMPOTENCY_KEY = `smoke-${Date.now()}`;
+const SMOKE_IDEMPOTENCY_KEY_SVM = `smoke-svm-${Date.now()}`;
+const SMOKE_IDEMPOTENCY_KEY_EVM = `smoke-evm-${Date.now()}`;
 
 const STEPS: Step[] = [
   // ---- offline: no network, no credentials -------------------------------
@@ -125,6 +140,14 @@ const STEPS: Step[] = [
     ...tsx("src/evm/send-transaction.ts", "bogus"),
     exitCode: 1,
     expect: "Valid modes: standard, gasless",
+  },
+  {
+    name: "evm:transfer-token rejects a malformed --amount",
+    tier: "offline",
+    chain: "evm",
+    ...tsx("src/evm/transfer-token.ts", "--amount", "abc"),
+    exitCode: 1,
+    expect: "not a valid amount",
   },
   {
     name: "evm:sign-msg requires a message",
@@ -174,6 +197,14 @@ const STEPS: Step[] = [
     ...tsx("src/svm/send-transaction.ts", "bogus"),
     exitCode: 1,
     expect: "Valid modes: standard, gasless",
+  },
+  {
+    name: "svm:transfer-token rejects a malformed --amount",
+    tier: "offline",
+    chain: "svm",
+    ...tsx("src/svm/transfer-token.ts", "--amount", "abc"),
+    exitCode: 1,
+    expect: "not a valid amount",
   },
   {
     name: "svm:sign-msg requires a message",
@@ -292,6 +323,17 @@ const STEPS: Step[] = [
     expect: "Typed data signed",
   },
   {
+    name: "evm:transfer-token rejects an over-precise --amount",
+    tier: "signing",
+    chain: "evm",
+    // 6-decimal token, so this is a tenth of a base unit. viem's parseUnits would
+    // round it up to 2 and move more than asked; the guard has to reject it. Needs
+    // the signing tier because decimals are read from the contract first.
+    ...tsx("src/evm/transfer-token.ts", "--sponsored", "--amount", "1.999999999"),
+    exitCode: 1,
+    expect: "more precision",
+  },
+  {
     name: "evm:delegated:sign-msg",
     tier: "signing",
     chain: "evm",
@@ -314,6 +356,17 @@ const STEPS: Step[] = [
     expect: "Message signed",
   },
   {
+    name: "svm:transfer-token reports a missing token account",
+    tier: "signing",
+    chain: "svm",
+    // A fresh wallet has no associated token account for the mint, and this script
+    // will not create one (rent isn't sponsored). Pins the actionable error, and
+    // exercises decimals-from-mint plus ATA derivation against real chain state.
+    ...tsx("src/svm/transfer-token.ts", "--sponsored"),
+    exitCode: 1,
+    expect: "no token account",
+  },
+  {
     name: "svm:delegated:sign-msg",
     tier: "signing",
     chain: "svm",
@@ -329,6 +382,13 @@ const STEPS: Step[] = [
     chain: "evm",
     ...tsx("src/evm/send-transaction.ts", "gasless"),
     expect: "Transaction sent",
+  },
+  {
+    name: "evm:transfer-token --sponsored (ERC-20)",
+    tier: "onchain",
+    chain: "evm",
+    ...tsx("src/evm/transfer-token.ts", "--sponsored"),
+    expect: "Transfer sent",
   },
   {
     name: "evm:delegated:send-txn (gasless)",
@@ -353,8 +413,34 @@ const STEPS: Step[] = [
     expect: "Transaction sent",
     delegated: true,
   },
-  // The retry assertion, in two halves: execute, then prove the retry doesn't.
-  // Ordering matters — these must stay adjacent and in this order.
+  // The retry assertions, in two halves each: execute, then prove the retry
+  // doesn't. Ordering matters — each pair must stay adjacent and in this order.
+  //
+  // Ephemeral wallets are fine here. The retry short-circuits before resolving a
+  // wallet and reads the address back out of the store, so it reports the first
+  // run's wallet rather than creating an unrelated one.
+  {
+    name: "example:idempotency --chain evm (first run executes)",
+    tier: "onchain",
+    chain: "evm",
+    ...tsx(
+      "src/examples/idempotency/index.ts",
+      "--order-id",
+      SMOKE_IDEMPOTENCY_KEY_EVM,
+    ),
+    expect: "Relayed this run: yes",
+  },
+  {
+    name: "example:idempotency --chain evm (retry is a no-op)",
+    tier: "onchain",
+    chain: "evm",
+    ...tsx(
+      "src/examples/idempotency/index.ts",
+      "--order-id",
+      SMOKE_IDEMPOTENCY_KEY_EVM,
+    ),
+    expect: "Relayed this run: no",
+  },
   {
     name: "example:idempotency --chain svm (first run executes)",
     tier: "onchain",
@@ -364,7 +450,7 @@ const STEPS: Step[] = [
       "--chain",
       "svm",
       "--order-id",
-      SMOKE_IDEMPOTENCY_KEY,
+      SMOKE_IDEMPOTENCY_KEY_SVM,
     ),
     expect: "Executed this run: yes",
   },
@@ -377,7 +463,7 @@ const STEPS: Step[] = [
       "--chain",
       "svm",
       "--order-id",
-      SMOKE_IDEMPOTENCY_KEY,
+      SMOKE_IDEMPOTENCY_KEY_SVM,
     ),
     expect: "Executed this run: no",
   },

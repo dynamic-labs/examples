@@ -61,6 +61,15 @@ export const CONTRACTS = {
   84532: { USDC: "0x678d798938bd326d76e5db814457841d055560d0" },
 } as const;
 
+/**
+ * Default SPL mint for the Solana token examples: Circle's devnet USDC, 6 decimals.
+ *
+ * Unlike the EVM default above — a test token with an open `mint` — there is no way
+ * to mint this one, so `svm:transfer-token` defaults to a 0-amount self-transfer
+ * that needs no balance. Moving a non-zero amount means acquiring some first.
+ */
+export const SOLANA_DEVNET_USDC = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+
 export const TOKEN_ABI = [
   {
     inputs: [

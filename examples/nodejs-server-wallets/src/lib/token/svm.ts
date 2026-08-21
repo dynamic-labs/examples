@@ -9,6 +9,18 @@ import { getMint } from "@solana/spl-token";
 import { type Connection, PublicKey } from "@solana/web3.js";
 
 /**
+ * Raised when the recipient has no associated token account.
+ *
+ * Lives here rather than in the transfer layer because it is a property of SPL
+ * tokens, not of any one flow — both `lib/transfer/svm.ts` and
+ * `src/svm/transfer-token.ts` hit it.
+ */
+export const ERROR_MISSING_ATA =
+  "Recipient has no associated token account for this mint. Gas sponsorship " +
+  "covers fees but not account rent, so this transfer will not create one — " +
+  "have the recipient create their ATA first, or fund its rent separately.";
+
+/**
  * Cache keyed by mint address.
  *
  * An SPL mint fixes its decimals at creation, so the value is immutable and never

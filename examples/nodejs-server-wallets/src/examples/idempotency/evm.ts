@@ -41,7 +41,7 @@ import { deriveIdempotencyNonce } from "../../lib/gasless/evm";
 import { encodeFunctionData, erc20Abi, type Hex } from "viem";
 
 import { CONTRACTS, DEFAULT_CHAIN, evmRpcUrl, TOKEN_ABI, USDC_DECIMALS } from "../../../constants";
-import { authenticatedEvmClient } from "../../lib/clients/evm";
+import { authenticatedEvmClient, type EvmClient } from "../../lib/clients/evm";
 import { getTransfer, patchTransfer, putTransfer } from "../../lib/transfer/store";
 import { getTransactionLink } from "../../lib/utils";
 import { getOrCreateWallet, type WalletInfo } from "../../lib/wallet-helpers";
@@ -54,11 +54,10 @@ const DEFAULT_AMOUNT = 10;
 const TERMINAL_FAILURE = "failure";
 const TERMINAL_SUCCESS = "success";
 
-type EvmClient = Awaited<ReturnType<typeof authenticatedEvmClient>>;
-
 async function readUsdcBalance(
   evmClient: EvmClient,
   address: string,
+  blockNumber?: bigint,
 ): Promise<bigint> {
   const publicClient = evmClient.createViemPublicClient({
     chain: DEFAULT_CHAIN,
@@ -70,6 +69,11 @@ async function readUsdcBalance(
     abi: erc20Abi,
     functionName: "balanceOf",
     args: [address as Hex],
+    // Pinning matters after a relay: reading at `latest` can hit a node that is a
+    // block or two behind the one that served the receipt, which reports the
+    // pre-mint balance and prints "Delta this run: 0" for a mint that did land.
+    // The delta is this demo's whole point, so a wrong number is worse than none.
+    ...(blockNumber !== undefined && { blockNumber }),
   });
 }
 
@@ -149,12 +153,15 @@ async function resolvePriorAttempt(
  * afterwards can observe pre-transaction values. Confirming the receipt is also
  * the only way to learn whether the calls *succeeded* or reverted; the relay
  * reports delivery, not execution.
+ *
+ * Returns the block the transaction landed in, so a caller reading contract state
+ * afterwards can pin the read to it instead of racing `latest`.
  */
 async function confirmAndSettle(
   evmClient: EvmClient,
   orderId: string,
   transactionHash: Hex,
-): Promise<boolean> {
+): Promise<bigint> {
   const publicClient = evmClient.createViemPublicClient({
     chain: DEFAULT_CHAIN,
     rpcUrl: evmRpcUrl(),
@@ -171,7 +178,7 @@ async function confirmAndSettle(
   });
 
   console.info(`Receipt: ${receipt.status} (block ${receipt.blockNumber})`);
-  return succeeded;
+  return receipt.blockNumber;
 }
 
 /**
@@ -392,12 +399,17 @@ export async function runEvmIdempotencyDemo({
   }
 
   // Confirm on-chain before reading state — see confirmAndSettle().
+  let settledBlock: bigint | undefined;
   if (transactionHash) {
     console.info("");
-    await confirmAndSettle(evmClient, orderId, transactionHash);
+    settledBlock = await confirmAndSettle(evmClient, orderId, transactionHash);
   }
 
-  const balanceAfter = await readUsdcBalance(evmClient, wallet.address);
+  const balanceAfter = await readUsdcBalance(
+    evmClient,
+    wallet.address,
+    settledBlock,
+  );
   const delta = balanceAfter - balanceBefore;
 
   console.info("");

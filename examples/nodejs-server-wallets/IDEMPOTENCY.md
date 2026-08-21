@@ -2,7 +2,7 @@
 
 How to retry a gas-sponsored transaction without executing it twice, on EVM and SVM.
 
-Everything here was measured against `@dynamic-labs-wallet/*` **1.0.107** on Base Sepolia and Solana devnet, and re-checked on **1.0.109**. Runnable example: [`src/examples/idempotency/`](src/examples/idempotency) (`pnpm example:idempotency`, `--chain svm` for the Solana mechanism).
+Everything here was measured against `@dynamic-labs-wallet/*` **1.0.107** on Base Sepolia and Solana devnet, and re-checked on **1.0.111**. Runnable example: [`src/examples/idempotency/`](src/examples/idempotency) (`pnpm example:idempotency`, `--chain svm` for the Solana mechanism).
 
 ---
 

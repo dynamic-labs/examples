@@ -47,7 +47,7 @@ export const authenticatedEvmClient = async (args?: ClientProps) => {
   const authToken = args?.authToken ?? DYNAMIC_API_TOKEN;
   const client = new DynamicEvmWalletClient({
     environmentId,
-    enableMPCAccelerator: false,
+    enableMPCAccelerator: true,
   });
 
   await client.authenticateApiToken(authToken);
