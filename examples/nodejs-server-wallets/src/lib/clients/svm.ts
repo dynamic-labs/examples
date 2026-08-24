@@ -50,7 +50,7 @@ export const authenticatedSvmClient = async (args?: ClientProps) => {
   const authToken = args?.authToken ?? DYNAMIC_API_TOKEN;
   const client = new DynamicSvmWalletClient({
     environmentId,
-    enableMPCAccelerator: false,
+    enableMPCAccelerator: true,
   });
 
   await client.authenticateApiToken(authToken);
