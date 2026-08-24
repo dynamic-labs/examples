@@ -1,0 +1,892 @@
+# Moonwell lending markets
+
+> Let users supply stablecoins to Moonwell's lending markets on Base and earn interest that accrues automatically
+
+## Overview
+
+[Moonwell](https://moonwell.fi/) is an open lending protocol on Base. Suppliers deposit assets into a market, borrowers pay interest to draw against it, and that interest accrues to suppliers continuously. This guide walks through integrating Moonwell's USDC market into a Next.js app with Dynamic embedded wallets.
+
+For the final code, see the [GitHub repository](https://github.com/dynamic-labs-oss/examples/tree/main/examples/nextjs-defi-lending-moonwell).
+
+## How it works
+
+Moonwell's core markets are a Compound v2 fork. When a user supplies USDC they receive **mUSDC**, an interest-bearing receipt token. The mToken balance never changes; instead the market's exchange rate grows every block as borrowers pay interest, so each mToken becomes redeemable for more USDC over time.
+
+**Example:** a user supplies 1,000 USDC when `exchangeRateStored` is `0.0231` USDC per mUSDC (the raw on-chain value is a large integer — `231174377482736` — scaled as described below), receiving about 43,290 mUSDC. Their mUSDC balance stays at 43,290. When the rate reaches `0.0243`, that same balance redeems for roughly 1,052 USDC — the extra 52 USDC is accrued interest. Nothing needs to be claimed or compounded.
+
+Two details follow from this design and shape the code below:
+
+- **The supplied balance is derived, not read.** `underlyingBalance = mTokenBalance * exchangeRateStored / 1e18`. The rate is scaled by `1e(10 + underlyingDecimals)`, so this one formula is correct for any market regardless of the underlying's decimals.
+- **Some failures return an error code instead of reverting.** `mint`, `redeem` and `redeemUnderlying` return a `uint` status. A transaction can therefore succeed on-chain while doing nothing, so every write is simulated first and the returned code checked.
+
+APY is variable and moves with borrower demand.
+
+## Setup
+
+### Project setup
+
+Follow the [JS SDK Quickstart](/docs/javascript/reference/quickstart) to initialize a Next.js app with Dynamic. Scaffold a Next.js app with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) and mirror the provider wiring from the quickstart or the [GitHub repository](https://github.com/dynamic-labs-oss/examples/tree/main/examples/nextjs-defi-lending-moonwell) linked above.
+
+<Info>
+  In the Dynamic dashboard, enable **Base** under **Chains & Networks**, enable **Embedded wallets** under **Wallets**, enable **Email** under **Sign-in Methods**, and add your app's origin under **Security → Allowed Origins**.
+</Info>
+
+### Install dependencies
+
+<CodeGroup>
+  ```bash npm
+  npm install @dynamic-labs-sdk/client @dynamic-labs-sdk/evm @dynamic-labs-sdk/react-hooks @tanstack/react-query viem
+  ```
+
+  ```bash yarn
+  yarn add @dynamic-labs-sdk/client @dynamic-labs-sdk/evm @dynamic-labs-sdk/react-hooks @tanstack/react-query viem
+  ```
+
+  ```bash pnpm
+  pnpm add @dynamic-labs-sdk/client @dynamic-labs-sdk/evm @dynamic-labs-sdk/react-hooks @tanstack/react-query viem
+  ```
+
+  ```bash bun
+  bun add @dynamic-labs-sdk/client @dynamic-labs-sdk/evm @dynamic-labs-sdk/react-hooks @tanstack/react-query viem
+  ```
+</CodeGroup>
+
+`@tanstack/react-query` is a required peer dependency of `@dynamic-labs-sdk/react-hooks` — every state, query and mutation hook is built on it.
+
+<Info>
+  This guide's hook surface — `useGetWalletAccounts`, `useOnEvent`, `useSendEmailOTP`, `useVerifyOTP` — requires `@dynamic-labs-sdk/*` **1.26.0 or later**. Earlier releases expose different hooks under different names.
+</Info>
+
+### Environment variables
+
+```env .env.local
+NEXT_PUBLIC_DYNAMIC_ENV_ID=your-environment-id-here
+
+# Optional Base RPC override. Defaults to Moonwell's public endpoint.
+# NEXT_PUBLIC_BASE_RPC_URL=https://base-mainnet.g.alchemy.com/v2/YOUR_KEY
+```
+
+Your environment ID is in the Dynamic dashboard under **Developer Settings → SDK & API Keys**.
+
+### Initialize Dynamic
+
+Create `src/lib/dynamic.ts`. Extensions are registered immediately after the client is created, before initialization completes, and they take no arguments:
+
+```typescript src/lib/dynamic.ts
+import { createDynamicClient, initializeClient } from "@dynamic-labs-sdk/client";
+import { addEvmExtension } from "@dynamic-labs-sdk/evm";
+import { BASE_RPC_URL, CHAIN_ID } from "@/lib/constants";
+
+// `universalLink` defaults to `window.location.origin`, which does not exist
+// while Next.js renders on the server — fall back to the dev origin so this
+// module can be imported from a "use client" module graph without throwing.
+const universalLink =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:3000";
+
+// Named loudly because it is the one setup step every reader must get right —
+// without it the SDK fails with a message that says nothing about env vars.
+if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID) {
+  console.error(
+    "NEXT_PUBLIC_DYNAMIC_ENV_ID is not set. Copy .env.example to .env.local " +
+      "and fill in your environment ID from app.dynamic.xyz.",
+  );
+}
+
+export const dynamicClient = createDynamicClient({
+  autoInitialize: false,
+  environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID!,
+  metadata: {
+    name: "Moonwell Lending",
+    universalLink,
+  },
+  transformers: {
+    /**
+     * The first network of a chain is the default for a fresh wallet, so
+     * restricting the EVM list to Base makes Base the default — without this,
+     * an environment that also has Ethereum enabled hands out wallets sitting
+     * on chain 1 and every write fails until the user switches.
+     *
+     * Also puts `BASE_RPC_URL` in front of the project's own RPC list, so the
+     * WaaS client broadcasts through it — Dynamic builds that transport from
+     * `networkData.rpcUrls`, so overriding it here is what makes the send use
+     * a working endpoint rather than Base's rate-limited public one.
+     */
+    networksData: (networksData) =>
+      networksData
+        .filter(
+          (network) =>
+            network.chain !== "EVM" || Number(network.networkId) === CHAIN_ID,
+        )
+        .map((network) => {
+          if (Number(network.networkId) !== CHAIN_ID) return network;
+          return {
+            ...network,
+            rpcUrls: {
+              ...network.rpcUrls,
+              http: [BASE_RPC_URL, ...network.rpcUrls.http],
+            },
+          };
+        }),
+  },
+});
+
+// Register extensions and initialize at module scope so both happen before any
+// component renders. Extension functions take NO arguments. The browser guard
+// is a Next.js concern only: "use client" modules still execute during SSR,
+// where there is no wallet environment to initialize.
+if (typeof window !== "undefined") {
+  addEvmExtension();
+  // The react-hooks surface reports init failure through `initStatus`; the
+  // log keeps the underlying cause from being swallowed with it.
+  initializeClient().catch((error) => {
+    console.error("Dynamic client failed to initialize", error);
+  });
+}
+```
+
+<Info>
+  **A fresh embedded wallet opens on the first EVM network in your project, not on the one your app happens to target.** If your environment also has Ethereum enabled, users get wallets on chain 1 and every write fails. The `networksData` transformer above fixes this at the source: the `.filter()` restricts the EVM list to Base (which also makes Base the default), and the `.map()` puts your own RPC in front of the network's list. The override matters past a demo — public endpoints rate-limit browser traffic and answer with 403, which shows up as a failed broadcast rather than a failed read.
+</Info>
+
+### Configure providers
+
+Create `src/lib/providers.tsx`. `QueryClientProvider` must sit **outside** `DynamicProvider`. Embedded wallet creation is not automatic — `WaasBootstrap` subscribes once with `useOnEvent` and creates the missing wallets after authentication:
+
+```typescript src/lib/providers.tsx
+"use client";
+
+import { createContext, useContext, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { DynamicProvider, useOnEvent, useUser, useGetWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
+import {
+  createWaasWalletAccounts,
+  getChainsMissingWaasWalletAccounts,
+  isWaasWalletAccount,
+} from "@dynamic-labs-sdk/client/waas";
+import type { WalletAccount } from "@dynamic-labs-sdk/client";
+import { isEvmWalletAccount, type EvmWalletAccount } from "@dynamic-labs-sdk/evm";
+import { CHAIN_ID } from "@/lib/constants";
+import { dynamicClient } from "@/lib/dynamic";
+
+interface WalletContextValue {
+  evmAccount: EvmWalletAccount | null;
+  loggedIn: boolean;
+  /** Base only — this example has no network selector. */
+  chainId: number;
+}
+
+const WalletContext = createContext<WalletContextValue>({
+  evmAccount: null,
+  loggedIn: false,
+  chainId: CHAIN_ID,
+});
+
+export function useWallet() {
+  return useContext(WalletContext);
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Matches the Moonwell app's 5s cadence for on-chain reads. Window-focus
+      // refetching is deliberately left on: polling pauses while the tab is in
+      // the background, so without it a user who switches away during a
+      // transaction comes back to stale balances.
+      staleTime: 1000 * 5,
+    },
+  },
+});
+
+/**
+ * Embedded (WaaS) wallet creation is not automatic — it has to be triggered
+ * after authentication. `getChainsMissingWaasWalletAccounts()` is the correct
+ * signal: guarding on `accounts.length === 0` can read a stale non-empty list
+ * immediately after auth and silently skip creation.
+ *
+ * `useOnEvent` (never a raw `onEvent` call in a component) deduplicates the
+ * subscription and cleans it up on unmount, including under Strict Mode.
+ */
+function WaasBootstrap() {
+  useOnEvent({
+    event: "userChanged",
+    listener: async (user) => {
+      if (!user) return;
+      const missingChains = getChainsMissingWaasWalletAccounts();
+      if (missingChains.length === 0) return;
+      try {
+        await createWaasWalletAccounts({ chains: missingChains });
+      } catch (error) {
+        // Nothing awaits an event listener, so an uncaught rejection here is
+        // silent — and the UI would wait forever for a wallet that never
+        // arrives. Signing out and back in retries the creation.
+        console.error("Embedded wallet creation failed", error);
+      }
+    },
+  });
+  return null;
+}
+
+function WalletContextProvider({ children }: { children: ReactNode }) {
+  const { data: user } = useUser();
+  const { data: accounts = [] } = useGetWalletAccounts();
+  // `useGetWalletAccounts` is typed as the chain-agnostic base account, while
+  // the type guard is declared over the chain-specific `WalletAccount` union.
+  const evmAccounts = (accounts as WalletAccount[]).filter(isEvmWalletAccount);
+
+  // Prefer the embedded wallet. `addEvmExtension()` also registers EIP-6963
+  // discovery, so an external browser wallet can appear in this list — and only
+  // the WaaS provider signs locally. Picking the first EVM account instead would
+  // hand transactions to a provider that just forwards `eth_sendTransaction` to
+  // a public RPC, which has no keys and rejects it.
+  const evmAccount =
+    evmAccounts.find((walletAccount) => isWaasWalletAccount({ walletAccount })) ??
+    evmAccounts[0] ??
+    null;
+
+  return (
+    <WalletContext.Provider
+      value={{ evmAccount, loggedIn: !!user, chainId: CHAIN_ID }}
+    >
+      {children}
+    </WalletContext.Provider>
+  );
+}
+
+/**
+ * `QueryClientProvider` must sit OUTSIDE `DynamicProvider`: every hook in
+ * `@dynamic-labs-sdk/react-hooks` is built on TanStack Query.
+ */
+export default function Providers({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DynamicProvider client={dynamicClient}>
+        <WaasBootstrap />
+        <WalletContextProvider>{children}</WalletContextProvider>
+      </DynamicProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+Sign-in is headless — the JavaScript SDK ships no modal. `useSendEmailOTP` returns the `OTPVerification` handle that `useVerifyOTP` consumes, and the code is passed as `verificationToken` (not `otp`):
+
+```typescript src/components/Login.tsx
+const {
+  mutate: sendEmailOTP,
+  data: otpVerification,
+  isPending: isSending,
+  error: sendError,
+  reset: resetSend,
+} = useSendEmailOTP();
+
+const {
+  mutate: verifyOTP,
+  isPending: isVerifying,
+  error: verifyError,
+} = useVerifyOTP();
+```
+
+`sendEmailOTP` is called with the address, and `verifyOTP` with the handle it produced plus the code the user typed:
+
+```typescript src/components/Login.tsx
+onClick={() => sendEmailOTP({ email })}
+```
+
+```typescript src/components/Login.tsx
+onClick={() =>
+  verifyOTP(
+    { otpVerification, verificationToken: code },
+    { onSuccess: () => onDone?.() },
+  )
+}
+```
+
+### Configure networks and constants
+
+This example is Base-only, so there is no network selector. Markets are identified by their mToken address:
+
+```typescript src/lib/constants.ts
+/** Base mainnet. This example is single-network by design — no chain selector. */
+export const CHAIN_ID = 8453;
+
+/**
+ * Moonwell's public markets endpoint. It defaults to Base, but the chain is
+ * passed explicitly so the URL documents itself.
+ */
+export const MARKETS_API = "https://api.moonwell.fi/v1/markets?chainId=8453";
+
+/** Native USDC on Base (6 decimals). */
+export const USDC_ADDRESS =
+  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+
+/**
+ * Moonwell's mToken for the native USDC market (8 decimals).
+ *
+ * Two markets report the `mUSDC` symbol: this one and the deprecated USDbC
+ * market at 0x703843C3379b52F9FF486c9f5892218d2a065cC8. Always identify a
+ * market by its mToken address, never by symbol.
+ */
+export const MUSDC_ADDRESS =
+  "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22" as const;
+
+export const USDC_DECIMALS = 6;
+/**
+ * Not referenced by the app — the exchange-rate scaling absorbs it — but kept
+ * because the recipe documents the 8-decimal mToken scale beside USDC's 6.
+ */
+export const MTOKEN_DECIMALS = 8;
+
+export const BASESCAN_URL = "https://basescan.org";
+
+/**
+ * Base RPC used for both reads and broadcasting.
+ *
+ * Defaults to Moonwell's public endpoint. Base's own public endpoint
+ * (`mainnet.base.org`) rate-limits browser traffic and answers with 403, which
+ * shows up as a failed broadcast rather than a failed read. Override with
+ * `NEXT_PUBLIC_BASE_RPC_URL` to point at your own provider.
+ */
+export const BASE_RPC_URL =
+  process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://rpc.moonwell.fi/main/evm/8453";
+```
+
+Reads go through a plain viem public client; only writes need the Dynamic wallet:
+
+```typescript src/lib/viem.ts
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
+import { BASE_RPC_URL } from "@/lib/constants";
+
+/** Read-only Base client. Writes go through the Dynamic wallet client. */
+export const publicClient = createPublicClient({
+  chain: base,
+  transport: http(BASE_RPC_URL),
+});
+```
+
+### Set up contract ABIs
+
+Create the ABI files in `src/lib/ABIs/`:
+
+* **ERC20\_ABI.ts** — standard token interface (`balanceOf`, `allowance`, `approve`, `decimals`)
+* **MTOKEN\_ABI.ts** — the Moonwell market (`mint`, `redeem`, `redeemUnderlying`, `exchangeRateStored`, `balanceOf`)
+
+Five functions cover the whole supply/withdraw flow:
+
+```typescript src/lib/ABIs/MTOKEN_ABI.ts
+/**
+ * Minimal Moonwell mToken interface (Compound v2 fork).
+ *
+ * `mint`, `redeem` and `redeemUnderlying` return a uint error code rather than
+ * reverting on some failures — simulate first and assert the result is `0n`
+ * before broadcasting.
+ */
+export const MTOKEN_ABI = [
+  {
+    inputs: [{ name: "mintAmount", type: "uint256" }],
+    name: "mint",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "redeemTokens", type: "uint256" }],
+    name: "redeem",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "redeemAmount", type: "uint256" }],
+    name: "redeemUnderlying",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "exchangeRateStored",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+```
+
+You can find these files in the [GitHub repository](https://github.com/dynamic-labs-oss/examples/tree/main/examples/nextjs-defi-lending-moonwell/src/lib/ABIs).
+
+## Fetching market data
+
+### Market list
+
+`https://api.moonwell.fi/v1/markets?chainId=8453` returns `{ success, data: Market[], meta }`. Each market carries `asset`, `assetAddress`, `mToken`, `mTokenAddress`, `deprecated`, `baseSupplyApy`, `totalSupplyApr`, `totalSupplyUsd`, `liquidityUsd`, `utilization` and `collateralFactor`. APY fields are **already percentages** — `3.668` means 3.67%, no multiplication needed.
+
+<Info>
+  Two markets on Base report the mToken symbol **`mUSDC`**: native USDC (`0xEdc817…6c22`) and the legacy USDbC market (`0x703843…5cC8`, `deprecated: true`). Filter on `deprecated === false` and key every market by `mTokenAddress` — symbols are not unique.
+</Info>
+
+Parsing and filtering live in a pure module so they can be unit tested without a browser:
+
+```typescript src/lib/moonwell.ts
+/**
+ * Runtime guard over the markets endpoint. The response is
+ * `{ success, data: Market[], meta }`; anything else is a hard error rather
+ * than a silently empty market list.
+ */
+export function parseMarketsResponse(payload: unknown): Market[] {
+  if (!isRecord(payload)) {
+    throw new Error("Moonwell API: expected a JSON object");
+  }
+  if (payload.success !== true) {
+    throw new Error("Moonwell API: response success flag was not true");
+  }
+  if (!Array.isArray(payload.data)) {
+    throw new Error("Moonwell API: expected data to be an array");
+  }
+  if (!payload.data.every(isMarket)) {
+    throw new Error("Moonwell API: a market is missing required fields");
+  }
+  return payload.data;
+}
+
+/** Deprecated markets are read-only husks — never show or target them. */
+export function filterActiveMarkets(markets: Market[]): Market[] {
+  return markets.filter((market) => !market.deprecated);
+}
+
+/** Markets are identified by mToken address because symbols collide. */
+export function findMarketByMToken(
+  markets: Market[],
+  mTokenAddress: string,
+): Market | undefined {
+  const needle = mTokenAddress.toLowerCase();
+  return markets.find((m) => m.mTokenAddress.toLowerCase() === needle);
+}
+```
+
+The hook is a thin TanStack Query wrapper:
+
+```typescript src/lib/hooks/useMarkets.ts
+async function fetchActiveMarkets(): Promise<Market[]> {
+  const res = await fetch(MARKETS_API);
+  if (!res.ok) {
+    throw new Error(`Moonwell API returned ${res.status}`);
+  }
+  return filterActiveMarkets(parseMarketsResponse(await res.json()));
+}
+
+/** Live Base markets, deprecated ones already removed. */
+export function useMarkets() {
+  return useQuery({
+    queryKey: ["moonwell", "markets"],
+    queryFn: fetchActiveMarkets,
+    staleTime: 30_000,
+  });
+}
+```
+
+### User balances
+
+The supplied balance is not stored anywhere — it is the mToken balance multiplied by the current exchange rate:
+
+```typescript src/lib/moonwell.ts
+/**
+ * Converts an mToken balance into the underlying asset's smallest unit.
+ *
+ * `exchangeRateStored` is scaled by 1e(10 + underlyingDecimals), so dividing
+ * the product by 1e18 lands in underlying units for any market, regardless of
+ * the underlying's decimals. Truncating division rounds in the protocol's
+ * favour, which is what we want when displaying a redeemable balance.
+ */
+export function underlyingFromMTokens(
+  mTokenBalance: bigint,
+  exchangeRateStored: bigint,
+): bigint {
+  return (mTokenBalance * exchangeRateStored) / 10n ** 18n;
+}
+```
+
+Four reads give everything the UI needs — wallet balance, position and allowance:
+
+```typescript src/lib/hooks/useBalances.ts
+const [walletUsdc, mTokenBalance, exchangeRate, allowance] =
+  await Promise.all([
+    publicClient.readContract({
+      address: USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: "balanceOf",
+      args: [owner],
+    }),
+    publicClient.readContract({
+      address: MUSDC_ADDRESS,
+      abi: MTOKEN_ABI,
+      functionName: "balanceOf",
+      args: [owner],
+    }),
+    publicClient.readContract({
+      address: MUSDC_ADDRESS,
+      abi: MTOKEN_ABI,
+      functionName: "exchangeRateStored",
+    }),
+    publicClient.readContract({
+      address: USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: "allowance",
+      args: [owner, MUSDC_ADDRESS],
+    }),
+  ]);
+
+return {
+  walletUsdc,
+  mTokenBalance,
+  suppliedUsdc: underlyingFromMTokens(mTokenBalance, exchangeRate),
+  allowance,
+};
+```
+
+## Supply and withdraw
+
+Supplying requires two transactions: approve the mToken to spend USDC, then `mint`. Withdrawing needs no approval. Use viem directly with `createWalletClientForWalletAccount`.
+
+One thing to get right first: **an embedded wallet does not start on Base just because Base is enabled.** It opens on whatever network the environment resolves first — if Ethereum Mainnet is also enabled, that is chain 1, and every write fails. And because `createWalletClientForWalletAccount` takes its chain from the wallet's *current* network, the switch has to happen before the client is built, not after:
+
+```typescript src/lib/hooks/useLendingOperations.ts
+const getWalletClient = useCallback(
+  async (onSwitchStart?: () => void) => {
+    if (!evmAccount) throw new Error("Connect a wallet first");
+
+    const { networkId } = await getActiveNetworkId({
+      walletAccount: evmAccount,
+    });
+
+    if (Number(networkId) !== CHAIN_ID) {
+      if (!isProgrammaticNetworkSwitchAvailable({ walletAccount: evmAccount })) {
+        throw new Error(
+          `This wallet is on chain ${networkId} and cannot switch networks programmatically. Switch to Base (${CHAIN_ID}) in your wallet, then try again.`,
+        );
+      }
+      onSwitchStart?.();
+      await switchActiveNetwork({
+        networkId: String(CHAIN_ID),
+        walletAccount: evmAccount,
+      });
+    }
+
+    const walletClient = await createWalletClientForWalletAccount({
+      walletAccount: evmAccount,
+    });
+
+    // Backstop: if the switch silently failed we would otherwise sign against
+    // the wrong chain's contracts.
+    if (walletClient.chain?.id !== CHAIN_ID) {
+      throw new Error(
+        `Wallet is still on chain ${walletClient.chain?.id ?? "unknown"} after switching to Base (${CHAIN_ID}).`,
+      );
+    }
+
+    // The embedded wallet signs locally, which viem models as a `local`
+    // account. A `json-rpc` account means the SDK fell back to proxying
+    // through a provider that cannot sign — the transaction would be
+    // forwarded to a public RPC, which holds no keys and answers
+    // `eth_sendTransaction` with "rpc method is unsupported". Failing here
+    // names the cause instead of surfacing that as a network error.
+    if (walletClient.account?.type !== "local") {
+      throw new Error(
+        `Selected wallet cannot sign locally (viem account type "${walletClient.account?.type ?? "unknown"}"). This example expects a Dynamic embedded wallet.`,
+      );
+    }
+    return walletClient;
+  },
+  [evmAccount],
+);
+```
+
+Embedded wallets switch programmatically with no user prompt, which is why this can run inline in the transaction path. An external wallet may refuse, so `isProgrammaticNetworkSwitchAvailable` is checked rather than assumed — that branch is where you would fall back to asking the user to switch by hand.
+
+<Info>
+  **Simulate with the wallet's account object, not its address.** This is the single easiest way to break an embedded-wallet integration, and it fails in a way that points nowhere near the cause.
+
+  `writeContract` prefers the account carried on the simulated request over the one on the client:
+
+  ```typescript
+  const { abi, account: account_ = client.account, ... } = parameters  // viem
+  ```
+
+  An address string parses into a **`json-rpc`** account, so viem asks the transport to sign via `eth_sendTransaction`. The embedded wallet signs *locally* — its client carries a **`local`** account and broadcasts `eth_sendRawTransaction`. Pass the address and you silently opt out of that, and the request goes to your RPC endpoint, which holds no keys:
+
+  ```
+  The method "eth_sendTransaction" does not exist / is not available.
+  ```
+
+  ```typescript
+  // ✅ signs locally with the embedded wallet
+  publicClient.simulateContract({ ...args, account: walletClient.account })
+
+  // ❌ becomes a json-rpc account; eth_sendTransaction goes to the RPC
+  publicClient.simulateContract({ ...args, account: walletClient.account.address })
+  ```
+</Info>
+
+Every write follows the same cycle — simulate, check the Compound error code, broadcast, wait, invalidate:
+
+```typescript src/lib/hooks/useLendingOperations.ts
+/**
+ * Compound v2 markets answer some failures with a non-zero return code instead
+ * of reverting, so a transaction can succeed on-chain while doing nothing.
+ * Simulating first exposes that code — anything but 0 is a refusal.
+ */
+export function assertNoErrorCode(result: unknown, action: string) {
+  if (typeof result === "bigint" && result !== 0n) {
+    throw new Error(
+      `Moonwell rejected the ${action} with error code ${result}. ` +
+        `See https://docs.moonwell.fi for what each code means.`,
+    );
+  }
+}
+
+let hash: `0x${string}` | undefined;
+
+const walletClient = await getWalletClient(() =>
+  setTx({ phase: "switching" }),
+);
+setTx({ phase });
+
+let simulated: Awaited<ReturnType<typeof simulate>> | undefined;
+for (let attempt = 1; ; attempt++) {
+  try {
+    simulated = await simulate(walletClient.account);
+    break;
+  } catch (error) {
+    if (attempt >= simulateAttempts || !isStaleAllowanceError(error)) {
+      throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+}
+
+const { request, result } = simulated;
+assertNoErrorCode(result, action);
+
+hash = await walletClient.writeContract(request);
+const receipt = await publicClient.waitForTransactionReceipt({ hash });
+if (receipt.status !== "success") {
+  throw new Error(`${action} transaction reverted`);
+}
+
+// The transaction is final the moment the receipt says success, so
+// report it now. The refresh below makes ten more RPC round-trips, and
+// a hiccup in any of them must not repaint a mined transaction as a
+// failure.
+setTx({ phase: "success", hash, action });
+
+try {
+  // Only refetch once the RPC can actually see this block, otherwise
+  // the refreshed balances are the pre-transaction ones.
+  await waitForBlock(receipt.blockNumber);
+  await queryClient.invalidateQueries({
+    queryKey: balancesQueryKey(address),
+  });
+} catch (refreshError) {
+  // Best-effort: the 5s balance poll catches up on its own.
+  console.error(`Balance refresh after the ${action} failed`, refreshError);
+}
+```
+
+The four operations differ only in which contract call they simulate:
+
+```typescript src/lib/hooks/useLendingOperations.ts
+/** Approves the mToken to spend `amount` USDC. */
+const approve = useCallback(
+  (amount: bigint) =>
+    run("approving", "approval", async (account) =>
+      publicClient.simulateContract({
+        address: USDC_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [MUSDC_ADDRESS, amount],
+        account,
+      }),
+    ),
+  [run],
+);
+
+/**
+ * Supplies USDC and receives mUSDC.
+ *
+ * `simulateAttempts` above 1 is for a supply chained straight onto an
+ * approval: the allowance is on-chain but the read path may not serve it for
+ * a few seconds, and retrying the simulate absorbs that without asking the
+ * user to press anything twice.
+ */
+const supply = useCallback(
+  (amount: bigint, simulateAttempts = 1) =>
+    run(
+      "pending",
+      "supply",
+      async (account) =>
+        publicClient.simulateContract({
+          address: MUSDC_ADDRESS,
+          abi: MTOKEN_ABI,
+          functionName: "mint",
+          args: [amount],
+          account,
+        }),
+      simulateAttempts,
+    ),
+  [run],
+);
+
+/** Withdraws an exact USDC amount. */
+const withdraw = useCallback(
+  (amount: bigint) =>
+    run("pending", "withdrawal", async (account) =>
+      publicClient.simulateContract({
+        address: MUSDC_ADDRESS,
+        abi: MTOKEN_ABI,
+        functionName: "redeemUnderlying",
+        args: [amount],
+        account,
+      }),
+    ),
+  [run],
+);
+
+/**
+ * Withdraws everything by redeeming the whole mToken balance. Going through
+ * `redeem` rather than `redeemUnderlying` avoids leaving dust behind when the
+ * exchange rate moves between quoting and mining.
+ */
+const withdrawMax = useCallback(
+  (mTokenBalance: bigint) =>
+    run("pending", "withdrawal", async (account) =>
+      publicClient.simulateContract({
+        address: MUSDC_ADDRESS,
+        abi: MTOKEN_ABI,
+        functionName: "redeem",
+        args: [mTokenBalance],
+        account,
+      }),
+    ),
+  [run],
+);
+```
+
+<Info>
+  **A mined approval is not the same as a readable one.** `waitForTransactionReceipt` proves *one* node saw the approve. Simulate the `mint` immediately afterwards and a load-balanced RPC can serve you a node one block behind, which still reads the old allowance:
+
+  ```
+  The contract function "mint" reverted with the following reason:
+  ERC20: transfer amount exceeds allowance
+  ```
+
+  The approval is fine, the supply is fine, and re-clicking works — which is what makes this easy to misread as a bug in the approve.
+
+  **Retry the simulation, not the transaction.** Polling the allowance before supplying looks like the obvious fix and is not reliable: it decides in advance how long propagation will take, and when it guesses low the user is asked to press a button twice for no reason. Simulating is a read, so retrying it is free — and it tests the exact condition that matters instead of a proxy for it. The write still happens once, after a simulate that succeeded:
+
+  ```typescript src/lib/hooks/useLendingOperations.ts
+  let simulated: Awaited<ReturnType<typeof simulate>> | undefined;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      simulated = await simulate(walletClient.account);
+      break;
+    } catch (error) {
+      if (attempt >= simulateAttempts || !isStaleAllowanceError(error)) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  }
+  ```
+
+  Retry only the failure that patience fixes. A balance that is genuinely too low or a paused market must surface at once, not after twenty seconds of silence:
+
+  ```typescript src/lib/utils.ts
+  export function isStaleAllowanceError(error: unknown): boolean {
+    return formatErrorMessage(error).toLowerCase().includes("allowance");
+  }
+  ```
+
+  Pass the retries only where a stale allowance is plausible — straight after an approval. Everywhere else, an allowance error is real.
+
+</Info>
+
+In the form, a supply first tops up the allowance when it is short, and a full withdrawal is routed to `redeem` so no dust is stranded:
+
+```typescript src/components/SupplyWithdrawForm.tsx
+const handleSubmit = async () => {
+  if (!amount) return;
+  setApprovalStands(false);
+  if (mode === "supply") {
+    const approving = needsApproval;
+    // Approval and supply are one click. The error is already on screen if the
+    // approval itself failed.
+    if (approving && !(await approve(amount))) return;
+    // A supply straight after an approval may simulate before the new
+    // allowance is readable. Retrying the simulate absorbs that rather than
+    // making the user press Supply a second time; without a preceding
+    // approval an allowance error is real, so it surfaces at once.
+    const supplied = await supply(amount, approving ? 20 : 1);
+    // The amount is only cleared on success: after a failure the user needs
+    // it on screen to retry, next to the error explaining what happened.
+    if (supplied) clearInput();
+    else if (approving) setApprovalStands(true);
+    return;
+  }
+  // A "withdraw everything" request redeems the mToken balance outright so no
+  // dust is left behind by an exchange-rate tick between quote and mining.
+  const isFullWithdrawal = isMax || (amount === maxAmount && maxAmount > 0n);
+  const withdrew =
+    isFullWithdrawal && balances
+      ? await withdrawMax(balances.mTokenBalance)
+      : await withdraw(amount);
+  if (withdrew) clearInput();
+};
+```
+
+Two pieces of state make this honest. `isMax` remembers the Max click explicitly — the supplied balance grows with every exchange-rate tick, so inferring "withdraw everything" from an equality check goes stale within one balance poll. And `approvalStands` tells the user that a mined approval is still in place when the supply chained onto it fails, instead of leaving a standing allowance undisclosed.
+
+## Enable transaction simulation
+
+Dynamic's embedded wallets include built-in transaction previews. To enable, go to **Developer Settings → Embedded Wallets → Dynamic** in the dashboard and toggle on **Show Confirmation UI** and **Transaction Simulation**. Users will see the exact assets being transferred, estimated fees, and the market contract before confirming.
+
+## Run the app
+
+<CodeGroup>
+  ```bash npm
+  npm run dev
+  ```
+
+  ```bash yarn
+  yarn dev
+  ```
+
+  ```bash pnpm
+  pnpm dev
+  ```
+
+  ```bash bun
+  bun dev
+  ```
+</CodeGroup>
+
+Add `http://localhost:3000` to your allowed origins in the Dynamic dashboard under **Security → Allowed Origins**.
+
+## Full source code
+
+[GitHub repository →](https://github.com/dynamic-labs-oss/examples/tree/main/examples/nextjs-defi-lending-moonwell)
+
+## Additional resources
+
+* [Earn yield with Aave](/docs/recipes/integrations/yield/aave)
+* [Morpho yield vaults](/docs/recipes/integrations/yield/morpho)
+* [Moonwell documentation](https://docs.moonwell.fi)
+* [Dynamic JS SDK](/docs/javascript/reference/quickstart)
