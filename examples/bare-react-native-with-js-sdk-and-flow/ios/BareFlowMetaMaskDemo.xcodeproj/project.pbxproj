@@ -273,7 +273,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.dynamiclabs.examples.bareflowmetamaskdemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dynamiclabs.examples.bareflowmetamaskdemo.test;
 				PRODUCT_NAME = BareFlowMetaMaskDemo;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -300,7 +300,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.dynamiclabs.examples.bareflowmetamaskdemo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dynamiclabs.examples.bareflowmetamaskdemo.test;
 				PRODUCT_NAME = BareFlowMetaMaskDemo;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

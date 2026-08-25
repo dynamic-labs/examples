@@ -34,7 +34,7 @@
 			     the user approves the connection — approval itself still
 			     resolves over the SDK's own relay session either way. -->
 			<key>CFBundleURLName</key>
-			<string>com.dynamiclabs.examples.bareflowmetamaskdemo</string>
+			<string>com.dynamiclabs.examples.bareflowmetamaskdemo.test</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>bareflowmetamaskdemo</string>

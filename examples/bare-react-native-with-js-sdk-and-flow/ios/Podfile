@@ -104,5 +104,29 @@ target 'BareFlowMetaMaskDemo' do
         File.write(fmt_base_header, patched)
       end
     end
+
+    # Workaround: with RCT_BUILD_HERMES_FROM_SOURCE=true (see top of this
+    # Podfile), hermes-engine's CMake-based Apple framework build doesn't
+    # set MinimumOSVersion in the device-slice hermes.framework/Info.plist
+    # (the simulator slice sets it correctly; only the device slice is
+    # missing it). That fails App Store Connect validation on upload with:
+    #   "Invalid MinimumOSVersion. Apps that only support 64-bit devices
+    #   must specify a deployment target of 8.0 or later."
+    # hermes.framework is rebuilt from source on every Xcode build (not
+    # just `pod install`), so a one-time file patch here wouldn't survive
+    # the next build -- instead we add a build phase to the hermes-engine
+    # aggregate target that runs after its own build/copy script phases,
+    # patching the Info.plist just before the app target embeds it.
+    hermes_target = installer.pods_project.targets.find { |t| t.name == 'hermes-engine' }
+    if hermes_target
+      phase = hermes_target.new_shell_script_build_phase('[Workaround] Fix Hermes device-slice MinimumOSVersion')
+      phase.shell_script = <<~SCRIPT
+        PLIST="${PODS_ROOT}/hermes-engine/destroot/Library/Frameworks/ios/hermes.framework/Info.plist"
+        if [ -f "$PLIST" ]; then
+          /usr/libexec/PlistBuddy -c "Delete :MinimumOSVersion" "$PLIST" 2>/dev/null
+          /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string ${IPHONEOS_DEPLOYMENT_TARGET}" "$PLIST"
+        fi
+      SCRIPT
+    end
   end
 end
