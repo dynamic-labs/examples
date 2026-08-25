@@ -47,7 +47,11 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 
-import { SOLANA_DEVNET_USDC, SOLANA_RPC_URL } from "../../constants";
+import {
+  SVM_CHAIN_ID,
+  SOLANA_DEVNET_USDC,
+  SOLANA_RPC_URL,
+} from "../../constants";
 import { parseArgs, runScript } from "../lib/cli";
 import {
   authenticatedSvmClient,
@@ -136,6 +140,7 @@ async function transferStandard(
       }),
       transaction,
       ...(password && { password }),
+      chainId: SVM_CHAIN_ID,
     }),
   );
 

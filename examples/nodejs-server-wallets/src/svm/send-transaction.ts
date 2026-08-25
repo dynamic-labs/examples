@@ -33,7 +33,7 @@
 
 import { attachSignature } from "@dynamic-labs-wallet/node-svm";
 
-import { SOLANA_RPC_URL } from "../../constants";
+import { SOLANA_RPC_URL, SVM_CHAIN_ID } from "../../constants";
 import { parseArgs, runScript } from "../lib/cli";
 import { authenticatedSvmClient, getLamportBalance, type SvmClient } from "../lib/clients/svm";
 import {
@@ -89,6 +89,7 @@ async function sendTransactionStandard(
       }),
       transaction,
       ...(password && { password }),
+      chainId: SVM_CHAIN_ID,
     }),
   );
 

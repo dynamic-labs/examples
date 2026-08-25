@@ -51,7 +51,7 @@
 
 import type { Transaction, VersionedTransaction } from "@solana/web3.js";
 
-import { SOLANA_RPC_URL } from "../../../constants";
+import { SOLANA_RPC_URL, SVM_CHAIN_ID } from "../../../constants";
 
 import {
   authenticatedSvmClient,
@@ -97,6 +97,7 @@ async function signSponsored(
         externalServerKeyShares: wallet.externalServerKeyShares,
       }),
       transaction: sponsored,
+      chainId: SVM_CHAIN_ID,
       ...(password && { password }),
     }),
   );

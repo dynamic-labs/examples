@@ -56,6 +56,23 @@ export const SOLANA_RPC_URL =
 /** Cluster label used for Solana explorer links. */
 export const SOLANA_CLUSTER = process.env.SOLANA_CLUSTER || "devnet";
 
+/**
+ * Chain id sent with SVM transaction signing, required as of SDK 1.0.114.
+ *
+ * 103 is Solana devnet in the numbering these examples target. Fixed rather than
+ * derived from `SOLANA_CLUSTER`: the two are separate concerns, and the cluster
+ * label is only ever used for explorer links.
+ *
+ * A string because that is how the SDK types it for SVM — EVM takes a `number`
+ * (see `chainId: chain.id` in `lib/gasless/evm.ts`). The value is metadata for the
+ * signing context; the RPC and blockhash are what actually select a network, and
+ * the server does not reject unknown values.
+ *
+ * Change this alongside `SOLANA_CLUSTER` if you point the examples at another
+ * cluster — nothing enforces that they agree.
+ */
+export const SVM_CHAIN_ID = "103";
+
 // Contract addresses by chain ID
 export const CONTRACTS = {
   84532: { USDC: "0x678d798938bd326d76e5db814457841d055560d0" },

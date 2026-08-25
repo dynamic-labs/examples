@@ -53,13 +53,9 @@ import {
   type DynamicSvmWalletClient,
   sendTransaction,
 } from "@dynamic-labs-wallet/node-svm";
-import {
-  Connection,
-  Transaction,
-  VersionedTransaction,
-} from "@solana/web3.js";
+import { Connection, Transaction, VersionedTransaction } from "@solana/web3.js";
 
-import { SOLANA_RPC_URL } from "../../../constants";
+import { SOLANA_RPC_URL, SVM_CHAIN_ID } from "../../../constants";
 import type { DelegatedCredentialsBase } from "../delegated-credentials";
 
 /**
@@ -135,6 +131,7 @@ export async function signSponsoredTransaction({
     ...(externalServerKeyShares?.length ? { externalServerKeyShares } : {}),
     transaction,
     sponsor: true,
+    chainId: SVM_CHAIN_ID,
     ...(password && { password }),
   });
 
@@ -157,9 +154,7 @@ export async function signSponsoredTransaction({
  * resolves to `{ signature, transaction }`. Callers that sponsor separately — the
  * delegated path, and the non-sponsored `standard` demo — want the signature.
  */
-export function signatureOf(
-  result: string | { signature: string },
-): string {
+export function signatureOf(result: string | { signature: string }): string {
   return typeof result === "string" ? result : result.signature;
 }
 
@@ -205,6 +200,7 @@ export async function signDelegatedSponsoredTransaction({
     signerAddress: credentials.address,
     sponsor: true,
     userId: requireUserId(credentials),
+    chainId: SVM_CHAIN_ID,
   });
 }
 
@@ -263,7 +259,9 @@ export async function resolvePriorBroadcast({
 }): Promise<string> {
   if (recordedSignature) {
     const outcome = await getSignatureOutcome(recordedSignature, rpcUrl);
-    onStatus?.(`Recorded signature ${recordedSignature} — chain says: ${outcome}`);
+    onStatus?.(
+      `Recorded signature ${recordedSignature} — chain says: ${outcome}`,
+    );
 
     if (outcome === "landed") return recordedSignature;
 
@@ -271,7 +269,10 @@ export async function resolvePriorBroadcast({
       // The signature is spent on-chain as a failure. Rebroadcasting cannot change
       // that, and re-signing would be a *new* transaction — a real second attempt,
       // which is a business decision rather than a retry.
-      throw new SvmExecutionFailedError(recordedSignature, "recorded as failed");
+      throw new SvmExecutionFailedError(
+        recordedSignature,
+        "recorded as failed",
+      );
     }
   }
 

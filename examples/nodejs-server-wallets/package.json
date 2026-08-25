@@ -22,17 +22,17 @@
     "smoke": "tsx src/smoke.ts"
   },
   "dependencies": {
-    "@dynamic-labs-wallet/node": "1.0.113",
-    "@dynamic-labs-wallet/node-evm": "1.0.113",
-    "@dynamic-labs-wallet/node-svm": "1.0.113",
+    "@dynamic-labs-wallet/node": "1.0.114",
+    "@dynamic-labs-wallet/node-evm": "1.0.114",
+    "@dynamic-labs-wallet/node-svm": "1.0.114",
     "@solana/spl-token": "0.4.15",
     "@solana/web3.js": "1.98.4",
-    "dotenv": "17.2.3",
-    "p-limit": "7.1.1",
-    "viem": "2.55.10"
+    "dotenv": "17.4.2",
+    "p-limit": "7.3.1",
+    "viem": "2.55.13"
   },
   "devDependencies": {
-    "@types/node": "24.7.2",
-    "tsx": "4.20.6"
+    "@types/node": "26.2.0",
+    "tsx": "4.23.12"
   }
 }
