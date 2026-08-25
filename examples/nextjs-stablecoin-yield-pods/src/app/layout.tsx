@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import Providers from "@/lib/providers";
-import Footer from "@/components/footer";
 import { Header } from "@/components/header";
+import Footer from "@/components/footer";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -14,19 +14,21 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "DeFi Yield with Dynamic",
   description:
-    "Deposit assets to earn yield and manage your DeFi positions with Dynamic's MPC wallets and Pods/Deframe. Access multiple yield protocols seamlessly.",
+    "Batch Pods bytecode into one ZeroDev smart-wallet transaction with Dynamic's MPC wallets.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body className={`${roboto.variable} font-sans bg-[#F9F9F9] text-[#030303]`}>
+      <body
+        className={`${roboto.variable} font-sans bg-[#F9F9F9] text-[#030303]`}
+      >
         <Providers>
-          <div className="min-h-screen flex flex-col">
+          <div className="flex min-h-screen flex-col">
             <Header />
             <main className="flex-1 pb-16">{children}</main>
             <Footer />

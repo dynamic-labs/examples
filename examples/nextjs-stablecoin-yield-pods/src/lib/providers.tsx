@@ -1,132 +1,75 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
+  chainsMap,
+  getOrMapViemChain,
+} from "@dynamic-labs/ethereum-core";
 import {
-  getWalletAccounts,
-  onEvent,
-  isSignedIn,
-  logout,
-  detectOAuthRedirect,
-  completeSocialAuthentication,
-  getActiveNetworkId,
-} from "@dynamic-labs-sdk/client";
-import { createWaasWalletAccounts } from "@dynamic-labs-sdk/client/waas";
-import { isEvmWalletAccount, type EvmWalletAccount } from "@dynamic-labs-sdk/evm";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { DynamicProvider, useUser, useWalletAccounts } from "@dynamic-labs-sdk/react-hooks";
-import { dynamicClient } from "./dynamic";
+  DynamicContextProvider,
+  EthereumWalletConnectors,
+  mergeNetworks,
+  ZeroDevSmartWalletConnectors,
+  ZeroDevSmartWalletConnectorsWithConfig,
+} from "@/lib/dynamic";
 
-interface WalletContextValue {
-  evmAccount: EvmWalletAccount | null;
-  loggedIn: boolean;
-  chainId: number;
-  setChainId: (id: number) => void;
-  ensureEvmWallet: () => Promise<void>;
-  disconnect: () => Promise<void>;
-}
+export const dynamicEnvironmentId =
+  process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID ?? "";
 
-const WalletContext = createContext<WalletContextValue>({
-  evmAccount: null,
-  loggedIn: false,
-  chainId: 8453,
-  setChainId: () => {},
-  ensureEvmWallet: async () => {},
-  disconnect: async () => {},
-});
+export const hasDynamicEnvironment = dynamicEnvironmentId.length > 0;
 
-export function useWallet() {
-  return useContext(WalletContext);
-}
+export const zeroDevRpcUrl =
+  process.env.NEXT_PUBLIC_ZERODEV_RPC_URL?.trim() ?? "";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      refetchOnWindowFocus: false,
-    },
+const MONAD_MAINNET_NETWORK = {
+  blockExplorerUrls: ["https://monadvision.com", "https://monadscan.com"],
+  chainId: 143,
+  chainName: "Monad Mainnet",
+  iconUrls: [],
+  name: "Monad Mainnet",
+  nativeCurrency: {
+    decimals: 18,
+    name: "MON",
+    symbol: "MON",
   },
-});
+  networkId: 143,
+  rpcUrls: ["https://rpc.monad.xyz"],
+  vanityName: "Monad",
+};
 
-function InnerProviders({ children }: { children: ReactNode }) {
-  const loggedIn = useUser() !== null;
-  const evmAccount = useWalletAccounts().find(isEvmWalletAccount) ?? null;
-  const [chainId, setChainId] = useState<number>(8453);
+const monadMainnetChain = getOrMapViemChain(MONAD_MAINNET_NETWORK);
 
-  useEffect(() => {
-    if (!evmAccount) return;
-    getActiveNetworkId({ walletAccount: evmAccount }, dynamicClient)
-      .then(({ networkId }) => setChainId(Number(networkId)))
-      .catch(() => {});
-  }, [evmAccount]);
+// Dynamic 4.53.1's viem chain map includes Monad Testnet (10143), but not
+// Monad mainnet (143). ZeroDev reads this map when creating its Kernel client.
+chainsMap[String(MONAD_MAINNET_NETWORK.chainId)] = monadMainnetChain;
 
-  const disconnect = useCallback(async () => {
-    await logout(dynamicClient);
-  }, []);
-
-  const ensureEvmWallet = useCallback(async () => {
-    try {
-      const accounts = getWalletAccounts(dynamicClient);
-      if (!accounts.some(isEvmWalletAccount) && isSignedIn(dynamicClient)) {
-        await createWaasWalletAccounts({ chains: ["EVM"] }, dynamicClient);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    const unsub = onEvent(
-      {
-        event: "walletAccountsChanged",
-        listener: () => {
-          void ensureEvmWallet();
-        },
-      },
-      dynamicClient,
-    );
-    return () => unsub?.();
-  }, [ensureEvmWallet]);
-
-  useEffect(() => {
-    const handleOAuthRedirect = async () => {
-      if (typeof window === "undefined") return;
-      try {
-        const url = new URL(window.location.href);
-        if (await detectOAuthRedirect({ url }, dynamicClient)) {
-          await completeSocialAuthentication({ url }, dynamicClient);
-          await ensureEvmWallet();
-          window.history.replaceState({}, "", window.location.pathname);
-        }
-      } catch {}
-    };
-    handleOAuthRedirect();
-  }, [ensureEvmWallet]);
-
-  return (
-    <WalletContext.Provider
-      value={{
-        evmAccount,
-        loggedIn,
-        chainId,
-        setChainId,
-        ensureEvmWallet,
-        disconnect,
-      }}
-    >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WalletContext.Provider>
-  );
-}
+// ZeroDev's current dashboard returns one chain-scoped Bundler/Paymaster RPC.
+// Without an explicit override, this Dynamic connector can fall back to legacy
+// v2 URLs that do not resolve the Monad chain for v3 ZeroDev projects.
+const zeroDevWalletConnectors = zeroDevRpcUrl
+  ? ZeroDevSmartWalletConnectorsWithConfig({
+      bundlerRpc: zeroDevRpcUrl,
+      defaultToKernelWithSponsorship: true,
+      paymasterRpc: zeroDevRpcUrl,
+    })
+  : ZeroDevSmartWalletConnectors;
 
 export default function Providers({ children }: { children: ReactNode }) {
+  if (!hasDynamicEnvironment) return <>{children}</>;
+
   return (
-    <DynamicProvider client={dynamicClient}>
-      <InnerProviders>{children}</InnerProviders>
-    </DynamicProvider>
+    <DynamicContextProvider
+      theme="light"
+      settings={{
+        environmentId: dynamicEnvironmentId,
+        overrides: {
+          evmNetworks: (networks) =>
+            mergeNetworks([MONAD_MAINNET_NETWORK], networks),
+        },
+        walletConnectors: [EthereumWalletConnectors, zeroDevWalletConnectors],
+      }}
+    >
+      {children}
+    </DynamicContextProvider>
   );
 }

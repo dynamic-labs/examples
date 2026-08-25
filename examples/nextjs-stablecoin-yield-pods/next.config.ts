@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     remotePatterns: [
       {
@@ -9,6 +8,22 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
+  },
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      {
+        module: /@dynamic-labs-wallet\/forward-mpc-client/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+    ];
+    config.externals = [
+      ...(Array.isArray(config.externals) ? config.externals : []),
+      "pino-pretty",
+      "lokijs",
+      "encoding",
+    ];
+    return config;
   },
 };
 
