@@ -7,8 +7,8 @@
  * docs: "Only required when using multiple Dynamic clients").
  */
 import { createDynamicClient } from '@dynamic-labs-sdk/client';
-import { addEvmExtension } from '@dynamic-labs-sdk/evm';
 import { APP_ORIGIN, config } from './src/consts/config';
+import { addMetaMaskEvmExtension } from '@dynamic-labs-sdk/evm/metamask';
 
 if (!config.dynamic.environmentId) {
   throw new Error(
@@ -46,4 +46,4 @@ export const dynamicClient = createDynamicClient({
   },
 });
 
-addEvmExtension(dynamicClient);
+addMetaMaskEvmExtension(dynamicClient);
